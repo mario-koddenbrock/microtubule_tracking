@@ -41,6 +41,7 @@ def create_sawtooth_profile(num_frames, max_length, noise_std=1.0):
             profile.append(val)
     return profile[:num_frames]
 
+
 def add_gaussian(image, pos, sigma):
     x = np.arange(0, image.shape[1], 1)
     y = np.arange(0, image.shape[0], 1)
@@ -50,15 +51,18 @@ def add_gaussian(image, pos, sigma):
     image += gaussian
     return image
 
+
 def normalize_image(img):
     img_min = np.min(img)
     img_max = np.max(img)
     return (img - img_min) / (img_max - img_min + 1e-8)
 
+
 def poisson_noise(image, snr):
     max_val = np.max(image)
     noisy = np.random.poisson(image * snr) / snr
     return np.clip(noisy / max_val if max_val > 0 else image, 0, 1)
+
 
 def get_seed():
     usable_width = IMG_SIZE[1] - 2 * MARGIN
@@ -69,6 +73,7 @@ def get_seed():
     intercept = start_y - slope * start_x
 
     return np.array([slope, intercept]), np.array([start_x, start_y])
+
 
 def grow_shrink_seed(frame, original, slope, motion_profile):
     net_motion = motion_profile[frame]
@@ -85,38 +90,38 @@ def grow_shrink_seed(frame, original, slope, motion_profile):
 
     return np.array([end_x, end_y])
 
-def generate_series(series_id, base_output_dir):
+
+def generate_series(series_id, base_output_dir, num_microtubules=3):
     video_output_path = os.path.join(base_output_dir, f"series_{series_id:02d}.mp4")
     gt_output_path = os.path.join(base_output_dir, f"series_{series_id:02d}_gt.json")
     os.makedirs(base_output_dir, exist_ok=True)
 
-    (slope, intercept), original = get_seed()
+    seeds = [(get_seed(), create_sawtooth_profile(NUM_FRAMES, MAX_LENGTH, noise_std=1.5)) for _ in
+             range(num_microtubules)]
+
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     writer = cv2.VideoWriter(video_output_path, fourcc, FPS, IMG_SIZE[::-1])
 
     gt_data: List[dict] = []
 
-    motion_profile = create_sawtooth_profile(NUM_FRAMES, MAX_LENGTH, noise_std=1.5)
-
     for frame in tqdm(range(NUM_FRAMES), desc=f"Generating series {series_id}"):
         img = np.zeros(IMG_SIZE, dtype=np.float32)
-        end = grow_shrink_seed(frame, original, slope, motion_profile)
 
-        dx = 0.5 / np.sqrt(1 + slope ** 2)
-        dy = slope * dx
-        pos = original.copy()
-        steps = 0
-        max_steps = int(MAX_LENGTH * 2)
+        for (slope_intercept, original), motion_profile in seeds:
+            slope, intercept = slope_intercept
+            end = grow_shrink_seed(frame, original, slope, motion_profile)
 
-        while (
-            (dx > 0 and pos[0] <= end[0]) or (dx < 0 and pos[0] >= end[0])
-        ) and (
-            (dy > 0 and pos[1] <= end[1]) or (dy < 0 and pos[1] >= end[1])
-        ) and (0 <= pos[0] < IMG_SIZE[1]) and (0 <= pos[1] < IMG_SIZE[0]):
-            add_gaussian(img, pos, SIGMA)
-            pos[0] += dx
-            pos[1] += dy
-            steps += 1
+            dx = 0.5 / np.sqrt(1 + slope ** 2)
+            dy = slope * dx
+            pos = original.copy()
+            while (
+                    (dx > 0 and pos[0] <= end[0]) or (dx < 0 and pos[0] >= end[0])
+            ) and (
+                    (dy > 0 and pos[1] <= end[1]) or (dy < 0 and pos[1] >= end[1])
+            ) and (0 <= pos[0] < IMG_SIZE[1]) and (0 <= pos[1] < IMG_SIZE[0]):
+                add_gaussian(img, pos, SIGMA)
+                pos[0] += dx
+                pos[1] += dy
 
         img = normalize_image(img)
         noisy_img = poisson_noise(img, SNR)
@@ -136,6 +141,7 @@ def generate_series(series_id, base_output_dir):
         json.dump(gt_data, f, indent=2)
 
     return video_output_path, gt_output_path
+
 
 # Example usage
 if __name__ == "__main__":
