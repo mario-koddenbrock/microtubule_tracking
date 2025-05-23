@@ -27,11 +27,13 @@ MOTION = 2.1
 # MAX_LENGTH: Approximate maximum length of a microtubule in pixels
 MAX_LENGTH = 50
 # SIGMA: Gaussian blur standard deviation for drawing microtubules
-SIGMA = [2, 2]
+SIGMA = [1, 1]
 # NUM_SERIES: Number of synthetic video/ground truth pairs to generate
 NUM_SERIES = 3
 # MARGIN: Number of pixels to leave as a border so microtubules stay in bounds
 MARGIN = 5
+# NUM_TUBULUS: Range of number of microtubules to generate per series
+NUM_TUBULUS = [3, 10]
 
 
 
@@ -166,4 +168,4 @@ def generate_series(series_id, base_output_dir, num_microtubules=5):
 if __name__ == "__main__":
     output_dir = "../data/synthetic"
     for idx in range(NUM_SERIES):
-        generate_series(idx, output_dir, num_microtubules=np.random.randint(2, 10))
+        generate_series(idx, output_dir, num_microtubules=np.random.randint(NUM_TUBULUS[0], NUM_TUBULUS[1]))
