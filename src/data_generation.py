@@ -6,19 +6,33 @@ from typing import List
 from tqdm import tqdm
 
 # --- Parameters ---
-IMG_SIZE = (256, 256)
+# IMG_SIZE: Dimensions of the output image (height, width)
+IMG_SIZE = (512, 512)
+# FPS: Frames per second for the output video
 FPS = 10
-NUM_FRAMES = 60 * FPS  # 1 minute duration
-SNR = 5
+# NUM_FRAMES: Total number of frames per video (defines video duration)
+NUM_FRAMES = 60 * FPS  # 1-minute duration
+# SNR: Signal-to-noise ratio used for Poisson noise
+SNR = 3
+# GROW_AMP: Amplitude of the sinusoidal growth signal
 GROW_AMP = 2.0
+# GROW_FREQ: Frequency of the sinusoidal growth signal
 GROW_FREQ = 0.05
+# SHRINK_AMP: Amplitude of the sinusoidal shrink signal
 SHRINK_AMP = 4.0
+# SHRINK_FREQ: Frequency of the sinusoidal shrink signal
 SHRINK_FREQ = 0.25
+# MOTION: Scaling factor to control pixel-wise motion per frame
 MOTION = 2.1
+# MAX_LENGTH: Approximate maximum length of a microtubule in pixels
 MAX_LENGTH = 50
+# SIGMA: Gaussian blur standard deviation for drawing microtubules
 SIGMA = [2, 2]
-NUM_SERIES = 3  # number of synthetic videos to generate
-MARGIN = 5  # margin from borders
+# NUM_SERIES: Number of synthetic video/ground truth pairs to generate
+NUM_SERIES = 3
+# MARGIN: Number of pixels to leave as a border so microtubules stay in bounds
+MARGIN = 5
+
 
 
 def create_sawtooth_profile(num_frames, max_length, noise_std=1.0, offset=0):
@@ -99,7 +113,7 @@ def generate_series(series_id, base_output_dir, num_microtubules=5):
     os.makedirs(base_output_dir, exist_ok=True)
 
     seeds = [(get_seed(),
-              create_sawtooth_profile(NUM_FRAMES, MAX_LENGTH, noise_std=1.2, offset=np.random.randint(0, NUM_FRAMES)))
+              create_sawtooth_profile(NUM_FRAMES, MAX_LENGTH, noise_std=0.5, offset=np.random.randint(0, NUM_FRAMES)))
              for _ in
              range(num_microtubules)]
 
@@ -133,12 +147,13 @@ def generate_series(series_id, base_output_dir, num_microtubules=5):
         writer.write(cv2.cvtColor(frame_uint8, cv2.COLOR_GRAY2BGR))
 
         gt_data.append({
-            "frame": frame,
-            "start": original.tolist(),
-            "end": end.tolist(),
-            "slope": slope,
-            "intercept": intercept
-        })
+                "frame": frame,
+                "start": original.tolist(),
+                "end": end.tolist(),
+                "slope": slope,
+                "intercept": intercept,
+                "length": float(np.linalg.norm(end - original))
+            })
 
     writer.release()
     with open(gt_output_path, 'w') as f:
@@ -151,4 +166,4 @@ def generate_series(series_id, base_output_dir, num_microtubules=5):
 if __name__ == "__main__":
     output_dir = "../data/synthetic"
     for idx in range(NUM_SERIES):
-        generate_series(idx, output_dir)
+        generate_series(idx, output_dir, num_microtubules=np.random.randint(2, 10))
