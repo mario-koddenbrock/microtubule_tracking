@@ -122,7 +122,10 @@ def save_video(frames, output_path, fps=5):
     if not frames:
         print("No frames to save.")
         return
-    height, width, _ = frames[0].shape
+    if len(frames[0].shape) == 3:
+        height, width, _ = frames[0].shape
+    else:
+        height, width = frames[0].shape
     writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
     for frame in frames:
         writer.write(frame)
