@@ -24,8 +24,10 @@ SHRINK_AMP = 4.0
 SHRINK_FREQ = 0.25
 # MOTION: Scaling factor to control pixel-wise motion per frame
 MOTION = 2.1
-# MAX_LENGTH: Approximate maximum length of a microtubule in pixels
+# MAX_LENGTH: Maximum length of a microtubule in pixels
 MAX_LENGTH = 50
+# MIN_LENGTH: Minimum length of a microtubule in pixels
+MIN_LENGTH = 5
 # SIGMA: Gaussian blur standard deviation for drawing microtubules
 SIGMA = [1, 1]
 # NUM_SERIES: Number of synthetic video/ground truth pairs to generate
@@ -37,7 +39,7 @@ NUM_TUBULUS = [3, 10]
 
 
 
-def create_sawtooth_profile(num_frames, max_length, noise_std=1.0, offset=0):
+def create_sawtooth_profile(num_frames, max_length, min_length=5, noise_std=1.0, offset=0):
     profile = []
     grow_len = max_length
     shrink_len = max_length * 0.9
@@ -48,12 +50,12 @@ def create_sawtooth_profile(num_frames, max_length, noise_std=1.0, offset=0):
         # Grow phase (slow)
         for i in range(grow_frames):
             if len(profile) >= num_frames: break
-            val = i / grow_frames * grow_len + np.random.normal(0, noise_std)
+            val = min_length + (i / grow_frames) * (grow_len - min_length) + np.random.normal(0, noise_std)
             profile.append(val)
         # Shrink phase (fast)
         for i in range(shrink_frames):
             if len(profile) >= num_frames: break
-            val = grow_len - i / shrink_frames * shrink_len + np.random.normal(0, noise_std)
+            val = min_length + (grow_len - min_length) * (1 - i / shrink_frames) + np.random.normal(0, noise_std)
             profile.append(val)
         profile = profile[:num_frames]
     profile = profile[offset:] + profile[:offset]
@@ -114,10 +116,18 @@ def generate_series(series_id, base_output_dir, num_microtubules=5):
     gt_output_path = os.path.join(base_output_dir, f"series_{series_id:02d}_gt.json")
     os.makedirs(base_output_dir, exist_ok=True)
 
-    seeds = [(get_seed(),
-              create_sawtooth_profile(NUM_FRAMES, MAX_LENGTH, noise_std=0.5, offset=np.random.randint(0, NUM_FRAMES)))
-             for _ in
-             range(num_microtubules)]
+    seeds = [
+        (
+            get_seed(),
+            create_sawtooth_profile(
+                NUM_FRAMES,
+                np.random.uniform(MIN_LENGTH + 5, MAX_LENGTH),
+                np.random.uniform(MIN_LENGTH, MIN_LENGTH + 10),
+                noise_std=0.5,
+                offset=np.random.randint(0, NUM_FRAMES)
+            )
+        ) for _ in range(num_microtubules)
+    ]
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     writer = cv2.VideoWriter(video_output_path, fourcc, FPS, IMG_SIZE[::-1])
