@@ -4,17 +4,32 @@ import os
 import matplotlib.pyplot as plt
 from scipy.optimize import linear_sum_assignment
 from glob import glob
+import tifffile
+from tqdm import tqdm
 
 # --- Parameters ---
 MIN_LINE_LENGTH = 20
 MAX_LINE_GAP = 5
 LINE_ASSOCIATION_THRESHOLD = 20  # pixels
+MIN_EDGE_PERIMETER = 10 # pixels
 
 # --- Helper functions ---
 def preprocess_frame(frame):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame
     denoised = cv2.GaussianBlur(gray, (5, 5), 1)
-    edges = cv2.Canny(denoised, 50, 150)
+
+    v = np.median(denoised)
+    sigma = 0.33
+    lower = int(max(0, (1.0 - sigma) * v))
+    upper = int(min(255, (1.0 + sigma) * v))
+    edges = cv2.Canny(denoised, lower, upper)
+
+    # remove small contours
+    contours, _ = cv2.findContours(edges.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours:
+        if cv2.arcLength(cnt, True) < MIN_EDGE_PERIMETER:
+            cv2.drawContours(edges, [cnt], 0, 0, -1)  # Remove contour from edge map
+
     return edges
 
 def detect_lines(edges):
@@ -39,44 +54,66 @@ def associate_lines(prev_centers, curr_centers):
             associations.append((i, j))
     return associations
 
+def extract_frames(video_path):
+    frames = []
+    if video_path.lower().endswith(".avi"):
+        cap = cv2.VideoCapture(video_path)
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames.append(frame)
+        cap.release()
+    elif video_path.lower().endswith(".tif"):
+        data = tifffile.imread(video_path)
+        for i in range(data.shape[0]):
+            frame = (data[i, 1, :, :] / 65535.0 * 255).astype(np.uint8)
+            frames.append(frame)
+    return frames
+
 # --- Main processing ---
-def process_video(image_folder):
-    image_files = sorted(glob(os.path.join(image_folder, "*.png")))
-    tracked_lengths = []
+def process_frames(frames):
     video_frames = []
-
-    prev_centers = None
     microtubule_tracks = {}
+    prev_centers = None
+    next_id = 0
+    prev_id_map = {}
 
-    for frame_idx, image_file in enumerate(image_files):
-        frame = cv2.imread(image_file)
-        if frame is None:
-            continue
-
+    for frame_idx, frame in tqdm(enumerate(frames), "Processing frames", total=len(frames)):
         vis_frame = frame.copy()
         edges = preprocess_frame(frame)
         lines = detect_lines(edges)
 
-        curr_centers = np.array([compute_line_center(line) for line in lines])
-        curr_lengths = [compute_line_length(line) for line in lines]
+        curr_centers = np.array([compute_line_center(line) for line in lines]) if len(lines) > 0 else np.empty((0, 2))
+        curr_lengths = [compute_line_length(line) for line in lines] if len(lines) > 0 else []
+
+        curr_id_map = {}
 
         if prev_centers is not None and len(curr_centers) > 0:
             associations = associate_lines(prev_centers, curr_centers)
             for old_idx, new_idx in associations:
-                microtubule_id = old_idx
-                if microtubule_id not in microtubule_tracks:
-                    microtubule_tracks[microtubule_id] = []
-                microtubule_tracks[microtubule_id].append((frame_idx, curr_lengths[new_idx]))
-        else:
-            for i, length in enumerate(curr_lengths):
-                microtubule_tracks[i] = [(frame_idx, length)]
+                track_id = prev_id_map.get(old_idx, next_id)
+                curr_id_map[new_idx] = track_id
+                if track_id not in microtubule_tracks:
+                    microtubule_tracks[track_id] = []
+                    next_id += 1
+                microtubule_tracks[track_id].append((frame_idx, curr_lengths[new_idx]))
 
-        for line in lines:
+        for i, length in enumerate(curr_lengths):
+            if i not in curr_id_map:
+                curr_id_map[i] = next_id
+                microtubule_tracks[next_id] = [(frame_idx, length)]
+                next_id += 1
+
+        for i, line in enumerate(lines):
             x1, y1, x2, y2 = line[0]
+            track_id = curr_id_map.get(i, -1)
             cv2.line(vis_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(vis_frame, str(track_id), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
         video_frames.append(vis_frame)
         prev_centers = curr_centers
+        prev_id_map = curr_id_map
 
     return video_frames, microtubule_tracks
 
@@ -106,14 +143,26 @@ def plot_lengths(microtubule_tracks, output_path):
 
 # --- Run everything ---
 if __name__ == "__main__":
-    image_folder = "path/to/your/images"  # Change this to your image folder
-    video_output = "microtubule_tracking.mp4"
-    plot_output = "microtubule_lengths.png"
 
-    frames, tracks = process_video(image_folder)
-    save_video(frames, video_output)
-    plot_lengths(tracks, plot_output)
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    data_path = os.path.join(script_dir, '..', 'data', 'mpi')
+    output_path = os.path.join(script_dir, '..', 'results', 'mpi')
 
-    print("Tracking complete.")
-    print(f"Video saved to: {video_output}")
-    print(f"Plot saved to: {plot_output}")
+    os.makedirs(output_path, exist_ok=True)
+
+    video_files = glob(os.path.join(data_path, "*.avi")) + glob(os.path.join(data_path, "*.tif"))
+
+    for video_path in video_files:
+        print(f"Processing: {video_path}")
+        frames = extract_frames(video_path)
+        tracked_frames, tracks = process_frames(frames)
+
+        base_name = os.path.splitext(os.path.basename(video_path))[0]
+        video_output = os.path.join(output_path, f"{base_name}_tracking.mp4")
+        plot_output = os.path.join(output_path, f"{base_name}_lengths.png")
+
+        save_video(tracked_frames, video_output)
+        # plot_lengths(tracks, plot_output)
+
+        print(f"Video saved to: {video_output}")
+        # print(f"Plot saved to: {plot_output}")
