@@ -21,7 +21,7 @@ NUM_SERIES = 3  # number of synthetic videos to generate
 MARGIN = 5  # margin from borders
 
 
-def create_sawtooth_profile(num_frames, max_length, noise_std=1.0):
+def create_sawtooth_profile(num_frames, max_length, noise_std=1.0, offset=0):
     profile = []
     grow_len = max_length
     shrink_len = max_length * 0.9
@@ -39,7 +39,9 @@ def create_sawtooth_profile(num_frames, max_length, noise_std=1.0):
             if len(profile) >= num_frames: break
             val = grow_len - i / shrink_frames * shrink_len + np.random.normal(0, noise_std)
             profile.append(val)
-    return profile[:num_frames]
+        profile = profile[:num_frames]
+    profile = profile[offset:] + profile[:offset]
+    return profile
 
 
 def add_gaussian(image, pos, sigma):
@@ -91,12 +93,14 @@ def grow_shrink_seed(frame, original, slope, motion_profile):
     return np.array([end_x, end_y])
 
 
-def generate_series(series_id, base_output_dir, num_microtubules=3):
+def generate_series(series_id, base_output_dir, num_microtubules=5):
     video_output_path = os.path.join(base_output_dir, f"series_{series_id:02d}.mp4")
     gt_output_path = os.path.join(base_output_dir, f"series_{series_id:02d}_gt.json")
     os.makedirs(base_output_dir, exist_ok=True)
 
-    seeds = [(get_seed(), create_sawtooth_profile(NUM_FRAMES, MAX_LENGTH, noise_std=1.5)) for _ in
+    seeds = [(get_seed(),
+              create_sawtooth_profile(NUM_FRAMES, MAX_LENGTH, noise_std=1.2, offset=np.random.randint(0, NUM_FRAMES)))
+             for _ in
              range(num_microtubules)]
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
