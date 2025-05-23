@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microtubule_tracking"
+version = "0.1.0"
+authors = [{name = "Mario Koddenbrock", email = "mario.koddenbrock@htw-berlin.de"}]
+description = "Microtubule Tracking"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "scipy",
+  "pandas",
+  "matplotlib",
+  "pyyaml",
+  "torch",
+  "transformers",
+  "scikit-learn",
+]
+
+[project.urls]
+source = "https://github.com/mario-koddenbrock/microtubule_tracking"
+

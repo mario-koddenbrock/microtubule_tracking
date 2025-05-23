@@ -1,0 +1,17 @@
+[flake8]
+
+per-file-ignores = __init__.py:F401
+exclude =
+    .git,
+    .tox,
+    .pytest_cache,
+    .gitlab-ci-local,
+    __pycache__,
+    docs/source/conf.py,
+    build,
+    dist,
+    .venv,
+    venv,
+    notebooks/Send_Cedex_Data_to_DataBase.py
+
+max-line-length = 90
