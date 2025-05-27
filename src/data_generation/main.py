@@ -11,9 +11,7 @@ from data_generation.utils import get_seed, grow_shrink_seed, add_gaussian, norm
 from data_generation.config import SyntheticDataConfig
 
 
-def generate_series(config_path:str, base_output_dir:str):
-
-    config = SyntheticDataConfig.load(config_path)
+def generate_series(config:SyntheticDataConfig, base_output_dir:str):
 
     video_output_path = os.path.join(base_output_dir, f"series_{config.id:02d}.mp4")
     gt_output_path = os.path.join(base_output_dir, f"series_{config.id:02d}_gt.json")
@@ -82,6 +80,8 @@ def generate_series(config_path:str, base_output_dir:str):
 # Example usage
 if __name__ == "__main__":
     output_dir = "../data/synthetic"
-    config_file = "../config/synthetic_config.json"
+    config_path = "../config/synthetic_config.json"
 
-    generate_series(config_file, output_dir)
+    config = SyntheticDataConfig.load(config_path)
+
+    generate_series(config, output_dir)
