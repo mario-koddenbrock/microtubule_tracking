@@ -35,6 +35,8 @@ class BaseConfig(ABC):
         for key, value in params.items():
             if hasattr(self, key):
                 setattr(self, key, value)
+            else:
+                raise KeyError(f"Invalid configuration key: {key}")
 
     def __str__(self):
         return yaml.dump(self.asdict(), sort_keys=False)
