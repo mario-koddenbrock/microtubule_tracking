@@ -46,10 +46,13 @@ def load_reference_embeddings(cfg: TuningConfig, model, extractor):
 def evaluate(cfg_dict, ref_embeddings, cfg: TuningConfig, model, extractor):
     synth_cfg = SyntheticDataConfig(**cfg_dict)
     synth_cfg.id = 0
-    output_dir = "temp_eval_output"
-    generate_series(synth_cfg, output_dir)
+    # todo set all the other parameters from cfg?
+    synth_cfg.num_frames = cfg.num_compare_frames
+    synth_cfg.validate()
 
-    video_path = os.path.join(output_dir, "series_00.mp4")
+    generate_series(synth_cfg, cfg.temp_dir)
+
+    video_path = os.path.join(cfg.temp_dir, "series_00.mp4")
     cap = cv2.VideoCapture(video_path)
     ret, frame = cap.read()
     cap.release()
