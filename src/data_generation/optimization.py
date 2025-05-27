@@ -1,16 +1,19 @@
 import optuna
-from transformers import SegformerFeatureExtractor, SegformerModel
+from transformers import AutoModel, AutoFeatureExtractor
 
 from data_generation.config import TuningConfig, SyntheticDataConfig
 from data_generation.metric import load_reference_embeddings, evaluate
 
 
 def main():
-    tuning_cfg = TuningConfig.from_json("tuning_config.json")
-    tuning_cfg.validate()
 
-    model = SegformerModel.from_pretrained(tuning_cfg.model_name)
-    extractor = SegformerFeatureExtractor.from_pretrained(tuning_cfg.model_name)
+    config_path = "../../config/tuning_config.json"
+    tuning_cfg = TuningConfig.load(config_path)
+    tuning_cfg.validate()
+    tuning_cfg.to_json(config_path)
+
+    model = AutoModel.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
+    extractor = AutoFeatureExtractor.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
     ref_embeddings = load_reference_embeddings(tuning_cfg, model, extractor)
 
     def objective(trial):
@@ -35,6 +38,14 @@ def main():
     best_cfg.to_json("best_synthetic_config.json")
     print("Best config saved to best_synthetic_config.json")
 
+    # Optional: visualize the optimization process
+    try:
+        import optuna.visualization as vis
+        fig = vis.plot_optimization_history(study)
+        fig.write_html("optimization_history.html")
+        print("Optimization history saved to optimization_history.html")
+    except ImportError:
+        print("Visualization requires 'optuna[visualization]'. Install it via pip if needed.")
 
 if __name__ == "__main__":
     main()
