@@ -1,13 +1,81 @@
-# Configuration for microtubule synthetic video generation
 import os
-from dataclasses import dataclass, asdict
-import yaml
 import json
+import yaml
+from dataclasses import dataclass, asdict, fields
+from abc import ABC, abstractmethod
+from typing import Optional
 
-from typing import Optional, Union
+
+
+class BaseConfig(ABC):
+    @classmethod
+    def load(cls, config_path: Optional[str] = None, overrides: Optional[dict] = None):
+        if config_path:
+            if not os.path.exists(config_path):
+                raise FileNotFoundError(f"Config file not found: {config_path}")
+
+            if config_path.endswith(('.yml', '.yaml')):
+                config = cls.from_yml(config_path)
+            elif config_path.endswith('.json'):
+                config = cls.from_json(config_path)
+            else:
+                raise ValueError("Unsupported config file format. Use .yml, .yaml, or .json")
+        else:
+            config = cls()
+
+        if overrides:
+            config.update(overrides)
+
+        return config
+
+    def get(self, key):
+        return getattr(self, key)
+
+    def update(self, params: dict):
+        for key, value in params.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+
+    def __str__(self):
+        return yaml.dump(self.asdict(), sort_keys=False)
+
+    def to_yml(self, path):
+        with open(path, 'w') as f:
+            yaml.dump(self.asdict(), f)
+
+    def to_json(self, path):
+        with open(path, 'w') as f:
+            json.dump(self.asdict(), f, indent=2)
+
+    @classmethod
+    def from_yml(cls, path):
+        with open(path, 'r') as f:
+            data = yaml.safe_load(f)
+        return cls(**data)
+
+    @classmethod
+    def from_json(cls, path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+        return cls(**data)
+
+    def asdict(self):
+        raw = asdict(self)
+        for k, v in raw.items():
+            if isinstance(v, tuple):
+                raw[k] = list(v)
+        return raw
+
+    @abstractmethod
+    def validate(self):
+        """
+        Optionally implemented by subclasses to validate configuration logic.
+        """
+        pass
+
 
 @dataclass
-class SyntheticDataConfig:
+class SyntheticDataConfig(BaseConfig):
     """
     Configuration for synthetic microtubule video generation.
 
@@ -46,7 +114,7 @@ class SyntheticDataConfig:
     id: int = 0
     img_size: tuple = (512, 512)
     fps: int = 10
-    num_frames: int = 60 * 10  # 1-minute duration
+    num_frames: int = 60 * 10
     snr: int = 3
     grow_amp: float = 2.0
     grow_freq: float = 0.05
@@ -60,63 +128,60 @@ class SyntheticDataConfig:
     margin: int = 5
     num_tubulus: int = 10
 
-    def get(self, key):
-        return getattr(self, key)
+    def validate(self):
+        assert self.img_size[0] > 0 and self.img_size[1] > 0, "Image dimensions must be positive"
+        assert self.fps > 0, "FPS must be positive"
+        assert self.num_frames > 0, "Number of frames must be positive"
 
-    def to_yml(self, path):
-        with open(path, 'w') as f:
-            yaml.dump(self.asdict(), f)
 
-    @classmethod
-    def from_yml(cls, path):
-        with open(path, 'r') as f:
-            data = yaml.safe_load(f)
-        return cls(**data)
+@dataclass
+class TuningConfig(BaseConfig):
+    """
+    Configuration for hyperparameter tuning of synthetic microtubule data generation.
 
-    def update(self, params: dict):
-        for key, value in params.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
+    Attributes:
+        direction (str): Optimization direction ("maximize" or "minimize").
+        grow_amp_range (tuple): Range of amplitudes for microtubule growth.
+        grow_freq_range (tuple): Range of frequencies for microtubule growth.
+        max_length_range (tuple): Range of maximum tubule lengths.
+        metric (str): Metric to optimize (e.g., "cosine_similarity").
+        min_length_range (tuple): Range of minimum tubule lengths.
+        model_name (str): Hugging Face model name for feature extraction.
+        motion_range (tuple): Range of motion magnitudes.
+        num_compare_frames (int): Number of frames to compare per series.
+        num_compare_series (int): Number of synthetic/reference series to compare.
+        num_trials (int): Number of optimization trials.
+        num_tubulus_range (tuple): Range of number of microtubules per series.
+        param_file (str): Path to JSON file containing parameter ranges.
+        reference_series_dir (str): Directory path with original reference video series.
+        shrink_amp_range (tuple): Range of amplitudes for microtubule shrinkage.
+        shrink_freq_range (tuple): Range of frequencies for microtubule shrinkage.
+        sigma_range (tuple): Range of Gaussian blur standard deviations.
+        snr_range (tuple): Range of signal-to-noise ratios.
+    """
+    model_name: str = "nvidia/segformer-b0-finetuned-ade-512-512"
+    num_trials: int = 20
+    direction: str = "maximize"
+    metric: str = "cosine_similarity"
+    param_file: str = "optimize_params.json"
+    num_compare_series: int = 3  # Number of synthetic/reference series to compare
+    reference_series_dir: str = "reference_data"  # Path to the directory containing reference video series
+    num_compare_frames: int = 1  # Number of frames per series to use for comparison
 
-    def __str__(self):
-        return yaml.dump(self.asdict(), sort_keys=False)
+    # Parameter ranges for tuning (only those that are tunable)
+    grow_amp_range: tuple = (0.5, 5.0)
+    grow_freq_range: tuple = (0.01, 0.2)
+    shrink_amp_range: tuple = (0.5, 8.0)
+    shrink_freq_range: tuple = (0.05, 0.5)
+    motion_range: tuple = (0.5, 5.0)
+    max_length_range: tuple = (10, 80)
+    min_length_range: tuple = (1, 30)
+    snr_range: tuple = (1, 10)
+    sigma_range: tuple = (0.5, 3.0)
+    num_tubulus_range: tuple = (3, 15)
 
-    def to_json(self, path):
-        with open(path, 'w') as f:
-            json.dump(self.asdict(), f, indent=2)
-
-    @classmethod
-    def from_json(cls, path):
-        with open(path, 'r') as f:
-            data = json.load(f)
-        return cls(**data)
-
-    def asdict(self):
-        raw = asdict(self)
-        # Convert tuples to lists for serialization
-        for k, v in raw.items():
-            if isinstance(v, tuple):
-                raw[k] = list(v)
-        return raw
-
-    @classmethod
-    def load(cls, config_path: Optional[str] = None, overrides: Optional[dict] = None):
-        if config_path:
-
-            if not os.path.exists(config_path):
-                raise FileNotFoundError(f"Config file not found: {config_path}")
-
-            if config_path.endswith('.yml') or config_path.endswith('.yaml'):
-                config = cls.from_yml(config_path)
-            elif config_path.endswith('.json'):
-                config = cls.from_json(config_path)
-            else:
-                raise ValueError("Unsupported config file format. Use .yml, .yaml, or .json")
-        else:
-            config = cls()
-
-        if overrides:
-            config.update(overrides)
-
-        return config
+    def validate(self):
+        assert self.direction in ["maximize", "minimize"], "Direction must be either 'maximize' or 'minimize'"
+        assert self.num_trials > 0, "Number of trials must be positive"
+        assert self.metric in ["cosine_similarity"], "Unsupported metric type"
 
