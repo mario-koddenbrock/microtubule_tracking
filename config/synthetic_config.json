@@ -1,0 +1,24 @@
+{
+  "id": 0,
+  "img_size": [
+    512,
+    512
+  ],
+  "fps": 10,
+  "num_frames": 600,
+  "snr": 3,
+  "grow_amp": 2.0,
+  "grow_freq": 0.05,
+  "shrink_amp": 4.0,
+  "shrink_freq": 0.25,
+  "motion": 2.1,
+  "max_length": 50,
+  "min_length": 5,
+  "sigma": [
+    1,
+    1
+  ],
+  "num_series": 3,
+  "margin": 5,
+  "num_tubulus": 10
+}

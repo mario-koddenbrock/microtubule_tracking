@@ -1,4 +1,5 @@
 # Configuration for microtubule synthetic video generation
+import os
 from dataclasses import dataclass, asdict
 import yaml
 import json
@@ -64,7 +65,7 @@ class SyntheticDataConfig:
 
     def to_yml(self, path):
         with open(path, 'w') as f:
-            yaml.dump(asdict(self), f)
+            yaml.dump(self.asdict(), f)
 
     @classmethod
     def from_yml(cls, path):
@@ -91,11 +92,20 @@ class SyntheticDataConfig:
         return cls(**data)
 
     def asdict(self):
-        return asdict(self)
+        raw = asdict(self)
+        # Convert tuples to lists for serialization
+        for k, v in raw.items():
+            if isinstance(v, tuple):
+                raw[k] = list(v)
+        return raw
 
     @classmethod
     def load(cls, config_path: Optional[str] = None, overrides: Optional[dict] = None):
         if config_path:
+
+            if not os.path.exists(config_path):
+                raise FileNotFoundError(f"Config file not found: {config_path}")
+
             if config_path.endswith('.yml') or config_path.endswith('.yaml'):
                 config = cls.from_yml(config_path)
             elif config_path.endswith('.json'):
