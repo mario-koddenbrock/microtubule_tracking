@@ -167,6 +167,8 @@ class TuningConfig(BaseConfig):
     num_compare_series: int = 3  # Number of synthetic/reference series to compare
     reference_series_dir: str = "reference_data"  # Path to the directory containing reference video series
     num_compare_frames: int = 1  # Number of frames per series to use for comparison
+    hf_cache_dir: str = None  # Directory for Hugging Face model cache
+    temp_dir: str = "temp_synthetic_data"  # Temporary directory for synthetic data generation
 
     # Parameter ranges for tuning (only those that are tunable)
     grow_amp_range: tuple = (0.5, 5.0)
