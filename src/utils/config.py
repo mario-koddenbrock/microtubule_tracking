@@ -7,23 +7,57 @@ from typing import Optional, Union
 
 @dataclass
 class SyntheticDataConfig:
-    """Configuration for synthetic microtubule video generation."""
-    ID: int = 0
-    IMG_SIZE: tuple = (512, 512)
-    FPS: int = 10
-    NUM_FRAMES: int = 60 * 10  # 1-minute duration
-    SNR: int = 3
-    GROW_AMP: float = 2.0
-    GROW_FREQ: float = 0.05
-    SHRINK_AMP: float = 4.0
-    SHRINK_FREQ: float = 0.25
-    MOTION: float = 2.1
-    MAX_LENGTH: float = 50
-    MIN_LENGTH: float = 5
-    SIGMA: list = (1, 1)
-    NUM_SERIES: int = 3
-    MARGIN: int = 5
-    NUM_TUBULUS: int = 10
+    """
+    Configuration for synthetic microtubule video generation.
+
+    Examples:
+        Load default configuration:
+            config = SyntheticDataConfig()
+
+        Load from YAML file:
+            config = SyntheticDataConfig.load("config.yml")
+
+        Load from JSON file with overrides:
+            config = SyntheticDataConfig.load("config.json", overrides={"fps": 30, "snr": 5})
+
+        Create and export config to a file:
+            config = SyntheticDataConfig()
+            config.to_yml("output_config.yml")
+            config.to_json("output_config.json")
+
+    Attributes:
+        img_size (tuple): Dimensions of the output image (height, width).
+        fps (int): Frames per second for the output video.
+        num_frames (int): Total number of frames per video (defines video duration).
+        snr (int): Signal-to-noise ratio used for Poisson noise. # TODO separately for tubulus and background
+        grow_amp (float): Amplitude of the sinusoidal growth signal.
+        grow_freq (float): Frequency of the sinusoidal growth signal.
+        shrink_amp (float): Amplitude of the sinusoidal shrink signal.
+        shrink_freq (float): Frequency of the sinusoidal shrink signal.
+        motion (float): Scaling factor to control pixel-wise motion per frame.
+        max_length (float): Maximum length of a microtubule in pixels.
+        min_length (float): Minimum length of a microtubule in pixels.
+        sigma (list): Gaussian blur standard deviation for drawing microtubules.
+        num_series (int): Number of synthetic video/ground truth pairs to generate.
+        margin (int): Number of pixels to leave as a border so microtubules stay in bounds.
+        num_tubulus (int): Number of microtubules to generate per series.
+    """
+    id: int = 0
+    img_size: tuple = (512, 512)
+    fps: int = 10
+    num_frames: int = 60 * 10  # 1-minute duration
+    snr: int = 3
+    grow_amp: float = 2.0
+    grow_freq: float = 0.05
+    shrink_amp: float = 4.0
+    shrink_freq: float = 0.25
+    motion: float = 2.1
+    max_length: float = 50
+    min_length: float = 5
+    sigma: list = (1, 1)
+    num_series: int = 3
+    margin: int = 5
+    num_tubulus: int = 10
 
     def get(self, key):
         return getattr(self, key)
@@ -76,4 +110,3 @@ class SyntheticDataConfig:
 
         return config
 
-CONFIG = SyntheticDataConfig.load()
