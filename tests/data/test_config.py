@@ -29,6 +29,16 @@ def test_json_io():
 def test_update():
     config = SyntheticDataConfig()
     original_fps = config.fps
-    config.update({"FPS": 30})
+    config.update({"fps": 30})
     assert config.fps == 30
     assert config.fps != original_fps
+
+def test_update_error():
+    config = SyntheticDataConfig()
+    try:
+        config.update({"invalid_key": 123})
+    except KeyError as e:
+        assert str(e) == "Invalid configuration key: invalid_key"
+    else:
+        assert False, "Expected KeyError was not raised"
+
