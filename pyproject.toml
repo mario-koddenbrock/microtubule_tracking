@@ -19,6 +19,7 @@ dependencies = [
   "matplotlib",
   "opencv-python",
   "tifffile",
+  "optuna",
 ]
 
 [project.urls]
