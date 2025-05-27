@@ -28,7 +28,7 @@ def test_json_io():
 
 def test_update():
     config = SyntheticDataConfig()
-    original_fps = config.FPS
+    original_fps = config.fps
     config.update({"FPS": 30})
-    assert config.FPS == 30
-    assert config.FPS != original_fps
+    assert config.fps == 30
+    assert config.fps != original_fps
