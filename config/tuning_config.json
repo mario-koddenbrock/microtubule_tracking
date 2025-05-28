@@ -1,6 +1,6 @@
 {
   "model_name": "nvidia/segformer-b0-finetuned-ade-512-512",
-  "num_trials": 20,
+  "num_trials": 10,
   "direction": "maximize",
   "metric": "cosine_similarity",
   "param_file": "optimize_params.json",
@@ -42,11 +42,11 @@
     10
   ],
   "sigma_range": [
-    0.5,
-    3.0
+    1,
+    10
   ],
   "num_tubulus_range": [
     3,
-    15
+    50
   ]
 }

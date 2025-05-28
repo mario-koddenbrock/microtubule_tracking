@@ -121,6 +121,7 @@ class SyntheticDataConfig(BaseConfig):
     """
     id: int = 0
     img_size: tuple[int, int] = (512, 512)
+    generate_mask: bool = True
     fps: int = 10
     num_frames: int = 5 * 10  # 5 seconds of video at 10 FPS
     snr: int = 3

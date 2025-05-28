@@ -1,3 +1,4 @@
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.manifold import TSNE
@@ -97,3 +98,23 @@ def plot_heatmap(matrix: np.ndarray, labels: list[str], step: int, *,
     ax.set_title(title)
     fig.tight_layout()
     plt.show()
+
+def mask_to_color(mask: np.ndarray) -> np.ndarray:
+    """
+    Convert a 16-bit instance-ID mask into a BGR preview image.
+
+    ID 0 → black, 1…N → HSV hues spaced evenly.
+    """
+    if mask.dtype != np.uint16:
+        mask = mask.astype(np.uint16)
+
+    max_id = mask.max()
+    if max_id == 0:
+        return np.zeros((*mask.shape, 3), dtype=np.uint8)
+
+    hsv = np.zeros((*mask.shape, 3), dtype=np.uint8)
+    hsv[..., 1:] = 255                          # full saturation & value
+    hsv[..., 0]  = (mask.astype(np.float32) / max_id * 179).astype(np.uint8)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    bgr[mask == 0] = 0
+    return bgr

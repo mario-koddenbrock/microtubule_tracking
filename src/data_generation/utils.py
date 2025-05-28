@@ -1,6 +1,6 @@
 import os
 from glob import glob
-from typing import Generator, List, Tuple
+from typing import Generator, List, Tuple, Optional
 
 import cv2
 import numpy as np
@@ -11,17 +11,57 @@ from data_generation.sawtooth_profile import create_sawtooth_profile
 from file_io.utils import extract_frames
 
 
-def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int) -> Tuple[np.ndarray, List[dict]]:
-    """Return a (uint8) frame + GT records for *one* index."""
+# ---------------------------------------------------------------------------
+# Frame-level renderer
+# ---------------------------------------------------------------------------
+def render_frame(
+        cfg: SyntheticDataConfig,
+        seeds,
+        frame_idx: int,
+        *,
+        return_mask: bool = False,
+) -> Tuple[np.ndarray, List[dict], Optional[np.ndarray]]:
+    """Render **one** frame and (optionally) its instance-segmentation mask.
+
+    Parameters
+    ----------
+    cfg : SyntheticDataConfig
+    seeds : list
+        Output of `build_motion_seeds()` –  [(slope/intercept, start_pt), motion_profile] …
+    frame_idx : int
+    return_mask : bool, optional
+        If *True* an additional array of shape ``cfg.img_size`` is returned in
+        which each pixel holds the **instance ID** (0 = background, 1-based for
+        every microtubule).
+
+    Returns
+    -------
+    frame_uint8 : np.ndarray
+        Grayscale image in 0-255 range, dtype ``uint8``.
+    gt_frame : list[dict]
+        One record per tubule for this frame.
+    mask_uint16 | None
+        Only when *return_mask* is *True*; same spatial size as the frame, each
+        pixel labelled with the instance ID.
+    """
+
     img = np.zeros(cfg.img_size, dtype=np.float32)
+    mask: Optional[np.ndarray] = None
+    if return_mask:
+        mask = np.zeros(cfg.img_size, dtype=np.uint16)  # background = 0
+
     gt_frame: List[dict] = []
 
-    for (slope_intercept, start_pt), motion_profile in seeds:
-        slope, intercept = slope_intercept
+    # Iterate over each synthetic tubule (instance) ------------------------
+    for inst_id, ((slope, intercept), start_pt), motion_profile in (
+            (idx + 1, *seed) for idx, seed in enumerate(seeds)
+    ):
+        # --- motion -------------------------------------------------------
         end_pt = grow_shrink_seed(
             frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin
         )
 
+        # --- draw line of Gaussians --------------------------------------
         dx = 0.5 / np.hypot(1, slope)
         dy = slope * dx
         pos = start_pt.copy()
@@ -31,9 +71,12 @@ def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int) -> Tuple[np.nd
                 (dy > 0 and pos[1] <= end_pt[1]) or (dy < 0 and pos[1] >= end_pt[1])
         ) and (0 <= pos[0] < cfg.img_size[1]) and (0 <= pos[1] < cfg.img_size[0]):
             add_gaussian(img, pos, cfg.sigma_x, cfg.sigma_y)
+            if return_mask:
+                mask[int(round(pos[1])), int(round(pos[0]))] = inst_id
             pos[0] += dx
             pos[1] += dy
 
+        # --- ground-truth record -----------------------------------------
         gt_frame.append(
             {
                 "frame_idx": frame_idx,
@@ -42,13 +85,18 @@ def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int) -> Tuple[np.nd
                 "slope": slope,
                 "intercept": intercept,
                 "length": float(np.linalg.norm(end_pt - start_pt)),
+                "instance_id": inst_id,
             }
         )
 
+    # ---------------------------------------------------------------------
     img = normalize_image(img)
     noisy_img = poisson_noise(img, cfg.snr)
     frame_uint8 = (noisy_img * 255).astype(np.uint8)
-    return frame_uint8, gt_frame
+
+    if return_mask:
+        return frame_uint8, gt_frame, mask
+    return frame_uint8, gt_frame, None
 
 
 def build_motion_seeds(cfg: SyntheticDataConfig):
@@ -107,19 +155,27 @@ def load_reference_embeddings(cfg: TuningConfig, model, extractor):
 
 
 def cfg_to_embeddings(cfg, model, extractor) -> np.ndarray:
-    """Generate every frame for *cfg* and return flattened embeddings."""
+    """
+    Generate every frame for *cfg* and return flattened embeddings.
+    """
     vecs: list[np.ndarray] = []
-    for frame_uint8, _ in generate_frames(cfg):
+    for frame_uint8, *_ in generate_frames(cfg):     # unpack only first item
         rgb = cv2.cvtColor(frame_uint8, cv2.COLOR_GRAY2RGB)
         vecs.append(compute_embedding(rgb, model, extractor).flatten())
     return np.stack(vecs)
 
 
-def generate_frames(cfg: SyntheticDataConfig) -> Generator[Tuple[np.ndarray, List[dict]], None, None]:
-    """Yield successive **(frame, gt_for_frame)** tuples."""
+def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False) \
+        -> Generator[Tuple[np.ndarray, List[dict], Optional[np.ndarray]], None, None]:
+    """
+    Yield (frame_uint8, gt_for_frame, mask | None).
+
+    `return_mask=False` keeps the signature identical to the old one, so
+    callers that don’t care about masks remain unchanged.
+    """
     seeds = build_motion_seeds(cfg)
     for frame_idx in range(cfg.num_frames):
-        yield render_frame(cfg, seeds, frame_idx)
+        yield render_frame(cfg, seeds, frame_idx, return_mask=return_mask)
 
 
 def add_gaussian(image, pos, sigma_x, sigma_y):

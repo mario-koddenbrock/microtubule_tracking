@@ -1,14 +1,13 @@
 from functools import partial
 
-import cv2
 import numpy as np
 import optuna
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoFeatureExtractor
 
 from data_generation.config import TuningConfig, SyntheticDataConfig
-from data_generation.main import run_series
-from data_generation.utils import generate_frames, compute_embedding, load_reference_embeddings
+from data_generation.main import generate_video
+from data_generation.utils import load_reference_embeddings, cfg_to_embeddings
 from plotting.plotting import visualize_embeddings
 
 
@@ -33,15 +32,9 @@ def evaluate(cfg_dict: dict,
                                     num_frames=tune_cfg.num_compare_frames)
     synth_cfg.validate()
 
-    # 2. Loop through the generator and accumulate per-frame scores
-    frame_scores = []
-    for frame_uint8, _ in generate_frames(synth_cfg):
-        frame_rgb = cv2.cvtColor(frame_uint8, cv2.COLOR_GRAY2RGB)
-        current_embeddings = compute_embedding(frame_rgb, model, extractor).flatten().reshape(1, -1)
-
-        # cosine_similarity returns shape (1, N_ref) → reduce to scalar
-        sims = cosine_similarity(current_embeddings, ref_embeddings)[0]
-        frame_scores.append(np.mean(sims))
+    # 2. Loop through the embeddings and accumulate per-frame scores
+    embeddings = cfg_to_embeddings(synth_cfg, model, extractor)
+    frame_scores = [np.max(cosine_similarity(emb.reshape(1, -1), ref_embeddings)[0]) for emb in embeddings]
 
     # 3. Average across frames
     return float(np.mean(frame_scores))
@@ -90,10 +83,11 @@ def main():
     print(f"✓ Best config saved to {best_cfg_path}")
 
     output_dir = "../../data/synthetic"
-    video_path, gt_path = run_series(best_cfg, output_dir)
+    video_path, gt_path, gt_video_path = generate_video(best_cfg, output_dir)
     print("✓ Best video and ground truth saved to:")
     print(f"  Video: {video_path}")
-    print(f"  Ground Truth: {gt_path}")
+    print(f"  Ground Truth JSON: {gt_path}")
+    print(f"  Ground Truth Video: {gt_video_path}")
 
 
     # Optional: optimisation history plot
