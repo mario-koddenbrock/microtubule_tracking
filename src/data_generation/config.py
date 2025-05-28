@@ -113,15 +113,15 @@ class SyntheticDataConfig(BaseConfig):
         motion (float): Scaling factor to control pixel-wise motion per frame.
         max_length (float): Maximum length of a microtubule in pixels.
         min_length (float): Minimum length of a microtubule in pixels.
-        sigma (list): Gaussian blur standard deviation for drawing microtubules.
-        num_series (int): Number of synthetic video/ground truth pairs to generate.
+        sigma_x (int): Gaussian blur standard deviation for drawing microtubules in the x-direction.
+        sigma_y (int): Gaussian blur standard deviation for drawing microtubules in the y-direction.
         margin (int): Number of pixels to leave as a border so microtubules stay in bounds.
         num_tubulus (int): Number of microtubules to generate per series.
     """
     id: int = 0
-    img_size: tuple = (512, 512)
+    img_size: tuple[int, int] = (512, 512)
     fps: int = 10
-    num_frames: int = 60 * 10
+    num_frames: int = 5 * 10  # 5 seconds of video at 10 FPS
     snr: int = 3
     grow_amp: float = 2.0
     grow_freq: float = 0.05
@@ -130,8 +130,8 @@ class SyntheticDataConfig(BaseConfig):
     motion: float = 2.1
     max_length: float = 50
     min_length: float = 5
-    sigma: list = (1, 1)
-    num_series: int = 3
+    sigma_x: int = 1
+    sigma_y: int = 1
     margin: int = 5
     num_tubulus: int = 10
 
@@ -178,16 +178,16 @@ class TuningConfig(BaseConfig):
     temp_dir: str = "temp_synthetic_data"  # Temporary directory for synthetic data generation
 
     # Parameter ranges for tuning (only those that are tunable)
-    grow_amp_range: tuple = (0.5, 5.0)
-    grow_freq_range: tuple = (0.01, 0.2)
-    shrink_amp_range: tuple = (0.5, 8.0)
-    shrink_freq_range: tuple = (0.05, 0.5)
-    motion_range: tuple = (0.5, 5.0)
-    max_length_range: tuple = (10, 80)
-    min_length_range: tuple = (1, 30)
-    snr_range: tuple = (1, 10)
-    sigma_range: tuple = (0.5, 3.0)
-    num_tubulus_range: tuple = (3, 15)
+    grow_amp_range: tuple[float, float] = (0.5, 5.0)
+    grow_freq_range: tuple[float, float] = (0.01, 0.2)
+    shrink_amp_range: tuple[float, float] = (0.5, 8.0)
+    shrink_freq_range: tuple[float, float] = (0.05, 0.5)
+    motion_range: tuple[float, float] = (0.5, 5.0)
+    max_length_range: tuple[int, int] = (10, 80)
+    min_length_range: tuple[int, int] = (1, 30)
+    snr_range: tuple[int, int] = (1, 10)
+    sigma_range: tuple[float, float] = (0.5, 3.0)
+    num_tubulus_range: tuple[int, int] = (3, 15)
 
     def validate(self):
         assert self.direction in ["maximize", "minimize"], "Direction must be either 'maximize' or 'minimize'"
