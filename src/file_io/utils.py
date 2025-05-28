@@ -1,5 +1,10 @@
+import json
+from typing import List
+
 import cv2
+import numpy as np
 import tifffile
+
 
 def extract_frames(video_path):
     frames = []
@@ -17,3 +22,8 @@ def extract_frames(video_path):
             frame = (data[i, 1, :, :] / 65535.0 * 255).astype(np.uint8)
             frames.append(frame)
     return frames
+
+
+def save_ground_truth(gt_data: List[dict], output_path: str):
+    with open(output_path, "w") as fh:
+        json.dump(gt_data, fh, indent=2)
