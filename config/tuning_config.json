@@ -43,7 +43,7 @@
   ],
   "sigma_range": [
     1,
-    10
+    3
   ],
   "num_tubulus_range": [
     3,

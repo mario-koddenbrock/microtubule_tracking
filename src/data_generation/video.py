@@ -155,7 +155,7 @@ def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False) \
 # Example usage
 if __name__ == "__main__":
     output_dir = "../data/synthetic"
-    config_path = "../config/synthetic_config.json"
+    config_path = "../config/best_synthetic_config.json"
 
     config = SyntheticDataConfig.load(config_path)
     video_path, gt_path, gt_video_path = generate_video(config, output_dir)

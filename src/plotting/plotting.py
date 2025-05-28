@@ -34,7 +34,7 @@ def tsne_projection(ref_vecs: np.ndarray, best_vecs: np.ndarray, *,
                      metric: str, perplexity: int):
     all_vecs = np.vstack([ref_vecs, best_vecs])
     tsne = TSNE(n_components=2, metric=metric, perplexity=perplexity,
-                init="pca", random_state=0)
+                init="pca", random_state=42)
     all_2d = tsne.fit_transform(all_vecs)
     return np.split(all_2d, [len(ref_vecs)], axis=0)
 
