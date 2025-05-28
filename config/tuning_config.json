@@ -4,7 +4,7 @@
   "direction": "maximize",
   "metric": "cosine_similarity",
   "param_file": "optimize_params.json",
-  "num_compare_series": 1,
+  "num_compare_series": 3,
   "reference_series_dir": "../../data/mpi/",
   "num_compare_frames": 1,
   "hf_cache_dir": null,
