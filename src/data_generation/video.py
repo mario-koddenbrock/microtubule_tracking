@@ -1,12 +1,16 @@
 import os
-from typing import Generator, List, Tuple, Optional
+from typing import List, Tuple, Optional, Generator
 
 import cv2
 import numpy as np
 from tqdm import tqdm
 
 from data_generation.config import SyntheticDataConfig
-from data_generation.utils import grow_shrink_seed, add_gaussian, normalize_image, poisson_noise, build_motion_seeds
+from data_generation.utils import (
+    add_gaussian,
+    grow_shrink_seed,
+)
+from data_generation.utils import build_motion_seeds
 from file_io.utils import save_ground_truth
 from plotting.plotting import mask_to_color
 
@@ -18,78 +22,113 @@ def render_frame(
         *,
         return_mask: bool = False,
 ) -> Tuple[np.ndarray, List[dict], Optional[np.ndarray]]:
-    """Render **one** frame and (optionally) its instance-segmentation mask.
+    """Render **one** frame
 
-    Parameters
-    ----------
-    cfg : SyntheticDataConfig
-    seeds : list
-        Output of `build_motion_seeds()` –  [(slope/intercept, start_pt), motion_profile] …
-    frame_idx : int
-    return_mask : bool, optional
-        If *True* an additional array of shape ``cfg.img_size`` is returned in
-        which each pixel holds the **instance ID** (0 = background, 1-based for
-        every microtubule).
-
-    Returns
-    -------
-    frame_uint8 : np.ndarray
-        Grayscale image in 0-255 range, dtype ``uint8``.
-    gt_frame : list[dict]
-        One record per tubule for this frame.
-    mask_uint16 | None
-        Only when *return_mask* is *True*; same spatial size as the frame, each
-        pixel labelled with the instance ID.
+    Extra photophysics simulated here:
+        • background pedestal (& optional vignetting)
+        • additive Gaussian sensor noise
+        • photobleaching (single exponential)
+        • stage jitter (global xy shift, per frame)
+        • instance‑segmentation mask (optional)
     """
 
-    img = np.zeros(cfg.img_size, dtype=np.float32)
+    # 0️⃣  Convenience access to new cfg fields -----------------------------
+    bg_level = float(getattr(cfg, "background_level", 0.0))  # 0‑1 scale
+    noise_std = float(getattr(cfg, "gaussian_noise", 0.0))  # 0‑1 scale
+    bleach_tau = float(getattr(cfg, "bleach_tau", np.inf))  # frames
+    jitter_px = float(getattr(cfg, "jitter_px", 0.0))
+    vignette_k = float(getattr(cfg, "vignetting_strength", 0.0))
+
+    # contrast control: set cfg.invert_contrast = True for dark tubules
+    invert_contrast = bool(getattr(cfg, "invert_contrast", False))
+
+    # σ parameters ----------------------------------------------------------
+    sigma_x = getattr(cfg, "sigma_x", None)
+    sigma_y = getattr(cfg, "sigma_y", None)
+
+
+    # 1️⃣  Base image initialisation ---------------------------------------
+    img = np.full(cfg.img_size, bg_level, dtype=np.float32)
     mask: Optional[np.ndarray] = None
     if return_mask:
         mask = np.zeros(cfg.img_size, dtype=np.uint16)  # background = 0
 
+    # Pre‑compute vignetting mask (per series or lazily per frame) ---------
+    if vignette_k > 0.0:
+        yy, xx = np.mgrid[:cfg.img_size[0], :cfg.img_size[1]]
+        norm_x = (xx - cfg.img_size[1] / 2) / (cfg.img_size[1] / 2)
+        norm_y = (yy - cfg.img_size[0] / 2) / (cfg.img_size[0] / 2)
+        vignette = 1.0 - vignette_k * (norm_x ** 2 + norm_y ** 2)
+        vignette = np.clip(vignette, 0.5, 1.0)
+    else:
+        vignette = 1.0  # scalar broadcast
+
+    # Photobleaching decay factor ------------------------------------------
+    decay = np.exp(-frame_idx / bleach_tau) if np.isfinite(bleach_tau) else 1.0
+
+    # Stage jitter ----------------------------------------------------------
+    jitter = np.random.normal(0, jitter_px, 2) if jitter_px > 0 else np.zeros(2)
+
     gt_frame: List[dict] = []
 
-    # Iterate over each synthetic tubule (instance) ------------------------
+    # 2️⃣  Draw every tubule instance --------------------------------------
     for inst_id, ((slope, intercept), start_pt), motion_profile in (
             (idx + 1, *seed) for idx, seed in enumerate(seeds)
     ):
-        # --- motion -------------------------------------------------------
         end_pt = grow_shrink_seed(
             frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin
         )
 
-        # --- draw line of Gaussians --------------------------------------
+        # Apply global jitter to both endpoints
+        start_pt_j = start_pt + jitter
+        end_pt_j = end_pt + jitter
+
         dx = 0.5 / np.hypot(1, slope)
         dy = slope * dx
-        pos = start_pt.copy()
+        pos = start_pt_j.copy()
+
         while (
-                (dx > 0 and pos[0] <= end_pt[0]) or (dx < 0 and pos[0] >= end_pt[0])
+                (dx > 0 and pos[0] <= end_pt_j[0]) or (dx < 0 and pos[0] >= end_pt_j[0])
         ) and (
-                (dy > 0 and pos[1] <= end_pt[1]) or (dy < 0 and pos[1] >= end_pt[1])
+                (dy > 0 and pos[1] <= end_pt_j[1]) or (dy < 0 and pos[1] >= end_pt_j[1])
         ) and (0 <= pos[0] < cfg.img_size[1]) and (0 <= pos[1] < cfg.img_size[0]):
-            add_gaussian(img, pos, cfg.sigma_x, cfg.sigma_y)
+            add_gaussian(img, pos, sigma_x, sigma_y)
             if return_mask:
                 mask[int(round(pos[1])), int(round(pos[0]))] = inst_id
             pos[0] += dx
             pos[1] += dy
 
-        # --- ground-truth record -----------------------------------------
         gt_frame.append(
             {
                 "frame_idx": frame_idx,
-                "start": start_pt.tolist(),
-                "end": end_pt.tolist(),
+                "start": start_pt_j.tolist(),
+                "end": end_pt_j.tolist(),
                 "slope": slope,
                 "intercept": intercept,
-                "length": float(np.linalg.norm(end_pt - start_pt)),
+                "length": float(np.linalg.norm(end_pt_j - start_pt_j)),
                 "instance_id": inst_id,
             }
         )
 
-    # ---------------------------------------------------------------------
-    img = normalize_image(img)
-    noisy_img = poisson_noise(img, cfg.snr)
-    frame_uint8 = (noisy_img * 255).astype(np.uint8)
+    # 3️⃣  Photophysics post‑processing ------------------------------------
+    img *= decay
+    img *= vignette
+
+    if noise_std > 0.0:
+        img += np.random.normal(0, noise_std, img.shape).astype(np.float32)
+
+    # ── invert contrast so tubules become *dark* on bright bg ────────────
+    if invert_contrast:
+        img = 2 * bg_level - img   # symmetric around the pedestal
+
+    # final clamp & quantise
+    img = np.clip(img, 0.0, 1.0)
+
+    if noise_std > 0.0:
+        img += np.random.normal(0, noise_std, img.shape).astype(np.float32)
+
+    img = np.clip(img, 0.0, 1.0)
+    frame_uint8 = (img * 255).astype(np.uint8)
 
     if return_mask:
         return frame_uint8, gt_frame, mask
@@ -157,7 +196,8 @@ if __name__ == "__main__":
     output_dir = "../data/synthetic"
     config_path = "../config/best_synthetic_config.json"
 
-    config = SyntheticDataConfig.load(config_path)
+    config = SyntheticDataConfig.load()
+    config.to_json(config_path)
     video_path, gt_path, gt_video_path = generate_video(config, output_dir)
 
     print(f"Saved video: {video_path}")

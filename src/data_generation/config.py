@@ -1,8 +1,9 @@
 import json
+import math
 import os
 from abc import abstractmethod, ABC
 from dataclasses import dataclass, asdict
-from typing import Optional
+from typing import Optional, Tuple
 
 import yaml
 
@@ -119,28 +120,45 @@ class SyntheticDataConfig(BaseConfig):
         margin (int): Number of pixels to leave as a border so microtubules stay in bounds.
         num_tubulus (int): Number of microtubules to generate per series.
     """
+    # ─── core video info ────────────────────────────────────
     id: int = 0
-    img_size: tuple[int, int] = (512, 512)
-    generate_mask: bool = True
-    fps: int = 10
-    num_frames: int = 5 * 10  # 5 seconds of video at 10 FPS
-    snr: int = 3
-    grow_amp: float = 2.0
-    grow_freq: float = 0.05
+    img_size: Tuple[int, int] = (462, 462)   # (H, W)
+    fps: int = 25
+    num_frames: int = 167
+
+    # ─── microtubule kinematics ────────────────────────────
+    grow_amp:   float = 2.0
+    grow_freq:  float = 0.05
     shrink_amp: float = 4.0
-    shrink_freq: float = 0.25
-    motion: float = 2.1
+    shrink_freq:float = 0.25
+    motion:     float = 2.1
     max_length: float = 50
     min_length: float = 5
-    sigma_x: int = 1
-    sigma_y: int = 1
-    margin: int = 5
-    num_tubulus: int = 10
+    num_tubulus:int   = 10
+    margin:     int   = 5
 
+    # ─── PSF / drawing width ───────────────────────────────
+    sigma_x: float = 1.2
+    sigma_y: float = 1.2
+
+    # ─── new photophysics / camera realism ─────────────────
+    background_level:    float = 0.74
+    gaussian_noise:      float = 0.09        # 24 / 255
+    bleach_tau:          float = math.inf    # photobleaching off by default
+    jitter_px:           float = 0.0
+    vignetting_strength: float = 0.05
+    invert_contrast: bool = True  # whether to invert the contrast of the image
+
+    # ─── misc ──────────────────────────────────────────────
+    generate_mask: bool = True    # still handy for training pipelines
+
+    # ─── validation helper (optional) ─────────────────────
     def validate(self):
-        assert self.img_size[0] > 0 and self.img_size[1] > 0, "Image dimensions must be positive"
-        assert self.fps > 0, "FPS must be positive"
-        assert self.num_frames > 0, "Number of frames must be positive"
+        assert 0 <= self.background_level <= 1, "background_level must be 0-1"
+        assert 0 <= self.gaussian_noise   <= 1, "gaussian_noise must be 0-1"
+        assert self.num_frames > 0 and self.fps > 0, "frames & fps must be >0"
+        assert self.max_length > self.min_length > 0, "length range invalid"
+        assert self.jitter_px >= 0, "jitter_px must be ≥0"
 
 
 @dataclass(eq=False)

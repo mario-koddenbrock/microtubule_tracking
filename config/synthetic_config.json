@@ -2,11 +2,11 @@
   "id": 0,
   "generate_mask": true,
   "img_size": [
-    512,
-    512
+    462,
+    462
   ],
-  "fps": 10,
-  "num_frames": 600,
+  "fps": 25,
+  "num_frames": 167,
   "snr": 3,
   "grow_amp": 2.0,
   "grow_freq": 0.05,

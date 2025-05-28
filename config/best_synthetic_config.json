@@ -1,22 +1,27 @@
 {
   "id": 0,
   "img_size": [
-    512,
-    512
+    462,
+    462
   ],
-  "generate_mask": true,
-  "fps": 10,
-  "num_frames": 50,
-  "snr": 4.610307122252956,
-  "grow_amp": 2.0111218690694814,
-  "grow_freq": 0.049538670803129715,
-  "shrink_amp": 1.9700854812473452,
-  "shrink_freq": 0.10804020502511458,
-  "motion": 4.735047291852293,
-  "max_length": 63.43754175954105,
-  "min_length": 15.212825829311647,
-  "sigma_x": 1,
-  "sigma_y": 1,
+  "fps": 25,
+  "num_frames": 167,
+  "grow_amp": 2.0,
+  "grow_freq": 0.05,
+  "shrink_amp": 4.0,
+  "shrink_freq": 0.25,
+  "motion": 2.1,
+  "max_length": 50,
+  "min_length": 5,
+  "num_tubulus": 10,
   "margin": 5,
-  "num_tubulus": 23
+  "sigma_x": 1.2,
+  "sigma_y": 1.2,
+  "background_level": 0.74,
+  "gaussian_noise": 0.09,
+  "bleach_tau": Infinity,
+  "jitter_px": 0.0,
+  "vignetting_strength": 0.05,
+  "invert_contrast": true,
+  "generate_mask": true
 }
