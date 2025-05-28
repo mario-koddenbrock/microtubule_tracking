@@ -3,11 +3,10 @@ from functools import partial
 import numpy as np
 import optuna
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import AutoModel, AutoFeatureExtractor
 
 from data_generation.config import TuningConfig, SyntheticDataConfig
-from data_generation.main import generate_video
-from data_generation.utils import load_reference_embeddings, cfg_to_embeddings
+from data_generation.embeddings import cfg_to_embeddings, load_reference_embeddings, get_embedding_model
+from data_generation.video import generate_video
 from plotting.plotting import visualize_embeddings
 
 
@@ -65,8 +64,7 @@ def main():
     tuning_cfg.validate()
     tuning_cfg.to_json(config_path) # persist any defaults
 
-    model = AutoModel.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
-    extractor = AutoFeatureExtractor.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
+    extractor, model = get_embedding_model(tuning_cfg)
     ref_embeddings = load_reference_embeddings(tuning_cfg, model, extractor)
 
     study = optuna.create_study(direction=tuning_cfg.direction)
@@ -100,6 +98,9 @@ def main():
 
     # Optional: plot t-SNE projection of embeddings
     visualize_embeddings(best_cfg, model, extractor, ref_embeddings)
+
+
+
 
 if __name__ == "__main__":
     main()
