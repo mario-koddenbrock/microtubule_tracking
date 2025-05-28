@@ -1,5 +1,6 @@
 {
   "id": 0,
+  "generate_mask": true,
   "img_size": [
     512,
     512

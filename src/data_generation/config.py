@@ -103,6 +103,7 @@ class SyntheticDataConfig(BaseConfig):
 
     Attributes:
         img_size (tuple): Dimensions of the output image (height, width).
+        generate_mask (bool): Whether to generate a mask for the microtubules.
         fps (int): Frames per second for the output video.
         num_frames (int): Total number of frames per video (defines video duration).
         snr (int): Signal-to-noise ratio used for Poisson noise. # TODO separately for tubulus and background
