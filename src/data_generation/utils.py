@@ -1,12 +1,135 @@
-import numpy as np
+import os
+from glob import glob
+from typing import Generator, List, Tuple
 
-def add_gaussian(image, pos, sigma):
-    x = np.arange(0, image.shape[1], 1)
-    y = np.arange(0, image.shape[0], 1)
-    x, y = np.meshgrid(x, y)
-    gaussian = np.exp(-(((x - pos[0]) ** 2) / (2 * sigma[0] ** 2) +
-                        ((y - pos[1]) ** 2) / (2 * sigma[1] ** 2)))
-    image += gaussian
+import cv2
+import numpy as np
+import torch
+
+from data_generation.config import SyntheticDataConfig, TuningConfig
+from data_generation.sawtooth_profile import create_sawtooth_profile
+from file_io.utils import extract_frames
+
+
+def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int) -> Tuple[np.ndarray, List[dict]]:
+    """Return a (uint8) frame + GT records for *one* index."""
+    img = np.zeros(cfg.img_size, dtype=np.float32)
+    gt_frame: List[dict] = []
+
+    for (slope_intercept, start_pt), motion_profile in seeds:
+        slope, intercept = slope_intercept
+        end_pt = grow_shrink_seed(
+            frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin
+        )
+
+        dx = 0.5 / np.hypot(1, slope)
+        dy = slope * dx
+        pos = start_pt.copy()
+        while (
+                (dx > 0 and pos[0] <= end_pt[0]) or (dx < 0 and pos[0] >= end_pt[0])
+        ) and (
+                (dy > 0 and pos[1] <= end_pt[1]) or (dy < 0 and pos[1] >= end_pt[1])
+        ) and (0 <= pos[0] < cfg.img_size[1]) and (0 <= pos[1] < cfg.img_size[0]):
+            add_gaussian(img, pos, cfg.sigma_x, cfg.sigma_y)
+            pos[0] += dx
+            pos[1] += dy
+
+        gt_frame.append(
+            {
+                "frame_idx": frame_idx,
+                "start": start_pt.tolist(),
+                "end": end_pt.tolist(),
+                "slope": slope,
+                "intercept": intercept,
+                "length": float(np.linalg.norm(end_pt - start_pt)),
+            }
+        )
+
+    img = normalize_image(img)
+    noisy_img = poisson_noise(img, cfg.snr)
+    frame_uint8 = (noisy_img * 255).astype(np.uint8)
+    return frame_uint8, gt_frame
+
+
+def build_motion_seeds(cfg: SyntheticDataConfig):
+    """Pre‑compute slope/intercept pairs *and* their motion profiles.
+
+    Keeping the RNG separate from the rendering loop makes the whole pipeline
+    deterministic and lets us reproduce exact sequences from a single call.
+    """
+    return [
+        (
+            get_seed(cfg.img_size, cfg.margin),
+            create_sawtooth_profile(
+                cfg.num_frames,
+                np.random.uniform(cfg.min_length + 5, cfg.max_length),
+                np.random.uniform(cfg.min_length, cfg.min_length + 10),
+                noise_std=0.5,
+                offset=np.random.randint(0, cfg.num_frames),
+            ),
+        )
+        for _ in range(cfg.num_tubulus)
+    ]
+
+
+def compute_embedding(image, model, feature_extractor):
+    inputs = feature_extractor(images=image, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    if hasattr(outputs, "last_hidden_state"):
+        embedding = outputs.last_hidden_state.mean(dim=1)
+    elif hasattr(outputs, "pooler_output"):
+        embedding = outputs.pooler_output
+    else:
+        raise ValueError("Model output does not contain a usable embedding.")
+
+    return embedding.squeeze().cpu().numpy()
+
+
+def load_reference_embeddings(cfg: TuningConfig, model, extractor):
+    embeddings = []
+    video_files = glob(os.path.join(cfg.reference_series_dir, "*.avi")) + glob(
+        os.path.join(cfg.reference_series_dir, "*.tif"))
+    video_files = video_files[:cfg.num_compare_series]
+
+    for video_path in video_files:
+        frames = extract_frames(video_path)[:cfg.num_compare_frames]
+        for frame in frames:
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            emb = compute_embedding(frame_rgb, model, extractor)
+            embeddings.append(emb)
+
+    if not embeddings:
+        raise ValueError("No embeddings were extracted. Check the reference series directory and video files.")
+
+    return np.stack([r.flatten() for r in embeddings])  # (N_ref, 256)
+
+
+def cfg_to_embeddings(cfg, model, extractor) -> np.ndarray:
+    """Generate every frame for *cfg* and return flattened embeddings."""
+    vecs: list[np.ndarray] = []
+    for frame_uint8, _ in generate_frames(cfg):
+        rgb = cv2.cvtColor(frame_uint8, cv2.COLOR_GRAY2RGB)
+        vecs.append(compute_embedding(rgb, model, extractor).flatten())
+    return np.stack(vecs)
+
+
+def generate_frames(cfg: SyntheticDataConfig) -> Generator[Tuple[np.ndarray, List[dict]], None, None]:
+    """Yield successive **(frame, gt_for_frame)** tuples."""
+    seeds = build_motion_seeds(cfg)
+    for frame_idx in range(cfg.num_frames):
+        yield render_frame(cfg, seeds, frame_idx)
+
+
+def add_gaussian(image, pos, sigma_x, sigma_y):
+    if sigma_x > 0 and sigma_y > 0:
+        x = np.arange(0, image.shape[1], 1)
+        y = np.arange(0, image.shape[0], 1)
+        x, y = np.meshgrid(x, y)
+        gaussian = np.exp(-(((x - pos[0]) ** 2) / (2 * sigma_x ** 2) +
+                            ((y - pos[1]) ** 2) / (2 * sigma_y ** 2)))
+        image += gaussian
     return image
 
 
@@ -33,7 +156,7 @@ def get_seed(img_size: tuple[int, int], margin: int):
     return np.array([slope, intercept]), np.array([start_x, start_y])
 
 
-def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int, int], margin:int):
+def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int, int], margin: int):
     net_motion = motion_profile[frame]
 
     dx = net_motion / np.sqrt(1 + slope ** 2)
@@ -47,3 +170,12 @@ def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int
     end_y = np.clip(end_y, margin, img_size[0] - margin)
 
     return np.array([end_x, end_y])
+
+
+def flatten_embeddings(ref_embeddings) -> np.ndarray:
+    """Ensure reference embeddings are 2-D."""
+    ref_arr = np.asarray(ref_embeddings)
+    if ref_arr.ndim == 3:  # (N, H, W) → flatten spatial dims
+        N, H, W = ref_arr.shape
+        ref_arr = ref_arr.reshape(N, H * W)
+    return ref_arr
