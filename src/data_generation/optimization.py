@@ -3,11 +3,10 @@ from functools import partial
 import numpy as np
 import optuna
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import AutoModel, AutoFeatureExtractor
 
 from data_generation.config import TuningConfig, SyntheticDataConfig
-from data_generation.main import generate_video
-from data_generation.utils import load_reference_embeddings, cfg_to_embeddings
+from data_generation import embeddings as embd
+from data_generation.video import generate_video
 from plotting.plotting import visualize_embeddings
 
 
@@ -33,7 +32,7 @@ def evaluate(cfg_dict: dict,
     synth_cfg.validate()
 
     # 2. Loop through the embeddings and accumulate per-frame scores
-    embeddings = cfg_to_embeddings(synth_cfg, model, extractor)
+    embeddings = embd.from_cfg(synth_cfg, model, extractor)
     frame_scores = [np.max(cosine_similarity(emb.reshape(1, -1), ref_embeddings)[0]) for emb in embeddings]
 
     # 3. Average across frames
@@ -65,9 +64,8 @@ def main():
     tuning_cfg.validate()
     tuning_cfg.to_json(config_path) # persist any defaults
 
-    model = AutoModel.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
-    extractor = AutoFeatureExtractor.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
-    ref_embeddings = load_reference_embeddings(tuning_cfg, model, extractor)
+    extractor, model = embd.get_model(tuning_cfg)
+    ref_embeddings = embd.load_references(tuning_cfg, model, extractor)
 
     study = optuna.create_study(direction=tuning_cfg.direction)
 
@@ -99,7 +97,12 @@ def main():
         print("Install ‘optuna[visualization]’ to enable the progress plot.")
 
     # Optional: plot t-SNE projection of embeddings
-    visualize_embeddings(best_cfg, model, extractor, ref_embeddings)
+    ref_vecs  = embd.flatten(ref_embeddings)
+    best_vecs = embd.from_cfg(best_cfg, model, extractor)
+    visualize_embeddings(best_cfg, ref_vecs, best_vecs)
+
+
+
 
 if __name__ == "__main__":
     main()

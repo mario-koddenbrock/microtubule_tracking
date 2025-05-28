@@ -1,5 +1,5 @@
 {
-  "model_name": "nvidia/segformer-b0-finetuned-ade-512-512",
+  "model_name": "openai/clip-vit-base-patch32",
   "num_trials": 10,
   "direction": "maximize",
   "metric": "cosine_similarity",

@@ -4,10 +4,8 @@ import numpy as np
 from sklearn.manifold import TSNE
 from sklearn.metrics.pairwise import cosine_similarity
 
-from data_generation.utils import flatten_embeddings, cfg_to_embeddings
 
-
-def visualize_embeddings(best_cfg, model, extractor, ref_embeddings,
+def visualize_embeddings(best_cfg, ref_vecs, best_vecs,
                          *, perplexity: int = 30, metric: str = "cosine",
                          max_labels: int = 30):
     """Render both the heat‑map *and* the t‑SNE plot.
@@ -15,15 +13,12 @@ def visualize_embeddings(best_cfg, model, extractor, ref_embeddings,
     Parameters
     ----------
     best_cfg : SyntheticDataConfig
-    model, extractor : callable by `compute_embedding`
-    ref_embeddings : array‑like, (N_ref, H, W) or (N_ref, D)
+    ref_vecs : np.ndarray
+    best_vecs : np.ndarray
     perplexity : int, optional – t‑SNE perplexity
     metric : str, optional – distance metric for t‑SNE
     max_labels : int, optional – maximum tick labels on the heat‑map axes
     """
-    # 0 – Prepare flat reference + per‑frame synthetic embeddings ------------
-    ref_vecs  = flatten_embeddings(ref_embeddings)              # (N_ref, D)
-    best_vecs = cfg_to_embeddings(best_cfg, model, extractor)   # (N_best, D)
 
     # 1 – Heat‑map -----------------------------------------------------------
     plot_similarity_matrix(ref_vecs, best_vecs, max_labels=max_labels)
