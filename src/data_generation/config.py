@@ -1,10 +1,10 @@
-import os
 import json
-import yaml
-from dataclasses import dataclass, asdict, fields
-from abc import ABC, abstractmethod
+import os
+from abc import abstractmethod, ABC
+from dataclasses import dataclass, asdict
 from typing import Optional
 
+import yaml
 
 
 class BaseConfig(ABC):
@@ -27,6 +27,11 @@ class BaseConfig(ABC):
             config.update(overrides)
 
         return config
+
+    def __eq__(self, other):
+        if isinstance(other, BaseConfig):
+            return self.asdict() == other.asdict()
+        return NotImplemented
 
     def get(self, key):
         return getattr(self, key)
@@ -76,7 +81,7 @@ class BaseConfig(ABC):
         pass
 
 
-@dataclass
+@dataclass(eq=False)
 class SyntheticDataConfig(BaseConfig):
     """
     Configuration for synthetic microtubule video generation.
@@ -136,7 +141,7 @@ class SyntheticDataConfig(BaseConfig):
         assert self.num_frames > 0, "Number of frames must be positive"
 
 
-@dataclass
+@dataclass(eq=False)
 class TuningConfig(BaseConfig):
     """
     Configuration for hyperparameter tuning of synthetic microtubule data generation.
