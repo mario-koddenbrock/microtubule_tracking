@@ -124,22 +124,27 @@ class SyntheticDataConfig(BaseConfig):
     id: int = 0
     img_size: Tuple[int, int] = (462, 462)   # (H, W)
     fps: int = 25
-    num_frames: int = 167
+    num_frames: int = 50  #   167
 
     # ─── microtubule kinematics ────────────────────────────
-    grow_amp:   float = 2.0
-    grow_freq:  float = 0.05
+    grow_amp: float = 8.0
+    grow_freq: float = 0.05
     shrink_amp: float = 4.0
-    shrink_freq:float = 0.25
+    shrink_freq: float = 0.25
+    profile_noise: float = 0.5
     motion:     float = 2.1
-    max_length: float = 50
-    min_length: float = 5
-    num_tubulus:int   = 10
+    max_length: float = 150
+    min_length: float = 20
+    num_tubulus:int   = 20
     margin:     int   = 5
+    width_var_std: float = 0.05  # std of the width variation (relative to the mean width)
+    bend_amp_px: float = 2.0  # max lateral offset
+    bend_prob:float = 0.25  # only ~25 % of tubules curved
+    bend_phase_rand: float = 0.1   # allow ±1  0 % of the length shift
 
     # ─── PSF / drawing width ───────────────────────────────
-    sigma_x: float = 1.2
-    sigma_y: float = 1.2
+    sigma_x: float = 0.5
+    sigma_y: float = 0.5
 
     # ─── new photophysics / camera realism ─────────────────
     background_level:    float = 0.74

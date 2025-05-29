@@ -16,13 +16,13 @@ from plotting.plotting import mask_to_color
 
 
 def render_frame(
-        cfg: SyntheticDataConfig,
-        seeds,
-        frame_idx: int,
-        *,
-        return_mask: bool = False,
+    cfg: SyntheticDataConfig,
+    seeds,
+    frame_idx: int,
+    *,
+    return_mask: bool = False,
 ) -> Tuple[np.ndarray, List[dict], Optional[np.ndarray]]:
-    """Render **one** frame
+    """Render **one** frame – now with realism improvements.
 
     Extra photophysics simulated here:
         • background pedestal (& optional vignetting)
@@ -33,22 +33,27 @@ def render_frame(
     """
 
     # 0️⃣  Convenience access to new cfg fields -----------------------------
-    bg_level = float(getattr(cfg, "background_level", 0.0))  # 0‑1 scale
-    noise_std = float(getattr(cfg, "gaussian_noise", 0.0))  # 0‑1 scale
-    bleach_tau = float(getattr(cfg, "bleach_tau", np.inf))  # frames
-    jitter_px = float(getattr(cfg, "jitter_px", 0.0))
+    bg_level   = float(getattr(cfg, "background_level", 0.0))          # 0‑1 scale
+    noise_std  = float(getattr(cfg, "gaussian_noise", 0.0))            # 0‑1 scale
+    bleach_tau = float(getattr(cfg, "bleach_tau", np.inf))             # frames
+    jitter_px  = float(getattr(cfg, "jitter_px", 0.0))
     vignette_k = float(getattr(cfg, "vignetting_strength", 0.0))
 
-    # contrast control: set cfg.invert_contrast = True for dark tubules
+    # new realism knobs ----------------------------------------------------
     invert_contrast = bool(getattr(cfg, "invert_contrast", False))
+    width_var_std   = float(getattr(cfg, "width_var_std", 0.10))   # 10% σ jitter
+    bend_amp_px     = float(getattr(cfg, "bend_amp_px", 0.0))      # 0 = straight
+    bend_prob       = float(getattr(cfg, "bend_prob", 1.0))      # fraction bent
+    bend_phase_rand = float(getattr(cfg, "bend_phase_rand", 0.5))   # ±fraction of length
 
-    # σ parameters ----------------------------------------------------------
     sigma_x = getattr(cfg, "sigma_x", None)
     sigma_y = getattr(cfg, "sigma_y", None)
-
+    if sigma_x is None or sigma_y is None:
+        sigma_pair = getattr(cfg, "sigma", (1.0, 1.0))
+        sigma_x, sigma_y = sigma_pair
 
     # 1️⃣  Base image initialisation ---------------------------------------
-    img = np.full(cfg.img_size, bg_level, dtype=np.float32)
+    img  = np.full(cfg.img_size, bg_level, dtype=np.float32)
     mask: Optional[np.ndarray] = None
     if return_mask:
         mask = np.zeros(cfg.img_size, dtype=np.uint16)  # background = 0
@@ -58,7 +63,7 @@ def render_frame(
         yy, xx = np.mgrid[:cfg.img_size[0], :cfg.img_size[1]]
         norm_x = (xx - cfg.img_size[1] / 2) / (cfg.img_size[1] / 2)
         norm_y = (yy - cfg.img_size[0] / 2) / (cfg.img_size[0] / 2)
-        vignette = 1.0 - vignette_k * (norm_x ** 2 + norm_y ** 2)
+        vignette = 1.0 - vignette_k * (norm_x**2 + norm_y**2)
         vignette = np.clip(vignette, 0.5, 1.0)
     else:
         vignette = 1.0  # scalar broadcast
@@ -73,7 +78,7 @@ def render_frame(
 
     # 2️⃣  Draw every tubule instance --------------------------------------
     for inst_id, ((slope, intercept), start_pt), motion_profile in (
-            (idx + 1, *seed) for idx, seed in enumerate(seeds)
+        (idx + 1, *seed) for idx, seed in enumerate(seeds)
     ):
         end_pt = grow_shrink_seed(
             frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin
@@ -81,22 +86,38 @@ def render_frame(
 
         # Apply global jitter to both endpoints
         start_pt_j = start_pt + jitter
-        end_pt_j = end_pt + jitter
+        end_pt_j   = end_pt   + jitter
 
-        dx = 0.5 / np.hypot(1, slope)
-        dy = slope * dx
-        pos = start_pt_j.copy()
+        vec      = end_pt_j - start_pt_j
+        length   = np.linalg.norm(vec)
+        if length == 0:
+            continue
+        direction = vec / length
+        perp      = np.array([-direction[1], direction[0]])
 
-        while (
-                (dx > 0 and pos[0] <= end_pt_j[0]) or (dx < 0 and pos[0] >= end_pt_j[0])
-        ) and (
-                (dy > 0 and pos[1] <= end_pt_j[1]) or (dy < 0 and pos[1] >= end_pt_j[1])
-        ) and (0 <= pos[0] < cfg.img_size[1]) and (0 <= pos[1] < cfg.img_size[0]):
-            add_gaussian(img, pos, sigma_x, sigma_y)
-            if return_mask:
-                mask[int(round(pos[1])), int(round(pos[0]))] = inst_id
-            pos[0] += dx
-            pos[1] += dy
+        step = 0.5
+        n_steps = int(length / step) + 1
+
+        # random phase so bending can start towards one end
+        phase = np.random.uniform(-bend_phase_rand, bend_phase_rand)
+
+        for i in range(n_steps + 1):
+            t = i / n_steps
+            core_pos = start_pt_j + vec * t
+
+            t_shift = np.clip(t + phase, 0.0, 1.0)
+
+            this_amp = bend_amp_px if np.random.rand() < bend_prob else 0.0
+            bend_offset = this_amp * np.sin(np.pi * t_shift) * perp
+            pos = core_pos + bend_offset
+
+            local_sigma_x = sigma_x * (1 + np.random.normal(0, width_var_std))
+            local_sigma_y = sigma_y * (1 + np.random.normal(0, width_var_std))
+
+            if 0 <= pos[0] < cfg.img_size[1] and 0 <= pos[1] < cfg.img_size[0]:
+                add_gaussian(img, pos, local_sigma_x, local_sigma_y)
+                if return_mask:
+                    mask[int(round(pos[1])), int(round(pos[0]))] = inst_id
 
         gt_frame.append(
             {
@@ -133,6 +154,7 @@ def render_frame(
     if return_mask:
         return frame_uint8, gt_frame, mask
     return frame_uint8, gt_frame, None
+
 
 
 def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
@@ -197,6 +219,7 @@ if __name__ == "__main__":
     config_path = "../config/best_synthetic_config.json"
 
     config = SyntheticDataConfig.load()
+    config.id = 3
     config.to_json(config_path)
     video_path, gt_path, gt_video_path = generate_video(config, output_dir)
 
