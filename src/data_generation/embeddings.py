@@ -40,7 +40,7 @@ def load_references(cfg: TuningConfig, model, extractor):
     video_files = video_files[:cfg.num_compare_series]
 
     for video_idx, video_path in enumerate(video_files):
-        frames = extract_frames(video_path)[:cfg.num_compare_frames]
+        frames, _ = extract_frames(video_path)[:cfg.num_compare_frames]
 
         print(f"Reference {video_idx + 1}/{len(video_files)}: {os.path.basename(video_path)} - {len(frames)} frames - {frames[0].shape if frames else 'No frames'}")
         for frame in frames:

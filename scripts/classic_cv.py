@@ -1,13 +1,13 @@
-import cv2
-import numpy as np
 import os
-import matplotlib.pyplot as plt
-from scipy.optimize import linear_sum_assignment
 from glob import glob
-import tifffile
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
 
-from io.io import extract_frames
+from file_io.utils import extract_frames
 
 # --- Parameters ---
 MIN_LINE_LENGTH = 20
@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
     for video_path in video_files:
         print(f"Processing: {video_path}")
-        frames = extract_frames(video_path)
+        frames, _ = extract_frames(video_path)
         tracked_frames, tracks = process_frames(frames)
 
         base_name = os.path.splitext(os.path.basename(video_path))[0]
