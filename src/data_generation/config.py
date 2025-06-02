@@ -153,9 +153,18 @@ class SyntheticDataConfig(BaseConfig):
     jitter_px:           float = 0.0
     vignetting_strength: float = 0.05
     invert_contrast: bool = True  # whether to invert the contrast of the image
+    fixed_spot_density:   float = 0.0
+    fixed_spot_count:     int   = 0
+    fixed_spot_strength:  float = 0.05
+
+    moving_spot_density:  float = 0.0
+    moving_spot_count_mean: float = 0.0
+    moving_spot_strength: float = 0.05
+    moving_spot_sigma:    float = 1.0
 
     # ─── misc ──────────────────────────────────────────────
     generate_mask: bool = True    # still handy for training pipelines
+
 
     # ─── validation helper (optional) ─────────────────────
     def validate(self):
