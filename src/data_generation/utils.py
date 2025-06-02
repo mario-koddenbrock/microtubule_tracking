@@ -15,13 +15,14 @@ def build_motion_seeds(cfg: SyntheticDataConfig):
             get_seed(cfg.img_size, cfg.margin),
             create_sawtooth_profile(
                 num_frames=cfg.num_frames,
-                max_length=np.random.uniform(cfg.min_length + 5, cfg.max_length),
-                min_length=np.random.uniform(cfg.min_length, cfg.min_length + 10),
-                grow_freq=cfg.grow_freq,
-                shrink_freq=cfg.shrink_freq,
+                max_length=np.random.randint(cfg.max_length_min, cfg.max_length_max + 1),
+                min_length=np.random.randint(cfg.min_length_min, cfg.min_length_max + 1),
+                grow_frames=cfg.grow_frames,
+                shrink_frames=cfg.shrink_frames,
                 noise_std=cfg.profile_noise,
                 offset=np.random.randint(0, cfg.num_frames),
-                fps=cfg.fps,
+                pause_on_min_length=np.random.randint(0, cfg.pause_on_min_length + 1),
+                pause_on_max_length=np.random.randint(0, cfg.pause_on_max_length + 1),
             ),
         )
         for _ in range(cfg.num_tubulus)
