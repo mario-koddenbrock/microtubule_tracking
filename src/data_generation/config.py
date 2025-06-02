@@ -123,26 +123,31 @@ class SyntheticDataConfig(BaseConfig):
     # ─── core video info ────────────────────────────────────
     id: int = 0
     img_size: Tuple[int, int] = (462, 462)  # (H, W)
-    fps: int = 25
-    num_frames: int = 167
+    fps: int = 10
+    num_frames: int = 50
 
     # ─── microtubule kinematics ────────────────────────────
-    grow_amp: float = 1.0
-    grow_freq: float = 0.5
-    shrink_amp: float = 2.0
-    shrink_freq: float = 1.5
+    grow_frames: int = 20
+    shrink_frames: int = 10
+    shrink_amp: float = 1.0
+    shrink_freq: float = 3.0
 
-    profile_noise: float = 0.5
+    profile_noise: float = 5
 
     motion: float = 2.1
-    max_length: float = 600
-    min_length: float = 100
+    min_length_min: int = 50
+    min_length_max: int = 80
+    max_length_min: int = 100
+    max_length_max: int = 400
+    pause_on_max_length: int = 3
+    pause_on_min_length: int = 3
+
     num_tubulus: int = 10
     margin: int = 5
+
     width_var_std: float = 0.05  # std of the width variation (relative to the mean width)
-    bend_amp_px: float = 20.0  # max lateral offset
-    bend_prob: float = 0.25  # only ~25 % of tubules curved
-    bend_phase_rand: float = 0.25  # allow ±10 % of the length shift
+    bend_amp_px: float = 3.0  # max lateral offset
+    bend_prob: float = 0.1  # only ~10 % of tubules curved
 
     # ─── PSF / drawing width ───────────────────────────────
     sigma_x: float = 0.5
@@ -165,7 +170,7 @@ class SyntheticDataConfig(BaseConfig):
     moving_spot_sigma: float = 1.0
 
     # ─── misc ──────────────────────────────────────────────
-    generate_mask: bool = True  # still handy for training pipelines
+    generate_mask: bool = False
 
     # ─── validation helper (optional) ─────────────────────
     def validate(self):
