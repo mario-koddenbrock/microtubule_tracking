@@ -52,23 +52,23 @@ def create_sawtooth_profile(
     # clamp to valid length range to prevent negative lengths
     profile = np.clip(profile, min_length, max_length)
 
-    # plotting for debugging
-    import matplotlib.pyplot as plt
-    import os
-    plt.plot(profile)
-    plt.title("Sawtooth Profile")
-    plt.xlabel("Frame Index")
-    plt.ylabel("Length (px)")
-    # save the plot to temporary folder with random name and timestamp
-    plt.xlim(0, num_frames)
-    plt.grid()
-    plt.tight_layout()
-    now = time.strftime('%Y%m%d-%H%M%S')
-    os.makedirs("../.temp/sawtooth_profiles", exist_ok=True)
-    plt.savefig(f"../.temp/sawtooth_profiles/{now}_{np.random.randint(10000)}.png")
-    # plt.show()
-    # close the plot
-    plt.close()
+    # # plotting for debugging
+    # import matplotlib.pyplot as plt
+    # import os
+    # plt.plot(profile)
+    # plt.title("Sawtooth Profile")
+    # plt.xlabel("Frame Index")
+    # plt.ylabel("Length (px)")
+    # # save the plot to temporary folder with random name and timestamp
+    # plt.xlim(0, num_frames)
+    # plt.grid()
+    # plt.tight_layout()
+    # now = time.strftime('%Y%m%d-%H%M%S')
+    # os.makedirs("../.temp/sawtooth_profiles", exist_ok=True)
+    # plt.savefig(f"../.temp/sawtooth_profiles/{now}_{np.random.randint(10000)}.png")
+    # # plt.show()
+    # # close the plot
+    # plt.close()
 
     return profile.tolist()
 
