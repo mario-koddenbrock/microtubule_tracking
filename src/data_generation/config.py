@@ -122,54 +122,55 @@ class SyntheticDataConfig(BaseConfig):
     """
     # ─── core video info ────────────────────────────────────
     id: int = 0
-    img_size: Tuple[int, int] = (462, 462)   # (H, W)
+    img_size: Tuple[int, int] = (462, 462)  # (H, W)
     fps: int = 25
-    num_frames: int = 50  #   167
+    num_frames: int = 167
 
     # ─── microtubule kinematics ────────────────────────────
-    grow_amp: float = 8.0
-    grow_freq: float = 0.05
-    shrink_amp: float = 4.0
-    shrink_freq: float = 0.25
+    grow_amp: float = 1.0
+    grow_freq: float = 0.5
+    shrink_amp: float = 2.0
+    shrink_freq: float = 1.5
+
     profile_noise: float = 0.5
-    motion:     float = 2.1
-    max_length: float = 150
-    min_length: float = 20
-    num_tubulus:int   = 20
-    margin:     int   = 5
+
+    motion: float = 2.1
+    max_length: float = 600
+    min_length: float = 100
+    num_tubulus: int = 10
+    margin: int = 5
     width_var_std: float = 0.05  # std of the width variation (relative to the mean width)
-    bend_amp_px: float = 2.0  # max lateral offset
-    bend_prob:float = 0.25  # only ~25 % of tubules curved
-    bend_phase_rand: float = 0.1   # allow ±1  0 % of the length shift
+    bend_amp_px: float = 20.0  # max lateral offset
+    bend_prob: float = 0.25  # only ~25 % of tubules curved
+    bend_phase_rand: float = 0.25  # allow ±10 % of the length shift
 
     # ─── PSF / drawing width ───────────────────────────────
     sigma_x: float = 0.5
     sigma_y: float = 0.5
 
     # ─── new photophysics / camera realism ─────────────────
-    background_level:    float = 0.74
-    gaussian_noise:      float = 0.09        # 24 / 255
-    bleach_tau:          float = math.inf    # photobleaching off by default
-    jitter_px:           float = 0.0
+    background_level: float = 0.74
+    gaussian_noise: float = 0.09  # 24 / 255
+    bleach_tau: float = math.inf  # photobleaching off by default
+    jitter_px: float = 0.0
     vignetting_strength: float = 0.05
     invert_contrast: bool = True  # whether to invert the contrast of the image
-    fixed_spot_density:   float = 0.0
-    fixed_spot_count:     int   = 0
-    fixed_spot_strength:  float = 0.05
 
-    moving_spot_density:  float = 0.0
-    moving_spot_count_mean: float = 0.0
-    moving_spot_strength: float = 0.05
-    moving_spot_sigma:    float = 1.0
+    fixed_spot_density: float = 0.1
+    fixed_spot_strength: float = 0.78
+
+    moving_spot_density: float = 0.05
+    moving_spot_count_mean: float = 0.2
+    moving_spot_strength: float = 0.75
+    moving_spot_sigma: float = 1.0
 
     # ─── misc ──────────────────────────────────────────────
-    generate_mask: bool = True    # still handy for training pipelines
-
+    generate_mask: bool = True  # still handy for training pipelines
 
     # ─── validation helper (optional) ─────────────────────
     def validate(self):
         assert 0 <= self.background_level <= 1, "background_level must be 0-1"
-        assert 0 <= self.gaussian_noise   <= 1, "gaussian_noise must be 0-1"
+        assert 0 <= self.gaussian_noise <= 1, "gaussian_noise must be 0-1"
         assert self.num_frames > 0 and self.fps > 0, "frames & fps must be >0"
         assert self.max_length > self.min_length > 0, "length range invalid"
         assert self.jitter_px >= 0, "jitter_px must be ≥0"
@@ -227,4 +228,3 @@ class TuningConfig(BaseConfig):
         assert self.direction in ["maximize", "minimize"], "Direction must be either 'maximize' or 'minimize'"
         assert self.num_trials > 0, "Number of trials must be positive"
         assert self.metric in ["cosine_similarity"], "Unsupported metric type"
-
