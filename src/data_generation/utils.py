@@ -29,20 +29,30 @@ def build_motion_seeds(cfg: SyntheticDataConfig):
     ]
 
 
-def add_gaussian(image, pos, sigma_x, sigma_y, amplitude=1.0):
-    if sigma_x > 0 and sigma_y > 0:
+def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
+    """
+    Draws a simulated tubulus (e.g., microtubule) on the image as an anisotropic Gaussian.
+
+    Parameters:
+    - image: 2D numpy array to draw on
+    - center: (x, y) coordinates of the tubulus center
+    - length_std: standard deviation along the long axis (X)
+    - width_std: standard deviation along the short axis (Y)
+    - contrast: peak intensity to add (relative to background)
+    """
+    if length_std > 0 and width_std > 0:
         x = np.arange(0, image.shape[1])
         y = np.arange(0, image.shape[0])
         x, y = np.meshgrid(x, y)
-        gaussian = np.exp(-(((x - pos[0]) ** 2) / (2 * sigma_x ** 2) +
-                            ((y - pos[1]) ** 2) / (2 * sigma_y ** 2)))
-        image += amplitude * gaussian
+        gaussian = np.exp(-(((x - center[0]) ** 2) / (2 * length_std ** 2) +
+                            ((y - center[1]) ** 2) / (2 * width_std ** 2)))
+        image += contrast * gaussian
     return image
 
 
 def add_fixed_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
-    fixed_spot_density = float(getattr(cfg, "fixed_spot_density", 0.0))
-    fixed_spot_strength = float(getattr(cfg, "fixed_spot_strength", 0.05))
+    fixed_spot_density = cfg.fixed_spot_density
+    fixed_spot_strength = cfg.fixed_spot_strength
 
     h, w = img.shape
     n_spots = int(h * w * fixed_spot_density)
@@ -55,10 +65,10 @@ def add_fixed_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
 
 
 def add_moving_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
-    moving_spot_count = float(getattr(cfg, "moving_spot_count_mean", 0.0))
-    moving_spot_density = float(getattr(cfg, "moving_spot_density", 0.0))
-    moving_spot_strength = float(getattr(cfg, "moving_spot_strength", 0.05))
-    moving_spot_sigma = float(getattr(cfg, "moving_spot_sigma", 1.0))
+    moving_spot_count = cfg.moving_spot_count_mean
+    moving_spot_density = cfg.moving_spot_density
+    moving_spot_strength = cfg.moving_spot_strength
+    moving_spot_sigma = cfg.moving_spot_sigma
 
     h, w = img.shape
     mean_spots = moving_spot_count if moving_spot_count > 0 else h * w * moving_spot_density
@@ -67,12 +77,12 @@ def add_moving_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
     for _ in range(n_spots):
         y = rng.uniform(0, h)
         x = rng.uniform(0, w)
-        add_gaussian(img, (x, y), moving_spot_sigma, moving_spot_sigma, amplitude=-moving_spot_strength)
+        draw_tubulus(img, (x, y), moving_spot_sigma, moving_spot_sigma, -moving_spot_strength)
 
 
 def apply_global_blur(img: np.ndarray, cfg) -> np.ndarray:
     """Apply a soft blur to the entire image."""
-    sigma = float(getattr(cfg, "global_blur_sigma", 0.0))
+    sigma = cfg.global_blur_sigma
     return gaussian_filter(img, sigma=sigma) if sigma > 0 else img
 
 
@@ -109,7 +119,7 @@ def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int
     end_y = original[1] + dy
 
     # Clip to safe margin
-    end_x = np.clip(end_x, margin, img_size[1] - margin)
-    end_y = np.clip(end_y, margin, img_size[0] - margin)
+    # end_x = np.clip(end_x, margin, img_size[1] - margin)
+    # end_y = np.clip(end_y, margin, img_size[0] - margin)
 
     return np.array([end_x, end_y])

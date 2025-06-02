@@ -123,7 +123,7 @@ class SyntheticDataConfig(BaseConfig):
     # ─── core video info ────────────────────────────────────
     id: int = 0
     img_size: Tuple[int, int] = (462, 462)  # (H, W)
-    fps: int = 10
+    fps: int = 5
     num_frames: int = 50
 
     # ─── microtubule kinematics ────────────────────────────
@@ -138,36 +138,41 @@ class SyntheticDataConfig(BaseConfig):
     min_length_min: int = 50
     min_length_max: int = 80
     max_length_min: int = 100
-    max_length_max: int = 400
-    pause_on_max_length: int = 3
-    pause_on_min_length: int = 3
+    max_length_max: int = 200
+    pause_on_max_length: int = 2
+    pause_on_min_length: int = 5
 
-    num_tubulus: int = 10
+    num_tubulus: int = 20
     margin: int = 5
 
     width_var_std: float = 0.05  # std of the width variation (relative to the mean width)
-    bend_amp_px: float = 3.0  # max lateral offset
+    bend_amplitude: float = 1.0  # max lateral offset
     bend_prob: float = 0.1  # only ~10 % of tubules curved
+    bend_straight_fraction: float = 0.75  # fraction of the tubule length that is straight before bending starts
 
     # ─── PSF / drawing width ───────────────────────────────
-    sigma_x: float = 0.5
-    sigma_y: float = 0.5
+    sigma_x: float = 0.1
+    sigma_y: float = 0.9
 
     # ─── new photophysics / camera realism ─────────────────
     background_level: float = 0.74
+    tubulus_contrast: float = 0.1
+
     gaussian_noise: float = 0.09  # 24 / 255
     bleach_tau: float = math.inf  # photobleaching off by default
-    jitter_px: float = 0.0
+    jitter_px: float = 0.5
     vignetting_strength: float = 0.05
     invert_contrast: bool = True  # whether to invert the contrast of the image
+    global_blur_sigma: float = 0.1  # global blur applied to the whole image
 
     fixed_spot_density: float = 0.1
     fixed_spot_strength: float = 0.78
 
     moving_spot_density: float = 0.05
-    moving_spot_count_mean: float = 0.2
+    moving_spot_count_mean: float = 0.5
     moving_spot_strength: float = 0.75
     moving_spot_sigma: float = 1.0
+
 
     # ─── misc ──────────────────────────────────────────────
     generate_mask: bool = False

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from data_generation.config import SyntheticDataConfig
 from data_generation.utils import (
-    add_gaussian,
+    draw_tubulus,
     grow_shrink_seed, apply_global_blur, add_fixed_spots, add_moving_spots,
 )
 from data_generation.utils import build_motion_seeds
@@ -22,20 +22,20 @@ def render_frame(
         *,
         return_mask: bool = False,
 ) -> Tuple[np.ndarray, List[dict], Optional[np.ndarray]]:
-    bg_level = float(getattr(cfg, "background_level", 0.0))
-    noise_std = float(getattr(cfg, "gaussian_noise", 0.0))
-    bleach_tau = float(getattr(cfg, "bleach_tau", np.inf))
-    jitter_px = float(getattr(cfg, "jitter_px", 0.0))
-    vignette_k = float(getattr(cfg, "vignetting_strength", 0.0))
+    bg_level = cfg.background_level
+    noise_std = cfg.gaussian_noise
+    bleach_tau = cfg.bleach_tau
+    jitter_px = cfg.jitter_px
+    vignette_k = cfg.vignetting_strength
 
-    invert_contrast = bool(getattr(cfg, "invert_contrast", False))
-    width_var_std = float(getattr(cfg, "width_var_std", 0.10))
-    bend_amp_px = float(getattr(cfg, "bend_amp_px", 0.0))
-    bend_prob = float(getattr(cfg, "bend_prob", 1.0))
-    bend_straight_fraction = float(getattr(cfg, "bend_straight_fraction", 0.3))
+    invert_contrast = cfg.invert_contrast
+    width_var_std = cfg.width_var_std
+    bend_amplitude = cfg.bend_amplitude
+    bend_prob = cfg.bend_prob
+    bend_straight_fraction = cfg.bend_straight_fraction
 
-    sigma_x = getattr(cfg, "sigma_x", None)
-    sigma_y = getattr(cfg, "sigma_y", None)
+    sigma_x = cfg.sigma_x
+    sigma_y = cfg.sigma_y
 
     img = np.full(cfg.img_size, bg_level, dtype=np.float32)
     mask: Optional[np.ndarray] = None
@@ -56,30 +56,23 @@ def render_frame(
     gt_frame: List[dict] = []
     rng = np.random.default_rng()
 
-    for inst_id, ((slope, intercept), start_pt), motion_profile in (
-            (idx + 1, *seed) for idx, seed in enumerate(seeds)
-    ):
+    for inst_id, ((slope, intercept), start_pt), motion_profile in ((idx + 1, *seed) for idx, seed in enumerate(seeds)):
 
         if not hasattr(cfg, "_bend_params"):
             cfg._bend_params = {}
 
+        end_pt = grow_shrink_seed(frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin)
+        total_length = np.linalg.norm(end_pt - start_pt)
+
         if inst_id not in cfg._bend_params:
             apply_bend = rng.random() < bend_prob
-            this_amp = bend_amp_px if apply_bend else 0.0
-            end_pt_tmp = grow_shrink_seed(frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin)
-            total_length = np.linalg.norm(end_pt_tmp - start_pt)
+            this_amp = bend_amplitude if apply_bend else 0.0
             min_length = np.min(motion_profile)
             dynamic_straight_fraction = min(min_length / total_length, 1.0) if total_length > 0 else 1.0
             cfg._bend_params[inst_id] = (this_amp, dynamic_straight_fraction)
         else:
             this_amp, dynamic_straight_fraction = cfg._bend_params[inst_id]
             apply_bend = this_amp > 0.0
-
-
-
-        end_pt = grow_shrink_seed(
-            frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin
-        )
 
         start_pt_j = start_pt + jitter
         end_pt_j = end_pt + jitter
@@ -111,7 +104,7 @@ def render_frame(
             if 0 <= pos[0] < cfg.img_size[1] and 0 <= pos[1] < cfg.img_size[0]:
                 ix = min(cfg.img_size[1] - 1, max(0, int(round(pos[0]))))
                 iy = min(cfg.img_size[0] - 1, max(0, int(round(pos[1]))))
-                add_gaussian(img, pos, local_sigma_x, local_sigma_y)
+                draw_tubulus(img, pos, local_sigma_x, local_sigma_y, cfg.tubulus_contrast)
                 if return_mask:
                     mask[iy, ix] = inst_id
 
@@ -212,7 +205,7 @@ if __name__ == "__main__":
     config_path = "../config/best_synthetic_config.json"
 
     config = SyntheticDataConfig.load()
-    config.id = 13
+    config.id = 18
     config.to_json(config_path)
     video_path, gt_path, gt_video_path = generate_video(config, output_dir)
 
