@@ -2,7 +2,7 @@ import numpy as np
 
 from data_generation.config import SyntheticDataConfig
 from data_generation.sawtooth_profile import create_sawtooth_profile
-
+from scipy.ndimage import gaussian_filter
 
 def build_motion_seeds(cfg: SyntheticDataConfig):
     """Pre‑compute slope/intercept pairs *and* their motion profiles.
@@ -28,15 +28,51 @@ def build_motion_seeds(cfg: SyntheticDataConfig):
     ]
 
 
-def add_gaussian(image, pos, sigma_x, sigma_y):
+def add_gaussian(image, pos, sigma_x, sigma_y, amplitude=1.0):
     if sigma_x > 0 and sigma_y > 0:
-        x = np.arange(0, image.shape[1], 1)
-        y = np.arange(0, image.shape[0], 1)
+        x = np.arange(0, image.shape[1])
+        y = np.arange(0, image.shape[0])
         x, y = np.meshgrid(x, y)
         gaussian = np.exp(-(((x - pos[0]) ** 2) / (2 * sigma_x ** 2) +
                             ((y - pos[1]) ** 2) / (2 * sigma_y ** 2)))
-        image += gaussian
+        image += amplitude * gaussian
     return image
+
+
+def add_fixed_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
+    fixed_spot_density = float(getattr(cfg, "fixed_spot_density", 0.0))
+    fixed_spot_strength = float(getattr(cfg, "fixed_spot_strength", 0.05))
+
+    h, w = img.shape
+    n_spots = int(h * w * fixed_spot_density)
+
+    if not hasattr(cfg, "_fixed_spot_coords"):
+        cfg._fixed_spot_coords = [(rng.integers(0, h), rng.integers(0, w)) for _ in range(n_spots)]
+
+    for y, x in cfg._fixed_spot_coords:
+        img[y, x] -= fixed_spot_strength
+
+
+def add_moving_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
+    moving_spot_count = float(getattr(cfg, "moving_spot_count_mean", 0.0))
+    moving_spot_density = float(getattr(cfg, "moving_spot_density", 0.0))
+    moving_spot_strength = float(getattr(cfg, "moving_spot_strength", 0.05))
+    moving_spot_sigma = float(getattr(cfg, "moving_spot_sigma", 1.0))
+
+    h, w = img.shape
+    mean_spots = moving_spot_count if moving_spot_count > 0 else h * w * moving_spot_density
+    n_spots = rng.poisson(mean_spots)
+
+    for _ in range(n_spots):
+        y = rng.uniform(0, h)
+        x = rng.uniform(0, w)
+        add_gaussian(img, (x, y), moving_spot_sigma, moving_spot_sigma, amplitude=-moving_spot_strength)
+
+
+def apply_global_blur(img: np.ndarray, cfg) -> np.ndarray:
+    """Apply a soft blur to the entire image."""
+    sigma = float(getattr(cfg, "global_blur_sigma", 0.0))
+    return gaussian_filter(img, sigma=sigma) if sigma > 0 else img
 
 
 def normalize_image(img):
