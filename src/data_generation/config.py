@@ -165,16 +165,29 @@ class SyntheticDataConfig(BaseConfig):
     invert_contrast: bool = True  # whether to invert the contrast of the image
     global_blur_sigma: float = 0.1  # global blur applied to the whole image
 
-    fixed_spot_count: int = 7
-    fixed_spot_contrast: float = 0.5
-    fixed_spot_kernel_size: int = 7
+    fixed_spot_count: int = 30
+    fixed_spot_intensity_min: float = 0.05
+    fixed_spot_intensity_max: float = 0.1
+    fixed_spot_radius_min: int = 1
+    fixed_spot_radius_max: int = 5
+    fixed_spot_kernel_size_min: int = 0
+    fixed_spot_kernel_size_max: int = 3
     fixed_spot_sigma: float = 1.0
 
-    moving_spot_count: int = 5
-    moving_spot_contrast: float = 0.5
-    moving_spot_kernel_size: int = 7
+    moving_spot_count: int = 15
+    moving_spot_intensity_min: float = 0.05
+    moving_spot_intensity_max: float = 0.3
+    moving_spot_radius_min: int = 3
+    moving_spot_radius_max: int = 5
+    moving_spot_kernel_size_min: int = 0
+    moving_spot_kernel_size_max: int = 7
     moving_spot_sigma: float = 1.0
 
+    # ─── annotations ─────────────────────────────────────
+    show_time:bool = True
+    show_scale:bool = True
+    um_per_pixel:float = 0.108  # adjust to match your microscope
+    scale_bar_um:float = 5.0  # 5 micrometers bar
 
     # ─── misc ──────────────────────────────────────────────
     generate_mask: bool = False

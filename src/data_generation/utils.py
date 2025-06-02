@@ -51,42 +51,52 @@ def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
     return image
 
 
-def add_fixed_spots(img: np.ndarray, cfg: SyntheticDataConfig, rng: np.random.Generator) -> np.ndarray:
+
+def draw_spots(img, spot_coords, intensity, radii, kernel_size, sigma):
+    h, w = img.shape
+
+    if isinstance(intensity, list):
+        if len(intensity) != len(spot_coords):
+            raise ValueError("Intensity list must match the length of spot coordinates.")
+    else:
+        intensity = [intensity] * len(spot_coords)
+
+    for idx, (y, x) in enumerate(spot_coords):
+        mask = np.zeros((h, w), dtype=np.float32)
+        mask = cv2.circle(mask, (int(x), int(y)), radii[idx], intensity[idx], -1)
+        kernel = 2 * kernel_size[idx] + 1
+        mask = cv2.GaussianBlur(mask, (kernel, kernel), sigma)
+        img += mask
+    return img
+
+
+def add_fixed_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     n_spots = cfg.fixed_spot_count
-    intensity = cfg.fixed_spot_contrast
-    kernel_size = cfg.fixed_spot_kernel_size
+    kernel_size = [np.random.randint(cfg.fixed_spot_kernel_size_min, cfg.fixed_spot_kernel_size_max + 1) for _ in range(n_spots)]
     sigma = cfg.fixed_spot_sigma
     h, w = img.shape
 
     if not hasattr(cfg, "_fixed_spot_coords"):
-        cfg._fixed_spot_coords = [(rng.integers(0, h), rng.integers(0, w)) for _ in range(n_spots)]
+        cfg._fixed_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
 
-    img = draw_spots(img, cfg._fixed_spot_coords, intensity, kernel_size, sigma)
+    if not hasattr(cfg, "_fixed_spot_intensities"):
+        cfg._fixed_spot_intensities = [np.random.uniform(cfg.fixed_spot_intensity_min, cfg.fixed_spot_intensity_max) for _ in range(n_spots)]
+
+    if not hasattr(cfg, "_fixed_spot_radii"):
+        cfg._fixed_spot_radii = [np.random.randint(cfg.fixed_spot_radius_min, cfg.fixed_spot_radius_max) for _ in range(n_spots)]
+
+    img = draw_spots(img, cfg._fixed_spot_coords, cfg._fixed_spot_intensities, cfg._fixed_spot_radii, kernel_size, sigma)
     return img
 
-
-def draw_spots(img, spot_coords, intensity, kernel_size, sigma):
-    h, w = img.shape
-    mask = np.zeros((h, w), dtype=np.float32)
-    for y, x in spot_coords:
-        mask = cv2.circle(mask, (int(x), int(y)), 1, intensity, -1)
-    mask = cv2.GaussianBlur(mask, (kernel_size, kernel_size), sigma)
-    # #plot for debugging
-    # import matplotlib.pyplot as plt
-    # plt.imshow(mask, cmap='gray')
-    # plt.show()
-    img += mask
-    return img
-
-
-def add_moving_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> np.ndarray:
+def add_moving_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     n_spots = cfg.moving_spot_count
-    intensity = cfg.moving_spot_contrast
-    kernel_size = cfg.moving_spot_kernel_size
+    intensity = [np.random.uniform(cfg.moving_spot_intensity_min, cfg.moving_spot_intensity_max) for _ in range(n_spots)]
+    kernel_size = [np.random.randint(cfg.moving_spot_kernel_size_min, cfg.moving_spot_kernel_size_max + 1) for _ in range(n_spots)]
+    radii = [np.random.randint(cfg.moving_spot_radius_min, cfg.moving_spot_radius_max + 1) for _ in range(n_spots)]
     sigma = cfg.moving_spot_sigma
     h, w = img.shape
-    moving_spot_coords = [(rng.integers(0, h), rng.integers(0, w)) for _ in range(n_spots)]
-    img = draw_spots(img, moving_spot_coords, intensity, kernel_size, sigma)
+    moving_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
+    img = draw_spots(img, moving_spot_coords, intensity, radii, kernel_size, sigma)
     return img
 
 
@@ -133,3 +143,38 @@ def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int
     # end_y = np.clip(end_y, margin, img_size[0] - margin)
 
     return np.array([end_x, end_y])
+
+def annotate_frame(frame, frame_idx, fps=5, show_time=True, show_scale=True, scale_um_per_pixel=0.1, scale_length_um=5):
+    """
+    Annotate the frame with optional time and scale bar.
+
+    Parameters:
+    - frame: The image (H×W×3, uint8)
+    - frame_idx: Index of the current frame
+    - fps: Frames per second (for computing time)
+    - show_time: Whether to draw time in top-left corner
+    - show_scale: Whether to draw scale bar in bottom-right corner
+    - scale_um_per_pixel: micrometers per pixel
+    - scale_length_um: length of the scale bar in micrometers
+    """
+    annotated = frame.copy()
+    H, W = annotated.shape[:2]
+
+    # 🕒 Time annotation
+    if show_time:
+        time_sec = frame_idx / fps
+        time_str = f"{time_sec:.1f} s"
+        cv2.putText(annotated, time_str, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                    1.0, (255, 255, 255), 2, cv2.LINE_AA)
+
+    # 📏 Scale bar
+    if show_scale:
+        scale_length_px = int(scale_length_um / scale_um_per_pixel)
+        bar_height = 6  # pixels
+        x_end = W - 10
+        x_start = x_end - scale_length_px
+        y_start = H - 20
+        y_end = y_start - bar_height
+        cv2.rectangle(annotated, (x_start, y_end), (x_end, y_start), (255, 255, 255), -1)
+
+    return annotated

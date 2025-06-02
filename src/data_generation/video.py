@@ -8,7 +8,7 @@ from tqdm import tqdm
 from data_generation.config import SyntheticDataConfig
 from data_generation.utils import (
     draw_tubulus,
-    grow_shrink_seed, apply_global_blur, add_fixed_spots, add_moving_spots,
+    grow_shrink_seed, apply_global_blur, add_fixed_spots, add_moving_spots, annotate_frame,
 )
 from data_generation.utils import build_motion_seeds
 from file_io.utils import save_ground_truth
@@ -37,7 +37,7 @@ def render_frame(
     sigma_x = cfg.sigma_x
     sigma_y = cfg.sigma_y
 
-    img = np.full(cfg.img_size, bg_level, dtype=np.float32)
+    frame = np.full(cfg.img_size, bg_level, dtype=np.float32)
     mask: Optional[np.ndarray] = None
     if return_mask:
         mask = np.zeros(cfg.img_size, dtype=np.uint16)
@@ -104,7 +104,7 @@ def render_frame(
             if 0 <= pos[0] < cfg.img_size[1] and 0 <= pos[1] < cfg.img_size[0]:
                 ix = min(cfg.img_size[1] - 1, max(0, int(round(pos[0]))))
                 iy = min(cfg.img_size[0] - 1, max(0, int(round(pos[1]))))
-                draw_tubulus(img, pos, local_sigma_x, local_sigma_y, cfg.tubulus_contrast)
+                draw_tubulus(frame, pos, local_sigma_x, local_sigma_y, cfg.tubulus_contrast)
                 if return_mask:
                     mask[iy, ix] = inst_id
 
@@ -120,22 +120,30 @@ def render_frame(
             }
         )
 
-    img = add_fixed_spots(img, cfg, rng)
-    img = add_moving_spots(img, cfg, rng)
+    frame = add_fixed_spots(frame, cfg)
+    frame = add_moving_spots(frame, cfg)
 
-    img *= decay
-    img *= vignette
+    frame *= decay
+    frame *= vignette
 
     if noise_std > 0.0:
-        img += np.random.normal(0, noise_std, img.shape).astype(np.float32)
+        frame += np.random.normal(0, noise_std, frame.shape).astype(np.float32)
 
     if invert_contrast:
-        img = 2 * bg_level - img
+        frame = 2 * bg_level - frame
 
-    img = apply_global_blur(img, cfg)
-    img = np.clip(img, 0.0, 1.0)
+    frame = apply_global_blur(frame, cfg)
+    frame = np.clip(frame, 0.0, 1.0)
 
-    frame_uint8 = (img * 255).astype(np.uint8)
+    frame = annotate_frame(
+        frame, frame_idx, fps=cfg.fps,
+        show_time=cfg.show_time,
+        show_scale=cfg.show_scale,
+        scale_um_per_pixel=cfg.um_per_pixel,
+        scale_length_um=cfg.scale_bar_um
+    )
+
+    frame_uint8 = (frame * 255).astype(np.uint8)
 
     if return_mask:
         return frame_uint8, gt_frame, mask
@@ -205,7 +213,7 @@ if __name__ == "__main__":
     config_path = "../config/best_synthetic_config.json"
 
     config = SyntheticDataConfig.load()
-    config.id = 18
+    config.id = 21
     config.to_json(config_path)
     video_path, gt_path, gt_video_path = generate_video(config, output_dir)
 
