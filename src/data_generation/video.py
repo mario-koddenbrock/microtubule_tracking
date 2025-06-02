@@ -120,8 +120,8 @@ def render_frame(
             }
         )
 
-    add_fixed_spots(img, cfg, rng)
-    add_moving_spots(img, cfg, rng)
+    img = add_fixed_spots(img, cfg, rng)
+    img = add_moving_spots(img, cfg, rng)
 
     img *= decay
     img *= vignette

@@ -151,8 +151,8 @@ class SyntheticDataConfig(BaseConfig):
     bend_straight_fraction: float = 0.75  # fraction of the tubule length that is straight before bending starts
 
     # ─── PSF / drawing width ───────────────────────────────
-    sigma_x: float = 0.1
-    sigma_y: float = 0.9
+    sigma_x: float = 0.3
+    sigma_y: float = 0.8
 
     # ─── new photophysics / camera realism ─────────────────
     background_level: float = 0.74
@@ -165,12 +165,14 @@ class SyntheticDataConfig(BaseConfig):
     invert_contrast: bool = True  # whether to invert the contrast of the image
     global_blur_sigma: float = 0.1  # global blur applied to the whole image
 
-    fixed_spot_density: float = 0.1
-    fixed_spot_strength: float = 0.78
+    fixed_spot_count: int = 7
+    fixed_spot_contrast: float = 0.5
+    fixed_spot_kernel_size: int = 7
+    fixed_spot_sigma: float = 1.0
 
-    moving_spot_density: float = 0.05
-    moving_spot_count_mean: float = 0.5
-    moving_spot_strength: float = 0.75
+    moving_spot_count: int = 5
+    moving_spot_contrast: float = 0.5
+    moving_spot_kernel_size: int = 7
     moving_spot_sigma: float = 1.0
 
 

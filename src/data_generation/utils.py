@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 from data_generation.config import SyntheticDataConfig
@@ -50,34 +51,43 @@ def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
     return image
 
 
-def add_fixed_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
-    fixed_spot_density = cfg.fixed_spot_density
-    fixed_spot_strength = cfg.fixed_spot_strength
-
+def add_fixed_spots(img: np.ndarray, cfg: SyntheticDataConfig, rng: np.random.Generator) -> np.ndarray:
+    n_spots = cfg.fixed_spot_count
+    intensity = cfg.fixed_spot_contrast
+    kernel_size = cfg.fixed_spot_kernel_size
+    sigma = cfg.fixed_spot_sigma
     h, w = img.shape
-    n_spots = int(h * w * fixed_spot_density)
 
     if not hasattr(cfg, "_fixed_spot_coords"):
         cfg._fixed_spot_coords = [(rng.integers(0, h), rng.integers(0, w)) for _ in range(n_spots)]
 
-    for y, x in cfg._fixed_spot_coords:
-        img[y, x] -= fixed_spot_strength
+    img = draw_spots(img, cfg._fixed_spot_coords, intensity, kernel_size, sigma)
+    return img
 
 
-def add_moving_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> None:
-    moving_spot_count = cfg.moving_spot_count_mean
-    moving_spot_density = cfg.moving_spot_density
-    moving_spot_strength = cfg.moving_spot_strength
-    moving_spot_sigma = cfg.moving_spot_sigma
-
+def draw_spots(img, spot_coords, intensity, kernel_size, sigma):
     h, w = img.shape
-    mean_spots = moving_spot_count if moving_spot_count > 0 else h * w * moving_spot_density
-    n_spots = rng.poisson(mean_spots)
+    mask = np.zeros((h, w), dtype=np.float32)
+    for y, x in spot_coords:
+        mask = cv2.circle(mask, (int(x), int(y)), 1, intensity, -1)
+    mask = cv2.GaussianBlur(mask, (kernel_size, kernel_size), sigma)
+    # #plot for debugging
+    # import matplotlib.pyplot as plt
+    # plt.imshow(mask, cmap='gray')
+    # plt.show()
+    img += mask
+    return img
 
-    for _ in range(n_spots):
-        y = rng.uniform(0, h)
-        x = rng.uniform(0, w)
-        draw_tubulus(img, (x, y), moving_spot_sigma, moving_spot_sigma, -moving_spot_strength)
+
+def add_moving_spots(img: np.ndarray, cfg, rng: np.random.Generator) -> np.ndarray:
+    n_spots = cfg.moving_spot_count
+    intensity = cfg.moving_spot_contrast
+    kernel_size = cfg.moving_spot_kernel_size
+    sigma = cfg.moving_spot_sigma
+    h, w = img.shape
+    moving_spot_coords = [(rng.integers(0, h), rng.integers(0, w)) for _ in range(n_spots)]
+    img = draw_spots(img, moving_spot_coords, intensity, kernel_size, sigma)
+    return img
 
 
 def apply_global_blur(img: np.ndarray, cfg) -> np.ndarray:
