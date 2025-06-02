@@ -46,11 +46,19 @@ def render_frame(
     bend_prob       = float(getattr(cfg, "bend_prob", 1.0))      # fraction bent
     bend_phase_rand = float(getattr(cfg, "bend_phase_rand", 0.5))   # ±fraction of length
 
+    # static & dynamic background defects ----------------------------------
+    fixed_spot_density = float(getattr(cfg, "fixed_spot_density", 0.0))  # fraction of pixels
+    fixed_spot_count = int(getattr(cfg, "fixed_spot_count", 0))  # absolute count overrides density
+    fixed_spot_strength = float(getattr(cfg, "fixed_spot_strength", 0.05))  # darkness 0‑1
+
+    moving_spot_density = float(getattr(cfg, "moving_spot_density", 0.0))  # per‑frame prob
+    moving_spot_count = float(getattr(cfg, "moving_spot_count_mean", 0.0))  # mean λ overrides density
+    moving_spot_strength = float(getattr(cfg, "moving_spot_strength", 0.05))  # darkness
+    moving_spot_sigma = float(getattr(cfg, "moving_spot_sigma", 1.0))
+
     sigma_x = getattr(cfg, "sigma_x", None)
     sigma_y = getattr(cfg, "sigma_y", None)
-    if sigma_x is None or sigma_y is None:
-        sigma_pair = getattr(cfg, "sigma", (1.0, 1.0))
-        sigma_x, sigma_y = sigma_pair
+
 
     # 1️⃣  Base image initialisation ---------------------------------------
     img  = np.full(cfg.img_size, bg_level, dtype=np.float32)
