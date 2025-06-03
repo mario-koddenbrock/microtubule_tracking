@@ -143,6 +143,7 @@ class SyntheticDataConfig(BaseConfig):
     pause_on_min_length: int = 5
 
     num_tubulus: int = 20
+    tubuli_min_dist:int = 20
     margin: int = 5
 
     width_var_std: float = 0.05  # std of the width variation (relative to the mean width)
@@ -156,7 +157,7 @@ class SyntheticDataConfig(BaseConfig):
 
     # ─── new photophysics / camera realism ─────────────────
     background_level: float = 0.74
-    tubulus_contrast: float = 0.1
+    tubulus_contrast: float = 0.2
 
     gaussian_noise: float = 0.09  # 24 / 255
     bleach_tau: float = math.inf  # photobleaching off by default
@@ -165,22 +166,22 @@ class SyntheticDataConfig(BaseConfig):
     invert_contrast: bool = True  # whether to invert the contrast of the image
     global_blur_sigma: float = 0.1  # global blur applied to the whole image
 
-    fixed_spot_count: int = 30
+    fixed_spot_count: int = 70
     fixed_spot_intensity_min: float = 0.05
-    fixed_spot_intensity_max: float = 0.1
+    fixed_spot_intensity_max: float = 0.2
     fixed_spot_radius_min: int = 1
     fixed_spot_radius_max: int = 5
     fixed_spot_kernel_size_min: int = 0
     fixed_spot_kernel_size_max: int = 3
     fixed_spot_sigma: float = 1.0
 
-    moving_spot_count: int = 15
-    moving_spot_intensity_min: float = 0.05
-    moving_spot_intensity_max: float = 0.3
+    moving_spot_count: int = 20
+    moving_spot_intensity_min: float = 0.01
+    moving_spot_intensity_max: float = 0.05
     moving_spot_radius_min: int = 3
-    moving_spot_radius_max: int = 5
+    moving_spot_radius_max: int = 9
     moving_spot_kernel_size_min: int = 0
-    moving_spot_kernel_size_max: int = 7
+    moving_spot_kernel_size_max: int = 2
     moving_spot_sigma: float = 1.0
 
     # ─── annotations ─────────────────────────────────────
@@ -190,7 +191,7 @@ class SyntheticDataConfig(BaseConfig):
     scale_bar_um:float = 5.0  # 5 micrometers bar
 
     # ─── misc ──────────────────────────────────────────────
-    generate_mask: bool = False
+    generate_mask: bool = True
 
     # ─── validation helper (optional) ─────────────────────
     def validate(self):
