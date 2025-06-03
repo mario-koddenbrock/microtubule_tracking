@@ -20,6 +20,7 @@ dependencies = [
   "opencv-python",
   "tifffile",
   "optuna",
+  "imageio",
 ]
 
 [project.urls]

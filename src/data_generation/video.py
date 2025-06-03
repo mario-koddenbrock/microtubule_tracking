@@ -2,6 +2,7 @@ import os
 from typing import List, Tuple, Optional, Generator
 
 import cv2
+import imageio
 import numpy as np
 from tqdm import tqdm
 
@@ -129,12 +130,6 @@ def render_frame(
     if noise_std > 0.0:
         frame += np.random.normal(0, noise_std, frame.shape).astype(np.float32)
 
-    if invert_contrast:
-        frame = 2 * bg_level - frame
-
-    frame = apply_global_blur(frame, cfg)
-    frame = np.clip(frame, 0.0, 1.0)
-
     frame = annotate_frame(
         frame, frame_idx, fps=cfg.fps,
         show_time=cfg.show_time,
@@ -142,6 +137,13 @@ def render_frame(
         scale_um_per_pixel=cfg.um_per_pixel,
         scale_length_um=cfg.scale_bar_um
     )
+
+    frame = apply_global_blur(frame, cfg)
+
+    if invert_contrast:
+        frame = 2 * bg_level - frame
+
+    frame = np.clip(frame, 0.0, 1.0)
 
     frame_uint8 = (frame * 255).astype(np.uint8)
 
@@ -163,6 +165,7 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
     os.makedirs(base_output_dir, exist_ok=True)
 
     video_path = os.path.join(base_output_dir, f"series_{cfg.id:02d}.mp4")
+    gif_path = os.path.join(base_output_dir, f"series_{cfg.id:02d}.gif")
     mask_video_path = (os.path.join(base_output_dir, f"series_{cfg.id:02d}_mask.mp4") if cfg.generate_mask else None)
     gt_path = os.path.join(base_output_dir, f"series_{cfg.id:02d}_gt.json")
 
@@ -170,14 +173,18 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
     writer = cv2.VideoWriter(video_path, fourcc, cfg.fps, cfg.img_size[::-1])
     mask_writer = (cv2.VideoWriter(mask_video_path, fourcc, cfg.fps, cfg.img_size[::-1]) if cfg.generate_mask else None)
 
-    gt_accumulator: List[dict] = []
+
+    frames = []
+    mask_frames = []
 
     for frame, gt_frame, mask in tqdm(
             generate_frames(cfg, return_mask=cfg.generate_mask),
             total=cfg.num_frames,
             desc=f"Series {cfg.id}"
     ):
-        gt_accumulator.extend(gt_frame)
+        frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        mask_frames.extend(gt_frame)
+
         writer.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR))
 
         if cfg.generate_mask:
@@ -189,7 +196,9 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
     if cfg.generate_mask:
         mask_writer.release()
 
-    save_ground_truth(gt_accumulator, gt_path)
+    # Write GIF
+    imageio.mimsave(gif_path, frames, fps=cfg.fps)
+    save_ground_truth(mask_frames, gt_path)
 
     return video_path, gt_path, mask_video_path
 
@@ -213,7 +222,7 @@ if __name__ == "__main__":
     config_path = "../config/best_synthetic_config.json"
 
     config = SyntheticDataConfig.load()
-    config.id = 21
+    config.id = 25
     config.to_json(config_path)
     video_path, gt_path, gt_video_path = generate_video(config, output_dir)
 
