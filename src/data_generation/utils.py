@@ -1,33 +1,40 @@
 import cv2
 import numpy as np
+from scipy.spatial import distance
 
 from data_generation.config import SyntheticDataConfig
 from data_generation.sawtooth_profile import create_sawtooth_profile
 from scipy.ndimage import gaussian_filter
 
-def build_motion_seeds(cfg: SyntheticDataConfig):
-    """Pre‑compute slope/intercept pairs *and* their motion profiles.
 
-    Keeping the RNG separate from the rendering loop makes the whole pipeline
-    deterministic and lets us reproduce exact sequences from a single call.
-    """
-    return [
-        (
-            get_seed(cfg.img_size, cfg.margin),
-            create_sawtooth_profile(
-                num_frames=cfg.num_frames,
-                max_length=np.random.randint(cfg.max_length_min, cfg.max_length_max + 1),
-                min_length=np.random.randint(cfg.min_length_min, cfg.min_length_max + 1),
-                grow_frames=cfg.grow_frames,
-                shrink_frames=cfg.shrink_frames,
-                noise_std=cfg.profile_noise,
-                offset=np.random.randint(0, cfg.num_frames),
-                pause_on_min_length=np.random.randint(0, cfg.pause_on_min_length + 1),
-                pause_on_max_length=np.random.randint(0, cfg.pause_on_max_length + 1),
-            ),
+def build_motion_seeds(cfg: SyntheticDataConfig):
+    """Pre‑compute slope/intercept pairs *and* their motion profiles using Poisson sampling."""
+
+    # Step 1: Get evenly spaced seeds
+    tubulus_seeds = get_poisson_seeds(
+        img_size=cfg.img_size,
+        margin=cfg.margin,
+        min_dist=cfg.tubuli_min_dist,
+        max_tubuli=cfg.num_tubulus
+    )
+
+    # Step 2: Attach motion profiles
+    motion_seeds = []
+    for (slope_intercept, center) in tubulus_seeds:
+        motion_profile = create_sawtooth_profile(
+            num_frames=cfg.num_frames,
+            max_length=np.random.randint(cfg.max_length_min, cfg.max_length_max + 1),
+            min_length=np.random.randint(cfg.min_length_min, cfg.min_length_max + 1),
+            grow_frames=cfg.grow_frames,
+            shrink_frames=cfg.shrink_frames,
+            noise_std=cfg.profile_noise,
+            offset=np.random.randint(0, cfg.num_frames),
+            pause_on_min_length=np.random.randint(0, cfg.pause_on_min_length + 1),
+            pause_on_max_length=np.random.randint(0, cfg.pause_on_max_length + 1),
         )
-        for _ in range(cfg.num_tubulus)
-    ]
+        motion_seeds.append(((slope_intercept, center), motion_profile))
+
+    return motion_seeds
 
 
 def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
@@ -118,15 +125,39 @@ def poisson_noise(image, snr):
     return np.clip(noisy / max_val if max_val > 0 else image, 0, 1)
 
 
-def get_seed(img_size: tuple[int, int], margin: int):
+def get_poisson_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max_tubuli: int = 100):
+    """
+    Generate tubuli seeds using Poisson disk sampling to ensure even spacing.
+
+    Returns:
+        List of tuples: [(slope, intercept), center_point]
+    """
     usable_width = img_size[1] - 2 * margin
     usable_height = img_size[0] - 2 * margin
-    start_x = np.random.uniform(margin, margin + usable_width)
-    start_y = np.random.uniform(margin, margin + usable_height)
-    slope = np.random.uniform(-1.5, 1.5)
-    intercept = start_y - slope * start_x
 
-    return np.array([slope, intercept]), np.array([start_x, start_y])
+    def is_far_enough(point, points, min_dist):
+        return all(distance.euclidean(point, p) >= min_dist for p in points)
+
+    # Sample Poisson points manually (basic rejection sampling version)
+    points = []
+    attempts = 0
+    max_attempts = max_tubuli * 50
+    while len(points) < max_tubuli and attempts < max_attempts:
+        x = np.random.uniform(margin, margin + usable_width)
+        y = np.random.uniform(margin, margin + usable_height)
+        candidate = (x, y)
+        if is_far_enough(candidate, points, min_dist):
+            points.append(candidate)
+        attempts += 1
+
+    seeds = []
+    for x, y in points:
+        slope = np.random.uniform(-1.5, 1.5)
+        intercept = y - slope * x
+        seeds.append(((slope, intercept), (x, y)))
+
+    return seeds
+
 
 
 def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int, int], margin: int):
@@ -158,14 +189,15 @@ def annotate_frame(frame, frame_idx, fps=5, show_time=True, show_scale=True, sca
     - scale_length_um: length of the scale bar in micrometers
     """
     annotated = frame.copy()
+    annotation_color = (0, 0, 0)
     H, W = annotated.shape[:2]
 
     # 🕒 Time annotation
     if show_time:
         time_sec = frame_idx / fps
-        time_str = f"{time_sec:.1f} s"
+        time_str = f"{int(time_sec):d}:{int((time_sec % 1) * 100):02d}"
         cv2.putText(annotated, time_str, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                    1.0, (255, 255, 255), 2, cv2.LINE_AA)
+                    1.0, annotation_color, 2, cv2.LINE_AA)
 
     # 📏 Scale bar
     if show_scale:
@@ -175,6 +207,6 @@ def annotate_frame(frame, frame_idx, fps=5, show_time=True, show_scale=True, sca
         x_start = x_end - scale_length_px
         y_start = H - 20
         y_end = y_start - bar_height
-        cv2.rectangle(annotated, (x_start, y_end), (x_end, y_start), (255, 255, 255), -1)
+        cv2.rectangle(annotated, (x_start, y_end), (x_end, y_start), annotation_color, -1)
 
     return annotated
