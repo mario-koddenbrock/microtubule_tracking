@@ -147,9 +147,9 @@ class SyntheticDataConfig(BaseConfig):
     margin: int = 5
 
     width_var_std: float = 0.05  # std of the width variation (relative to the mean width)
-    bend_amplitude: float = 1.0  # max lateral offset
-    bend_prob: float = 0.1  # only ~10 % of tubules curved
-    bend_straight_fraction: float = 0.75  # fraction of the tubule length that is straight before bending starts
+    bend_amplitude: float = 5.0  # max lateral offset
+    bend_prob: float = 0.01  # only ~10 % of tubules curved
+    bend_straight_fraction: float = 0.9  # fraction of the tubule length that is straight before bending starts
 
     # ─── PSF / drawing width ───────────────────────────────
     sigma_x: float = 0.3
@@ -168,7 +168,7 @@ class SyntheticDataConfig(BaseConfig):
 
     fixed_spot_count: int = 70
     fixed_spot_intensity_min: float = 0.05
-    fixed_spot_intensity_max: float = 0.2
+    fixed_spot_intensity_max: float = 0.5
     fixed_spot_radius_min: int = 1
     fixed_spot_radius_max: int = 5
     fixed_spot_kernel_size_min: int = 0
