@@ -222,8 +222,9 @@ if __name__ == "__main__":
     config_path = "../config/best_synthetic_config.json"
 
     config = SyntheticDataConfig.load()
-    config.id = 25
+    config.id = 27
     config.to_json(config_path)
+
     video_path, gt_path, gt_video_path = generate_video(config, output_dir)
 
     print(f"Saved video: {video_path}")
