@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import cv2
 import numpy as np
 from scipy.spatial import distance
@@ -210,3 +212,26 @@ def annotate_frame(frame, frame_idx, fps=5, show_time=True, show_scale=True, sca
         cv2.rectangle(annotated, (x_start, y_end), (x_end, y_start), annotation_color, -1)
 
     return annotated
+
+def compute_vignette(cfg: SyntheticDataConfig) -> np.ndarray:
+    if cfg.vignetting_strength <= 0.0:
+        return 1.0
+    yy, xx = np.mgrid[:cfg.img_size[0], :cfg.img_size[1]]
+    norm_x = (xx - cfg.img_size[1] / 2) / (cfg.img_size[1] / 2)
+    norm_y = (yy - cfg.img_size[0] / 2) / (cfg.img_size[0] / 2)
+    vignette = 1.0 - cfg.vignetting_strength * (norm_x ** 2 + norm_y ** 2)
+    return np.clip(vignette, 0.5, 1.0)
+
+def update_bend_params(cfg: SyntheticDataConfig, inst_id: int, motion_profile: np.ndarray,
+                        start_pt: np.ndarray, end_pt: np.ndarray, rng: np.random.Generator) -> Tuple[float, float, bool]:
+    total_length = np.linalg.norm(end_pt - start_pt)
+    if inst_id not in cfg._bend_params:
+        apply_bend = rng.random() < cfg.bend_prob
+        this_amp = cfg.bend_amplitude if apply_bend else 0.0
+        min_length = np.min(motion_profile)
+        dynamic_straight_fraction = min(min_length / total_length, 1.0) if total_length > 0 else 1.0
+        cfg._bend_params[inst_id] = (this_amp, dynamic_straight_fraction)
+    else:
+        this_amp, dynamic_straight_fraction = cfg._bend_params[inst_id]
+        apply_bend = this_amp > 0.0
+    return this_amp, dynamic_straight_fraction, apply_bend
