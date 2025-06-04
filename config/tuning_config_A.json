@@ -1,0 +1,13 @@
+{
+  "model_name": "openai/clip-vit-base-patch32",
+  "num_trials": 10,
+  "direction": "maximize",
+  "metric": "cosine_similarity",
+  "param_file": "optimize_params.json",
+  "num_compare_series": 3,
+  "reference_series_dir": "../../data/mpi/type_A",
+  "num_compare_frames": 1,
+  "hf_cache_dir": null,
+  "temp_dir": "../../.temp/",
+  "output_config_file": "best_synthetic_config_A.json",
+}
