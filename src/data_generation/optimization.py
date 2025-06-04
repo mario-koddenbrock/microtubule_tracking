@@ -59,7 +59,7 @@ def objective(trial, tuning_cfg, ref_embs, model, extractor):
 
 def main():
 
-    config_path = "../../config/tuning_config.json"
+    config_path = "../../config/tuning_config_A.json"
     tuning_cfg  = TuningConfig.load(config_path)
     tuning_cfg.validate()
     tuning_cfg.to_json(config_path) # persist any defaults
