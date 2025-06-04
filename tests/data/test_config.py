@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-from data_generation.config import SyntheticDataConfig
+from config import SyntheticDataConfig
 
 
 def test_yaml_io():

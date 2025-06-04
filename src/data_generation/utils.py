@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 from scipy.spatial import distance
 
-from data_generation.config import SyntheticDataConfig
-from data_generation.sawtooth_profile import create_sawtooth_profile
+from config.synthetic_data import SyntheticDataConfig
+from .sawtooth_profile import create_sawtooth_profile
 from scipy.ndimage import gaussian_filter
 
 
@@ -89,10 +89,10 @@ def add_fixed_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
         cfg._fixed_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
 
     if not hasattr(cfg, "_fixed_spot_intensities"):
-        cfg._fixed_spot_intensities = [np.random.uniform(cfg.fixed_spot_intensity_min, cfg.fixed_spot_intensity_max) for _ in range(n_spots)]
+        cfg._fixed_spot_intensities = [np.random.uniform(cfg.fixed_spot_intensity_min, cfg.fixed_spot_intensity_max + 1) for _ in range(n_spots)]
 
     if not hasattr(cfg, "_fixed_spot_radii"):
-        cfg._fixed_spot_radii = [np.random.randint(cfg.fixed_spot_radius_min, cfg.fixed_spot_radius_max) for _ in range(n_spots)]
+        cfg._fixed_spot_radii = [np.random.randint(cfg.fixed_spot_radius_min, cfg.fixed_spot_radius_max + 1) for _ in range(n_spots)]
 
     img = draw_spots(img, cfg._fixed_spot_coords, cfg._fixed_spot_intensities, cfg._fixed_spot_radii, kernel_size, sigma)
     return img
@@ -225,6 +225,10 @@ def compute_vignette(cfg: SyntheticDataConfig) -> np.ndarray:
 def update_bend_params(cfg: SyntheticDataConfig, inst_id: int, motion_profile: np.ndarray,
                         start_pt: np.ndarray, end_pt: np.ndarray, rng: np.random.Generator) -> Tuple[float, float, bool]:
     total_length = np.linalg.norm(end_pt - start_pt)
+
+    if not hasattr(cfg, "_bend_params"):
+        cfg._bend_params = {}
+
     if inst_id not in cfg._bend_params:
         apply_bend = rng.random() < cfg.bend_prob
         this_amp = cfg.bend_amplitude if apply_bend else 0.0

@@ -4,9 +4,11 @@ from glob import glob
 import cv2
 import numpy as np
 import torch
+from tqdm import tqdm
 from transformers import AutoModel, AutoFeatureExtractor, CLIPModel, CLIPImageProcessor
 
-from data_generation.config import TuningConfig
+from config.synthetic_data import SyntheticDataConfig
+from config.tuning import TuningConfig
 from data_generation.video import generate_frames
 from file_io.utils import extract_frames
 
@@ -55,12 +57,12 @@ def load_references(cfg: TuningConfig, model, extractor):
     return np.stack([r.flatten() for r in embeddings])  # (N_ref, 256)
 
 
-def from_cfg(cfg, model, extractor) -> np.ndarray:
+def from_cfg(cfg:SyntheticDataConfig, model, extractor) -> np.ndarray:
     """
     Generate every frame for *cfg* and return flattened embeddings.
     """
     vecs: list[np.ndarray] = []
-    for frame_uint8, *_ in generate_frames(cfg):  # unpack only first item
+    for frame_uint8, *_ in tqdm(generate_frames(cfg), total=cfg.num_frames, desc="Generating frames.."):  # unpack only first item
         rgb = cv2.cvtColor(frame_uint8, cv2.COLOR_GRAY2RGB)
         vecs.append(compute(rgb, model, extractor).flatten())
     return np.stack(vecs)
