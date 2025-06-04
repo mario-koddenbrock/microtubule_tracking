@@ -164,11 +164,11 @@ class SyntheticDataConfig(BaseConfig):
     jitter_px: float = 0.5
     vignetting_strength: float = 0.05
     invert_contrast: bool = True  # whether to invert the contrast of the image
-    global_blur_sigma: float = 0.1  # global blur applied to the whole image
+    global_blur_sigma: float = 0.9  # global blur applied to the whole image
 
     fixed_spot_count: int = 70
     fixed_spot_intensity_min: float = 0.05
-    fixed_spot_intensity_max: float = 0.5
+    fixed_spot_intensity_max: float = 0.2
     fixed_spot_radius_min: int = 1
     fixed_spot_radius_max: int = 5
     fixed_spot_kernel_size_min: int = 0
@@ -177,7 +177,7 @@ class SyntheticDataConfig(BaseConfig):
 
     moving_spot_count: int = 20
     moving_spot_intensity_min: float = 0.01
-    moving_spot_intensity_max: float = 0.05
+    moving_spot_intensity_max: float = 0.08
     moving_spot_radius_min: int = 3
     moving_spot_radius_max: int = 9
     moving_spot_kernel_size_min: int = 0
@@ -227,7 +227,7 @@ class TuningConfig(BaseConfig):
         sigma_range (tuple): Range of Gaussian blur standard deviations.
         snr_range (tuple): Range of signal-to-noise ratios.
     """
-    model_name: str = "nvidia/segformer-b0-finetuned-ade-512-512"
+    model_name: str = "openai/clip-vit-base-patch32"
     num_trials: int = 20
     direction: str = "maximize"
     metric: str = "cosine_similarity"
@@ -237,6 +237,7 @@ class TuningConfig(BaseConfig):
     num_compare_frames: int = 1  # Number of frames per series to use for comparison
     hf_cache_dir: str = None  # Directory for Hugging Face model cache
     temp_dir: str = "temp_synthetic_data"  # Temporary directory for synthetic data generation
+    output_config_file: str = "best_synthetic_config.json" # Where to store the optimal config
 
     # Parameter ranges for tuning (only those that are tunable)
     grow_amp_range: tuple[float, float] = (0.5, 5.0)
