@@ -263,8 +263,7 @@ def objective(trial: optuna.trial.Trial,
 
     )
 
-    # For reproducibility, set an ID of 0 (or vary if you want multiple synthetic runs)
-    synth_cfg.id = 0
+    synth_cfg.id = "current_trial"
     synth_cfg.validate()
 
     # Evaluate this new configuration against reference embeddings
