@@ -10,7 +10,7 @@
   "output_config_num_frames": 50,
   "direction": "maximize",
   "metric": "cosine_similarity",
-  "num_trials": 100,
+  "num_trials": 1000,
   "img_size": [
     462,
     462
