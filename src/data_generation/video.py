@@ -122,6 +122,7 @@ def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int, *, return_mask
     # Add background spots and noise after microtubules are drawn
     frame = utils.add_fixed_spots(frame, cfg)
     frame = utils.add_moving_spots(frame, cfg)
+    frame = utils.add_random_spots(frame, cfg)
     frame *= decay
     frame *= vignette
 
@@ -206,7 +207,7 @@ if __name__ == "__main__":
     config_path = "../config/synthetic_config.json"
 
     config = SyntheticDataConfig.load()
-    config.id = 30
+    config.id = 32
     config.to_json(config_path)
 
     video_path, gt_path_json, gt_path_video = generate_video(config, output_dir)

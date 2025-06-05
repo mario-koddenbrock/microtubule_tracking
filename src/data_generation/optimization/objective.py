@@ -146,35 +146,35 @@ def objective(trial: optuna.trial.Trial,
     )
 
     # ─── Moving spots ───────────────────────────────────────────────
-    moving_spot_count = trial.suggest_int(
-        "moving_spot_count", *tuning_cfg.moving_spot_count_range
+    random_spot_count = trial.suggest_int(
+        "random_spot_count", *tuning_cfg.random_spot_count_range
     )
-    moving_spot_intensity_min = trial.suggest_float(
-        "moving_spot_intensity_min", *tuning_cfg.moving_spot_intensity_range
+    random_spot_intensity_min = trial.suggest_float(
+        "random_spot_intensity_min", *tuning_cfg.random_spot_intensity_range
     )
-    moving_spot_intensity_max = trial.suggest_float(
-        "moving_spot_intensity_max",
-        max(moving_spot_intensity_min, tuning_cfg.moving_spot_intensity_range[0]),
-        tuning_cfg.moving_spot_intensity_range[1]
+    random_spot_intensity_max = trial.suggest_float(
+        "random_spot_intensity_max",
+        max(random_spot_intensity_min, tuning_cfg.random_spot_intensity_range[0]),
+        tuning_cfg.random_spot_intensity_range[1]
     )
-    moving_spot_radius_min = trial.suggest_int(
-        "moving_spot_radius_min", *tuning_cfg.moving_spot_radius_range
+    random_spot_radius_min = trial.suggest_int(
+        "random_spot_radius_min", *tuning_cfg.random_spot_radius_range
     )
-    moving_spot_radius_max = trial.suggest_int(
-        "moving_spot_radius_max",
-        max(moving_spot_radius_min, tuning_cfg.moving_spot_radius_range[0]),
-        tuning_cfg.moving_spot_radius_range[1],
+    random_spot_radius_max = trial.suggest_int(
+        "random_spot_radius_max",
+        max(random_spot_radius_min, tuning_cfg.random_spot_radius_range[0]),
+        tuning_cfg.random_spot_radius_range[1],
     )
-    moving_spot_kernel_size_min = trial.suggest_int(
-        "moving_spot_kernel_size_min", *tuning_cfg.moving_spot_kernel_size_range
+    random_spot_kernel_size_min = trial.suggest_int(
+        "random_spot_kernel_size_min", *tuning_cfg.random_spot_kernel_size_range
     )
-    moving_spot_kernel_size_max = trial.suggest_int(
-        "moving_spot_kernel_size_max",
-        max(moving_spot_kernel_size_min, tuning_cfg.moving_spot_kernel_size_range[0]),
-        tuning_cfg.moving_spot_kernel_size_range[1],
+    random_spot_kernel_size_max = trial.suggest_int(
+        "random_spot_kernel_size_max",
+        max(random_spot_kernel_size_min, tuning_cfg.random_spot_kernel_size_range[0]),
+        tuning_cfg.random_spot_kernel_size_range[1],
     )
-    moving_spot_sigma = trial.suggest_float(
-        "moving_spot_sigma", *tuning_cfg.moving_spot_sigma_range
+    random_spot_sigma = trial.suggest_float(
+        "random_spot_sigma", *tuning_cfg.random_spot_sigma_range
     )
 
     # ─── Annotations ────────────────────────────────────────────────
@@ -247,14 +247,14 @@ def objective(trial: optuna.trial.Trial,
         fixed_spot_kernel_size_max=fixed_spot_kernel_size_max,
         fixed_spot_sigma=fixed_spot_sigma,
 
-        moving_spot_count=moving_spot_count,
-        moving_spot_intensity_min=moving_spot_intensity_min,
-        moving_spot_intensity_max=moving_spot_intensity_max,
-        moving_spot_radius_min=moving_spot_radius_min,
-        moving_spot_radius_max=moving_spot_radius_max,
-        moving_spot_kernel_size_min=moving_spot_kernel_size_min,
-        moving_spot_kernel_size_max=moving_spot_kernel_size_max,
-        moving_spot_sigma=moving_spot_sigma,
+        random_spot_count=random_spot_count,
+        random_spot_intensity_min=random_spot_intensity_min,
+        random_spot_intensity_max=random_spot_intensity_max,
+        random_spot_radius_min=random_spot_radius_min,
+        random_spot_radius_max=random_spot_radius_max,
+        random_spot_kernel_size_min=random_spot_kernel_size_min,
+        random_spot_kernel_size_max=random_spot_kernel_size_max,
+        random_spot_sigma=random_spot_sigma,
 
         show_time=show_time,
         show_scale=show_scale,

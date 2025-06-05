@@ -81,12 +81,14 @@ def draw_spots(img, spot_coords, intensity, radii, kernel_size, sigma):
 
 def add_fixed_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     n_spots = cfg.fixed_spot_count
-    kernel_size = [np.random.randint(cfg.fixed_spot_kernel_size_min, cfg.fixed_spot_kernel_size_max + 1) for _ in range(n_spots)]
     sigma = cfg.fixed_spot_sigma
     h, w = img.shape
 
     if not hasattr(cfg, "_fixed_spot_coords"):
         cfg._fixed_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
+
+    if not hasattr(cfg, "_fixed_spot_kernel_size"):
+        cfg._fixed_spot_kernel_size = [np.random.randint(cfg.fixed_spot_kernel_size_min, cfg.fixed_spot_kernel_size_max + 1) for _ in range(n_spots)]
 
     if not hasattr(cfg, "_fixed_spot_intensities"):
         cfg._fixed_spot_intensities = [np.random.uniform(cfg.fixed_spot_intensity_min, cfg.fixed_spot_intensity_max + 1) for _ in range(n_spots)]
@@ -94,18 +96,42 @@ def add_fixed_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     if not hasattr(cfg, "_fixed_spot_radii"):
         cfg._fixed_spot_radii = [np.random.randint(cfg.fixed_spot_radius_min, cfg.fixed_spot_radius_max + 1) for _ in range(n_spots)]
 
-    img = draw_spots(img, cfg._fixed_spot_coords, cfg._fixed_spot_intensities, cfg._fixed_spot_radii, kernel_size, sigma)
+    img = draw_spots(img, cfg._fixed_spot_coords, cfg._fixed_spot_intensities, cfg._fixed_spot_radii, cfg._fixed_spot_kernel_size, sigma)
     return img
 
 def add_moving_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     n_spots = cfg.moving_spot_count
-    intensity = [np.random.uniform(cfg.moving_spot_intensity_min, cfg.moving_spot_intensity_max) for _ in range(n_spots)]
-    kernel_size = [np.random.randint(cfg.moving_spot_kernel_size_min, cfg.moving_spot_kernel_size_max + 1) for _ in range(n_spots)]
-    radii = [np.random.randint(cfg.moving_spot_radius_min, cfg.moving_spot_radius_max + 1) for _ in range(n_spots)]
     sigma = cfg.moving_spot_sigma
     h, w = img.shape
-    moving_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
-    img = draw_spots(img, moving_spot_coords, intensity, radii, kernel_size, sigma)
+
+    if not hasattr(cfg, "_moving_spot_coords"):
+        cfg._moving_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
+
+    step_x = np.random.randint(-cfg.moving_spot_max_step, cfg.moving_spot_max_step + 1, size=n_spots)
+    step_y = np.random.randint(-cfg.moving_spot_max_step, cfg.moving_spot_max_step + 1, size=n_spots)
+    cfg._moving_spot_coords = [(y + step_y[i], x + step_x[i]) for i, (y, x) in enumerate(cfg._moving_spot_coords)]
+
+    if not hasattr(cfg, "_moving_spot_kernel_size"):
+        cfg._moving_spot_kernel_size = [np.random.randint(cfg.moving_spot_kernel_size_min, cfg.moving_spot_kernel_size_max + 1) for _ in range(n_spots)]
+
+    if not hasattr(cfg, "_moving_spot_intensities"):
+        cfg._moving_spot_intensities = [np.random.uniform(cfg.moving_spot_intensity_min, cfg.moving_spot_intensity_max + 1) for _ in range(n_spots)]
+
+    if not hasattr(cfg, "_moving_spot_radii"):
+        cfg._moving_spot_radii = [np.random.randint(cfg.moving_spot_radius_min, cfg.moving_spot_radius_max + 1) for _ in range(n_spots)]
+
+    img = draw_spots(img, cfg._moving_spot_coords, cfg._moving_spot_intensities, cfg._moving_spot_radii, cfg._moving_spot_kernel_size, sigma)
+    return img
+
+def add_random_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
+    n_spots = cfg.random_spot_count
+    intensity = [np.random.uniform(cfg.random_spot_intensity_min, cfg.random_spot_intensity_max) for _ in range(n_spots)]
+    kernel_size = [np.random.randint(cfg.random_spot_kernel_size_min, cfg.random_spot_kernel_size_max + 1) for _ in range(n_spots)]
+    radii = [np.random.randint(cfg.random_spot_radius_min, cfg.random_spot_radius_max + 1) for _ in range(n_spots)]
+    sigma = cfg.random_spot_sigma
+    h, w = img.shape
+    random_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
+    img = draw_spots(img, random_spot_coords, intensity, radii, kernel_size, sigma)
     return img
 
 
