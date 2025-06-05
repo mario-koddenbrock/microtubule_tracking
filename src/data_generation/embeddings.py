@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import torch
 from tqdm import tqdm
-from transformers import AutoModel, AutoFeatureExtractor, CLIPModel, CLIPImageProcessor
+from transformers import AutoModel, AutoFeatureExtractor, CLIPModel, CLIPImageProcessor, XCLIPModel, XCLIPProcessor
 
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
@@ -46,6 +46,25 @@ def load_references(cfg: TuningConfig, model, extractor):
         frames = frames[:cfg.num_compare_frames]
 
         print(f"Reference {video_idx + 1}/{len(video_files)}: {os.path.basename(video_path)} - {len(frames)} frames - {frames[0].shape if frames else 'No frames'}")
+
+        test = [cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB) for frame in frames]
+
+        processor = extractor
+        inputs = extractor(videos=t, return_tensors="pt")
+        inputs = extractor(videos=[t], return_tensors="pt")
+
+        test = [np.random.randint(0, 256, size=(462, 462, 3), dtype=np.uint8)
+                for _ in range(4)]
+
+        # 4) Forward‐pass through XCLIPModel to get the [CLS] embedding
+        with torch.no_grad():
+            outputs = model(**inputs)
+
+        # outputs.last_hidden_state has shape (1, num_frames+1, hidden_size=768).
+        # The first token (index 0) is the pooled “video” embedding:
+        video_embedding = outputs.last_hidden_state[:, 0, :]
+
+
         for frame in frames:
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             emb = compute(frame_rgb, model, extractor)
@@ -77,8 +96,13 @@ def flatten(ref_embeddings) -> np.ndarray:
     return ref_arr
 
 
+
+
 def get_model(tuning_cfg):
-    if "clip" in tuning_cfg.model_name.lower():
+    if "xclip" in tuning_cfg.model_name.lower():
+        model = XCLIPModel.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
+        extractor = XCLIPProcessor.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
+    elif "clip" in tuning_cfg.model_name.lower():
         model = CLIPModel.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
         extractor = CLIPImageProcessor.from_pretrained(tuning_cfg.model_name, cache_dir=tuning_cfg.hf_cache_dir)
     else:

@@ -1,5 +1,5 @@
 {
-  "model_name": "openai/clip-vit-base-patch32",
+  "model_name": "microsoft/xclip-base-patch32",
   "hf_cache_dir": null,
   "reference_series_dir": "../../data/mpi/type_A",
   "num_compare_series": 5,
@@ -10,7 +10,7 @@
   "output_config_num_frames": 50,
   "direction": "maximize",
   "metric": "cosine_similarity",
-  "num_trials": 1000,
+  "num_trials": 10,
   "img_size": [
     462,
     462
