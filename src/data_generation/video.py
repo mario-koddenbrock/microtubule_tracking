@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 from config.synthetic_data import SyntheticDataConfig
-from . import utils
+from data_generation import utils
 from file_io.utils import save_ground_truth
 from plotting.plotting import mask_to_color
 
@@ -203,10 +203,10 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
 
 if __name__ == "__main__":
     output_dir = "../data/synthetic"
-    config_path = "../config/best_synthetic_config.json"
+    config_path = "../config/synthetic_config.json"
 
     config = SyntheticDataConfig.load()
-    config.id = 29
+    config.id = 30
     config.to_json(config_path)
 
     video_path, gt_path_json, gt_path_video = generate_video(config, output_dir)
