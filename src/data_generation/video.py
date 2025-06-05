@@ -8,151 +8,115 @@ from tqdm import tqdm
 
 from config.synthetic_data import SyntheticDataConfig
 from data_generation import utils
+from data_generation.tubuli import Microtubule
+from data_generation.utils import build_motion_seeds
 from file_io.utils import save_ground_truth
 from plotting.plotting import mask_to_color
 
 
-def draw_instance(cfg, frame, mask, inst_id, slope, intercept, start_pt, end_pt, vignette, jitter, return_mask):
-    """
-    Draw a single microtubule instance on the frame with optional bending and jitter.
-
-    Each instance is rendered as a series of 2D Gaussian spots aligned along the path between start_pt and end_pt.
-    If bending is enabled, the path will deviate sinusoidally.
-
-    Parameters:
-        cfg: Configuration object with simulation parameters.
-        frame: Image frame to draw on.
-        mask: Optional segmentation mask to be updated.
-        inst_id: Unique identifier for this instance.
-        slope, intercept: Line parameters.
-        start_pt, end_pt: Start and end coordinates of the instance.
-        vignette: Vignetting mask applied to the image.
-        jitter: Random offset applied to all positions.
-        return_mask: Whether to update the instance mask.
-
-    Returns:
-        List of ground truth dictionaries for the instance.
-    """
-    gt_info = []
-    start_pt_j = start_pt + jitter
-    end_pt_j = end_pt + jitter
-
-    vec = end_pt_j - start_pt_j
-    length = np.linalg.norm(vec)
-    if length == 0:
-        return gt_info
-
-    direction = vec / length
-    perp = np.array([-direction[1], direction[0]])  # perpendicular vector
-    step = 0.5  # step size along the microtubule
-    n_steps = int(length / step) + 1
-
-    for i in range(n_steps + 1):
-        t = i / n_steps
-        core_pos = start_pt_j + vec * t
-
-        # Apply bending only in the second half and if parameters are available
-        if t <= cfg.bend_straight_fraction or not hasattr(cfg, '_bend_params') or inst_id not in cfg._bend_params:
-            pos = core_pos
-        else:
-            this_amp, dynamic_straight_fraction = cfg._bend_params[inst_id]
-            if t <= (dynamic_straight_fraction + 1e-3): # avoid division by zero
-                pos = core_pos
-            else:
-                # Apply sinusoidal deviation for bending
-                step = np.pi * (t - dynamic_straight_fraction) / (1 - dynamic_straight_fraction)
-                bend_offset = this_amp * np.sin(step) * perp
-                pos = core_pos + bend_offset
-
-        # Introduce variability in spot width
-        local_sigma_x = cfg.sigma_x * (1 + np.random.normal(0, cfg.width_var_std))
-        local_sigma_y = cfg.sigma_y * (1 + np.random.normal(0, cfg.width_var_std))
-
-        # Draw only if position is inside bounds
-        if 0 <= pos[0] < cfg.img_size[1] and 0 <= pos[1] < cfg.img_size[0]:
-            ix = min(cfg.img_size[1] - 1, max(0, int(round(pos[0]))))
-            iy = min(cfg.img_size[0] - 1, max(0, int(round(pos[1]))))
-            utils.draw_tubulus(frame, pos, local_sigma_x, local_sigma_y, cfg.tubulus_contrast)
-            if return_mask:
-                mask[iy, ix] = inst_id
-
-    gt_info.append({
-        "frame_idx": cfg.frame_idx,
-        "start": start_pt_j.tolist(),
-        "end": end_pt_j.tolist(),
-        "slope": slope,
-        "intercept": intercept,
-        "length": float(np.linalg.norm(end_pt_j - start_pt_j)),
-        "instance_id": inst_id,
-    })
-    return gt_info
 
 
-def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int, *, return_mask: bool = False) -> Tuple[
-    np.ndarray, List[dict], Optional[np.ndarray]]:
-    """
-    Renders a single frame with simulated microtubule instances.
+def render_frame(cfg: SyntheticDataConfig, mts: list[Microtubule], frame_idx: int, return_mask: bool = False) \
+        -> Tuple[np.ndarray, List[dict], Optional[np.ndarray]]:
 
-    This includes:
-    - Motion based on sawtooth profiles
-    - Optional bending of microtubules
-    - Vignetting, bleaching, noise, and optional mask rendering
-
-    Returns:
-        Tuple (frame_uint8, ground_truth, mask)
-    """
+    # 1) Prepare background and optional mask
     frame = np.full(cfg.img_size, cfg.background_level, dtype=np.float32)
     mask = np.zeros(cfg.img_size, dtype=np.uint16) if return_mask else None
 
     vignette = utils.compute_vignette(cfg)
     decay = np.exp(-frame_idx / cfg.bleach_tau) if np.isfinite(cfg.bleach_tau) else 1.0
     jitter = np.random.normal(0, cfg.jitter_px, 2) if cfg.jitter_px > 0 else np.zeros(2)
-    cfg.frame_idx = frame_idx
-    gt_frame = []
-    rng = np.random.default_rng()
+    cfg._frame_idx = frame_idx
 
-    for inst_id, ((slope, intercept), start_pt), motion_profile in ((idx + 1, *seed) for idx, seed in enumerate(seeds)):
-        end_pt = utils.grow_shrink_seed(frame_idx, start_pt, slope, motion_profile, cfg.img_size, cfg.margin)
-        this_amp, dynamic_straight_fraction, apply_bend = utils.update_bend_params(cfg, inst_id, motion_profile, start_pt,
-                                                                             end_pt, rng)
-        cfg._bend_params[inst_id] = (this_amp, dynamic_straight_fraction)
-        gt_frame.extend(
-            draw_instance(cfg, frame, mask, inst_id, slope, intercept, start_pt, end_pt, vignette, jitter, return_mask))
+    all_gt = []
 
-    # Add background spots and noise after microtubules are drawn
-    frame = utils.add_fixed_spots(frame, cfg)
-    frame = utils.add_moving_spots(frame, cfg)
-    frame = utils.add_random_spots(frame, cfg)
-    frame *= decay
-    frame *= vignette
+    # 2) For each microtubule, step its length and draw
+    for mt in mts:
+        # A) Step to match the length profile:
+        mt.step_to_length(frame_idx)
 
-    if cfg.gaussian_noise > 0.0:
-        frame += np.random.normal(0, cfg.gaussian_noise, frame.shape).astype(np.float32)
+        # B) Temporarily add “jitter” to the entire chain’s base point:
+        mt.base_point += jitter
 
-    frame = utils.apply_global_blur(frame, cfg)
+        # C) Draw its wagons and collect ground truth:
+        gt_info = mt.draw(frame, mask, cfg)
+        all_gt.extend(gt_info)
 
-    frame = utils.annotate_frame(frame, frame_idx, fps=cfg.fps, show_time=cfg.show_time, show_scale=cfg.show_scale,
-                           scale_um_per_pixel=cfg.um_per_pixel, scale_length_um=cfg.scale_bar_um)
+        # D) Remove the jitter offset so it doesn’t accumulate next frame:
+        mt.base_point -= jitter
 
-    if cfg.invert_contrast:
-        frame = 2 * cfg.background_level - frame
+    # # Add background spots and noise after microtubules are drawn
+    # frame = utils.add_fixed_spots(frame, cfg)
+    # frame = utils.add_moving_spots(frame, cfg)
+    # frame = utils.add_random_spots(frame, cfg)
+    # frame *= decay
+    # frame *= vignette
+    #
+    # if cfg.gaussian_noise > 0.0:
+    #     frame += np.random.normal(0, cfg.gaussian_noise, frame.shape).astype(np.float32)
+    #
+    # frame = utils.apply_global_blur(frame, cfg)
+    #
+    # frame = utils.annotate_frame(frame, frame_idx, fps=cfg.fps, show_time=cfg.show_time, show_scale=cfg.show_scale,
+    #                        scale_um_per_pixel=cfg.um_per_pixel, scale_length_um=cfg.scale_bar_um)
+    #
+    # if cfg.invert_contrast:
+    #     frame = 2 * cfg.background_level - frame
 
     frame = np.clip(frame, 0.0, 1.0)
     frame_uint8 = (frame * 255).astype(np.uint8)
 
-    return (frame_uint8, gt_frame, mask) if return_mask else (frame_uint8, gt_frame, None)
+    return (frame_uint8, all_gt, mask) if return_mask else (frame_uint8, all_gt, None)
 
 
-def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False) -> Generator[
-    Tuple[np.ndarray, List[dict], Optional[np.ndarray]], None, None]:
-    """
-    Generator that yields each frame of the video along with its ground truth and optional instance mask.
+def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False):
+    # 1) Build a list of Microtubule objects instead of raw “seeds”:
+    mts = []
 
-    Seeds (initial positions and motion profiles) are generated once and used for all frames.
-    """
-    seeds = utils.build_motion_seeds(cfg)
+    for idx, (start_pt, motion_profile) in enumerate(build_motion_seeds(cfg), start=1):
+
+        # 1) Randomize base orientation as before:
+        base_orient = np.random.uniform(0.0, 2 * np.pi)
+
+        # 2) Draw a per‐microtubule angle_change_prob ∈ [0, cfg.max_angle_change_prob]:
+        angle_change_prob = np.random.uniform(0.0, cfg.max_angle_change_prob)
+
+        # 3) Draw base-wagon length:
+        base_len = np.random.uniform(
+            cfg.min_base_wagon_length,
+            cfg.max_base_wagon_length
+        )
+
+        # 4) Draw per-wagon length bounds:
+        min_wagon_length = np.random.uniform(
+            cfg.min_wagon_length_min,
+            cfg.min_wagon_length_max
+        )
+        max_wagon_length = np.random.uniform(
+            cfg.max_wagon_length_min,
+            cfg.max_wagon_length_max
+        )
+
+        # 5) Instantiate Microtubule with its own angle_change_prob:
+        mt = Microtubule(
+            base_point=start_pt,
+            base_orientation=base_orient,
+            base_wagon_length=base_len,
+            profile=motion_profile,
+            max_num_wagons=cfg.max_num_wagons,
+            max_angle=cfg.max_angle,
+            angle_change_prob=angle_change_prob,
+            min_wagon_length=min_wagon_length,
+            max_wagon_length=max_wagon_length,
+            instance_id=idx,
+        )
+        mt.instance_id = idx
+        mts.append(mt)
+
+    # 2) For each frame, step each microtubule and draw it:
     for frame_idx in range(cfg.num_frames):
-        yield render_frame(cfg, seeds, frame_idx, return_mask=return_mask)
+        frame, all_gt, mask = render_frame(cfg, mts, frame_idx, return_mask=return_mask)
+        yield frame, all_gt, mask
 
 
 def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
@@ -207,7 +171,7 @@ if __name__ == "__main__":
     config_path = "../config/synthetic_config.json"
 
     config = SyntheticDataConfig.load()
-    config.id = 32
+    config.id = 33
     config.to_json(config_path)
 
     video_path, gt_path_json, gt_path_video = generate_video(config, output_dir)

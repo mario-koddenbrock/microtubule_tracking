@@ -1,18 +1,29 @@
-from typing import Tuple
+from typing import Tuple, List
 
 import cv2
 import numpy as np
+from scipy.ndimage import gaussian_filter
 from scipy.spatial import distance
 
 from config.synthetic_data import SyntheticDataConfig
 from .sawtooth_profile import create_sawtooth_profile
-from scipy.ndimage import gaussian_filter
+
+import matplotlib.pyplot as plt
 
 
-def build_motion_seeds(cfg: SyntheticDataConfig):
-    """Pre‑compute slope/intercept pairs *and* their motion profiles using Poisson sampling."""
+def build_motion_seeds(
+    cfg: SyntheticDataConfig
+) -> List[Tuple[np.ndarray, np.ndarray]]:
+    """
+    Precompute, for each microtubule, its base anchor point (center) and a
+    length‐over‐time (motion_profile) array. We ignore 'slope_intercept' entirely.
 
-    # Step 1: Get evenly spaced seeds
+    Returns a list of tuples:
+        [(start_pt_1, motion_profile_1), (start_pt_2, motion_profile_2), …]
+    """
+
+    # Step 1: Get random seed positions via Poisson‐disk sampling.
+    #    get_poisson_seeds returns a list of ((slope, intercept), center) pairs.
     tubulus_seeds = get_poisson_seeds(
         img_size=cfg.img_size,
         margin=cfg.margin,
@@ -20,13 +31,18 @@ def build_motion_seeds(cfg: SyntheticDataConfig):
         max_tubuli=cfg.num_tubulus
     )
 
-    # Step 2: Attach motion profiles
-    motion_seeds = []
-    for (slope_intercept, center) in tubulus_seeds:
+    motion_seeds: List[Tuple[np.ndarray, np.ndarray]] = []
+    for (_slope_intercept, center) in tubulus_seeds:
+        # We no longer care about slope_intercept, so just ignore it.
+        start_pt = np.array(center, dtype=np.float32)
+
+        # Build a sawtooth (or sinusoid) length profile:
+        max_len = np.random.randint(cfg.max_length_min, cfg.max_length_max + 1)
+        min_len = np.random.randint(cfg.min_length_min, cfg.min_length_max + 1)
         motion_profile = create_sawtooth_profile(
             num_frames=cfg.num_frames,
-            max_length=np.random.randint(cfg.max_length_min, cfg.max_length_max + 1),
-            min_length=np.random.randint(cfg.min_length_min, cfg.min_length_max + 1),
+            max_length=max_len,
+            min_length=min_len,
             grow_frames=cfg.grow_frames,
             shrink_frames=cfg.shrink_frames,
             noise_std=cfg.profile_noise,
@@ -34,9 +50,11 @@ def build_motion_seeds(cfg: SyntheticDataConfig):
             pause_on_min_length=np.random.randint(0, cfg.pause_on_min_length + 1),
             pause_on_max_length=np.random.randint(0, cfg.pause_on_max_length + 1),
         )
-        motion_seeds.append(((slope_intercept, center), motion_profile))
+
+        motion_seeds.append((start_pt, motion_profile))
 
     return motion_seeds
+
 
 
 def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
@@ -58,7 +76,6 @@ def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
                             ((y - center[1]) ** 2) / (2 * width_std ** 2)))
         image += contrast * gaussian
     return image
-
 
 
 def draw_spots(img, spot_coords, intensity, radii, kernel_size, sigma):
@@ -88,16 +105,22 @@ def add_fixed_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
         cfg._fixed_spot_coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
 
     if not hasattr(cfg, "_fixed_spot_kernel_size"):
-        cfg._fixed_spot_kernel_size = [np.random.randint(cfg.fixed_spot_kernel_size_min, cfg.fixed_spot_kernel_size_max + 1) for _ in range(n_spots)]
+        cfg._fixed_spot_kernel_size = [
+            np.random.randint(cfg.fixed_spot_kernel_size_min, cfg.fixed_spot_kernel_size_max + 1) for _ in
+            range(n_spots)]
 
     if not hasattr(cfg, "_fixed_spot_intensities"):
-        cfg._fixed_spot_intensities = [np.random.uniform(cfg.fixed_spot_intensity_min, cfg.fixed_spot_intensity_max + 1) for _ in range(n_spots)]
+        cfg._fixed_spot_intensities = [np.random.uniform(cfg.fixed_spot_intensity_min, cfg.fixed_spot_intensity_max + 1)
+                                       for _ in range(n_spots)]
 
     if not hasattr(cfg, "_fixed_spot_radii"):
-        cfg._fixed_spot_radii = [np.random.randint(cfg.fixed_spot_radius_min, cfg.fixed_spot_radius_max + 1) for _ in range(n_spots)]
+        cfg._fixed_spot_radii = [np.random.randint(cfg.fixed_spot_radius_min, cfg.fixed_spot_radius_max + 1) for _ in
+                                 range(n_spots)]
 
-    img = draw_spots(img, cfg._fixed_spot_coords, cfg._fixed_spot_intensities, cfg._fixed_spot_radii, cfg._fixed_spot_kernel_size, sigma)
+    img = draw_spots(img, cfg._fixed_spot_coords, cfg._fixed_spot_intensities, cfg._fixed_spot_radii,
+                     cfg._fixed_spot_kernel_size, sigma)
     return img
+
 
 def add_moving_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     n_spots = cfg.moving_spot_count
@@ -112,21 +135,29 @@ def add_moving_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     cfg._moving_spot_coords = [(y + step_y[i], x + step_x[i]) for i, (y, x) in enumerate(cfg._moving_spot_coords)]
 
     if not hasattr(cfg, "_moving_spot_kernel_size"):
-        cfg._moving_spot_kernel_size = [np.random.randint(cfg.moving_spot_kernel_size_min, cfg.moving_spot_kernel_size_max + 1) for _ in range(n_spots)]
+        cfg._moving_spot_kernel_size = [
+            np.random.randint(cfg.moving_spot_kernel_size_min, cfg.moving_spot_kernel_size_max + 1) for _ in
+            range(n_spots)]
 
     if not hasattr(cfg, "_moving_spot_intensities"):
-        cfg._moving_spot_intensities = [np.random.uniform(cfg.moving_spot_intensity_min, cfg.moving_spot_intensity_max + 1) for _ in range(n_spots)]
+        cfg._moving_spot_intensities = [
+            np.random.uniform(cfg.moving_spot_intensity_min, cfg.moving_spot_intensity_max + 1) for _ in range(n_spots)]
 
     if not hasattr(cfg, "_moving_spot_radii"):
-        cfg._moving_spot_radii = [np.random.randint(cfg.moving_spot_radius_min, cfg.moving_spot_radius_max + 1) for _ in range(n_spots)]
+        cfg._moving_spot_radii = [np.random.randint(cfg.moving_spot_radius_min, cfg.moving_spot_radius_max + 1) for _ in
+                                  range(n_spots)]
 
-    img = draw_spots(img, cfg._moving_spot_coords, cfg._moving_spot_intensities, cfg._moving_spot_radii, cfg._moving_spot_kernel_size, sigma)
+    img = draw_spots(img, cfg._moving_spot_coords, cfg._moving_spot_intensities, cfg._moving_spot_radii,
+                     cfg._moving_spot_kernel_size, sigma)
     return img
+
 
 def add_random_spots(img: np.ndarray, cfg: SyntheticDataConfig) -> np.ndarray:
     n_spots = cfg.random_spot_count
-    intensity = [np.random.uniform(cfg.random_spot_intensity_min, cfg.random_spot_intensity_max) for _ in range(n_spots)]
-    kernel_size = [np.random.randint(cfg.random_spot_kernel_size_min, cfg.random_spot_kernel_size_max + 1) for _ in range(n_spots)]
+    intensity = [np.random.uniform(cfg.random_spot_intensity_min, cfg.random_spot_intensity_max) for _ in
+                 range(n_spots)]
+    kernel_size = [np.random.randint(cfg.random_spot_kernel_size_min, cfg.random_spot_kernel_size_max + 1) for _ in
+                   range(n_spots)]
     radii = [np.random.randint(cfg.random_spot_radius_min, cfg.random_spot_radius_max + 1) for _ in range(n_spots)]
     sigma = cfg.random_spot_sigma
     h, w = img.shape
@@ -187,7 +218,6 @@ def get_poisson_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max
     return seeds
 
 
-
 def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int, int], margin: int):
     net_motion = motion_profile[frame]
 
@@ -202,6 +232,7 @@ def grow_shrink_seed(frame, original, slope, motion_profile, img_size: tuple[int
     # end_y = np.clip(end_y, margin, img_size[0] - margin)
 
     return np.array([end_x, end_y])
+
 
 def annotate_frame(frame, frame_idx, fps=5, show_time=True, show_scale=True, scale_um_per_pixel=0.1, scale_length_um=5):
     """
@@ -239,6 +270,7 @@ def annotate_frame(frame, frame_idx, fps=5, show_time=True, show_scale=True, sca
 
     return annotated
 
+
 def compute_vignette(cfg: SyntheticDataConfig) -> np.ndarray:
     if cfg.vignetting_strength <= 0.0:
         return 1.0
@@ -248,8 +280,9 @@ def compute_vignette(cfg: SyntheticDataConfig) -> np.ndarray:
     vignette = 1.0 - cfg.vignetting_strength * (norm_x ** 2 + norm_y ** 2)
     return np.clip(vignette, 0.5, 1.0)
 
+
 def update_bend_params(cfg: SyntheticDataConfig, inst_id: int, motion_profile: np.ndarray,
-                        start_pt: np.ndarray, end_pt: np.ndarray, rng: np.random.Generator) -> Tuple[float, float, bool]:
+                       start_pt: np.ndarray, end_pt: np.ndarray, rng: np.random.Generator) -> Tuple[float, float, bool]:
     total_length = np.linalg.norm(end_pt - start_pt)
 
     if not hasattr(cfg, "_bend_params"):
@@ -265,3 +298,81 @@ def update_bend_params(cfg: SyntheticDataConfig, inst_id: int, motion_profile: n
         this_amp, dynamic_straight_fraction = cfg._bend_params[inst_id]
         apply_bend = this_amp > 0.0
     return this_amp, dynamic_straight_fraction, apply_bend
+
+
+def draw_gaussian_line(frame: np.ndarray,
+                       mask: np.ndarray,
+                       start_pt: np.ndarray,
+                       end_pt: np.ndarray,
+                       sigma_x: float,
+                       sigma_y: float,
+                       contrast: float,
+                       mask_idx: int = 0,
+                       ):
+    """
+    Rasterize a straight line from start_pt → end_pt by placing small 2D Gaussian
+    spots (with standard deviations sigma_x, sigma_y and given contrast) at regular
+    intervals (~0.5 px) along the line. This modifies `frame` in place.
+
+    Parameters:
+        frame:      2D numpy array of shape (H, W), float32 or float64, holding the image.
+        mask:       2D numpy array of shape (H, W), float32 or float64, holding the mask.
+        start_pt:   length-2 array-like (x0, y0) giving the line’s starting coordinates.
+        end_pt:     length-2 array-like (x1, y1) giving the line’s end coordinates.
+        sigma_x:    Standard deviation of the Gaussian in the x-direction (pixels).
+        sigma_y:    Standard deviation of the Gaussian in the y-direction (pixels).
+        contrast:   Scalar multiplier for each Gaussian spot’s amplitude.
+        mask_idx:   Index for the mask, if applicable (default 0).
+
+    Notes:
+        - If the line length is zero (start == end), this simply draws one Gaussian at start_pt.
+        - For performance, we compute a meshgrid (frame_x, frame_y) once per call,
+          though in a tight loop you might precompute it outside and pass it in.
+    """
+    H, W = frame.shape
+    # Create coordinate grids for all pixel centers
+    yy, xx = np.mgrid[0: H, 0: W]  # yy[i,j]=i, xx[i,j]=j
+
+    # Convert inputs to numpy arrays of dtype float
+    x0, y0 = float(start_pt[0]), float(start_pt[1])
+    x1, y1 = float(end_pt[0]), float(end_pt[1])
+
+    # Vector from start to end
+    vec = np.array([x1 - x0, y1 - y0], dtype=np.float32)
+    length = np.linalg.norm(vec)
+
+    # If the segment has zero length, just draw a single Gaussian at (x0, y0)
+    if length == 0:
+        dx = xx - x0
+        dy = yy - y0
+        gaussian = np.exp(-((dx ** 2) / (2 * sigma_x ** 2) + (dy ** 2) / (2 * sigma_y ** 2)))
+        frame += contrast * gaussian
+        mask[yy, xx] = mask_idx  # Set mask at the single point
+        return frame, mask
+
+    # Unit direction vector
+    direction = vec / length
+
+    # Choose step size ≈0.5 px (adjust for smoother/faster drawing)
+    step = 0.5
+    num_steps = int(np.ceil(length / step))
+
+    # For each sample point along the line, place a 2D Gaussian:
+    for i in range(num_steps + 1):
+        t = i / num_steps
+        x = x0 + t * vec[0]
+        y = y0 + t * vec[1]
+
+        # Compute squared distances from (x, y) to every pixel center:
+        dx = xx - x
+        dy = yy - y
+        gaussian = np.exp(-((dx ** 2) / (2 * sigma_x ** 2) + (dy ** 2) / (2 * sigma_y ** 2)))
+
+        # Accumulate into the frame
+        frame += contrast * gaussian
+
+        # Update the mask at this point
+        center_pt = (int(np.round(x)), int(np.round(y)))
+        cv2.circle(mask, center_pt, 1, mask_idx, thickness=1, lineType=8, shift=0)
+
+    return frame, mask

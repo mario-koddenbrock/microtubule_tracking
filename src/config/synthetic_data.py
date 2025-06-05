@@ -31,8 +31,8 @@ class SyntheticDataConfig(BaseConfig):
     # ─── core video info ────────────────────────────────────
     id: int | str = 0
     img_size: Tuple[int, int] = (462, 462)  # (H, W)
-    fps: int = 5
-    num_frames: int = 50
+    fps: int = 1
+    num_frames: int = 30
     color_mode: bool = False
 
     # ─── microtubule kinematics ────────────────────────────
@@ -40,7 +40,7 @@ class SyntheticDataConfig(BaseConfig):
     shrink_frames: int = 10
     profile_noise: float = 5
 
-    mmin_base_wagon_length: float = 30.0
+    min_base_wagon_length: float = 30.0
     max_base_wagon_length: float = 30.0
     max_num_wagons: int = 5
     max_angle: float = math.pi / 4
@@ -51,10 +51,11 @@ class SyntheticDataConfig(BaseConfig):
     max_length_min: int = 100
     max_length_max: int = 200
 
-    min_wagon_length_min: int = 50
-    min_wagon_length_max: int = 80
-    max_wagon_length_min: int = 100
-    max_wagon_length_max: int = 200
+    min_wagon_length_min: int = 5  # smallest length a wagon can shrink to
+    min_wagon_length_max: int = 10  # (you can tune this range later)
+    max_wagon_length_min: int = 50  # when a wagon exceeds this, split
+    max_wagon_length_max: int = 100  #
+
     pause_on_max_length: int = 2
     pause_on_min_length: int = 5
 
@@ -93,12 +94,12 @@ class SyntheticDataConfig(BaseConfig):
 
     moving_spot_count: int = 20
     moving_spot_intensity_min: float = 0.005
-    moving_spot_intensity_max: float = 0.08
+    moving_spot_intensity_max: float = 0.01
     moving_spot_radius_min: int = 1
     moving_spot_radius_max: int = 3
     moving_spot_kernel_size_min: int = 0
-    moving_spot_kernel_size_max: int = 2
-    moving_spot_sigma: float = 0.3
+    moving_spot_kernel_size_max: int = 4
+    moving_spot_sigma: float = 0.1
     moving_spot_max_step: int = 5
 
 
@@ -109,7 +110,7 @@ class SyntheticDataConfig(BaseConfig):
     random_spot_radius_max: int = 5
     random_spot_kernel_size_min: int = 0
     random_spot_kernel_size_max: int = 2
-    random_spot_sigma: float = 0.5
+    random_spot_sigma: float = 0.2
 
     # ─── annotations ─────────────────────────────────────
     show_time:bool = True
@@ -122,7 +123,15 @@ class SyntheticDataConfig(BaseConfig):
 
     # ─── validation helper (optional) ─────────────────────
     def validate(self):
-        assert 0 <= self.background_level <= 1, "background_level must be 0-1"
-        assert 0 <= self.gaussian_noise <= 1, "gaussian_noise must be 0-1"
+        assert 0 <= self.background_level <= 1, "background_level must be 0–1"
+        assert 0 <= self.gaussian_noise <= 1, "gaussian_noise must be 0–1"
         assert self.num_frames > 0 and self.fps > 0, "frames & fps must be >0"
         assert self.jitter_px >= 0, "jitter_px must be ≥0"
+
+        # ─── checks for wagons ───────────────────────────
+        assert self.max_num_wagons >= 1, "max_num_wagons must be ≥1"
+        assert self.min_base_wagon_length == self.max_base_wagon_length, "base wagon must have fixed length"
+        assert 0 <= self.max_angle_change_prob <= 1, "angle_change_prob must be between 0 and 1"
+        assert self.min_wagon_length_min < self.min_wagon_length_max, "min_wagon_length_min < min_wagon_length_max"
+        assert self.max_wagon_length_min < self.max_wagon_length_max, "max_wagon_length_min < max_wagon_length_max"
+

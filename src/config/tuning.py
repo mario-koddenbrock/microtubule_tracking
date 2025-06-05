@@ -66,11 +66,11 @@ class TuningConfig(BaseConfig):
         fixed_spot_sigma_range (Tuple[float, float]): Range for fixed spot sigma.
 
         # Moving spots (ranges)
-        moving_spot_count_range (Tuple[int, int]): Range for number of moving spots.
-        moving_spot_intensity_range (Tuple[float, float]): Range for moving spot intensity.
-        moving_spot_radius_range (Tuple[int, int]): Range for moving spot radius.
-        moving_spot_kernel_size_range (Tuple[int, int]): Range for moving spot kernel size.
-        moving_spot_sigma_range (Tuple[float, float]): Range for moving spot sigma.
+        random_spot_count_range (Tuple[int, int]): Range for number of moving spots.
+        random_spot_intensity_range (Tuple[float, float]): Range for moving spot intensity.
+        random_spot_radius_range (Tuple[int, int]): Range for moving spot radius.
+        random_spot_kernel_size_range (Tuple[int, int]): Range for moving spot kernel size.
+        random_spot_sigma_range (Tuple[float, float]): Range for moving spot sigma.
 
         # Annotations
         show_time_options (List[bool]): Options to show or hide time.
@@ -142,11 +142,11 @@ class TuningConfig(BaseConfig):
     fixed_spot_sigma_range: Tuple[float, float] = (0.1, 5.0)
 
     # ─── Moving spots ranges ───────────────────────────────────────────────────
-    moving_spot_count_range: Tuple[int, int] = (0, 50)
-    moving_spot_intensity_range: Tuple[float, float] = (0.0, 0.1)
-    moving_spot_radius_range: Tuple[int, int] = (1, 20)
-    moving_spot_kernel_size_range: Tuple[int, int] = (0, 10)
-    moving_spot_sigma_range: Tuple[float, float] = (0.1, 5.0)
+    random_spot_count_range: Tuple[int, int] = (0, 50)
+    random_spot_intensity_range: Tuple[float, float] = (0.0, 0.1)
+    random_spot_radius_range: Tuple[int, int] = (1, 20)
+    random_spot_kernel_size_range: Tuple[int, int] = (0, 10)
+    random_spot_sigma_range: Tuple[float, float] = (0.1, 5.0)
 
     # ─── Annotation ranges ────────────────────────────────────────────────────
     show_time_options: List[bool] = (True, False)
