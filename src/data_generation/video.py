@@ -8,6 +8,8 @@ from tqdm import tqdm
 
 from config.synthetic_data import SyntheticDataConfig
 from data_generation import utils
+from data_generation.spots import SpotGenerator
+from data_generation.utils import apply_random_spots
 from file_io.utils import save_ground_truth
 from plotting.plotting import mask_to_color
 
@@ -88,8 +90,14 @@ def draw_instance(cfg, frame, mask, inst_id, slope, intercept, start_pt, end_pt,
     return gt_info
 
 
-def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int, *, return_mask: bool = False) -> Tuple[
-    np.ndarray, List[dict], Optional[np.ndarray]]:
+def render_frame(
+        cfg: SyntheticDataConfig,
+        seeds,
+        frame_idx: int,
+        fixed_spot_generator: SpotGenerator,
+        moving_spot_generator: SpotGenerator,
+        return_mask: bool = False) \
+        -> Tuple[np.ndarray, List[dict], Optional[np.ndarray]]:
     """
     Renders a single frame with simulated microtubule instances.
 
@@ -119,10 +127,19 @@ def render_frame(cfg: SyntheticDataConfig, seeds, frame_idx: int, *, return_mask
         gt_frame.extend(
             draw_instance(cfg, frame, mask, inst_id, slope, intercept, start_pt, end_pt, vignette, jitter, return_mask))
 
-    # Add background spots and noise after microtubules are drawn
-    frame = utils.add_fixed_spots(frame, cfg)
-    frame = utils.add_moving_spots(frame, cfg)
-    frame = utils.add_random_spots(frame, cfg)
+
+    # 1. Apply fixed spots
+    frame = fixed_spot_generator.apply(frame)
+
+    # 2. Apply moving spots (at their current positions)
+    frame = moving_spot_generator.apply(frame)
+
+    # 3. Apply random spots (which are new every frame)
+    frame = apply_random_spots(frame, cfg.random_spots)
+
+    # 4. Update the state of the moving spots for the *next* frame
+    moving_spot_generator.update()
+
     frame *= decay
     frame *= vignette
 
@@ -151,8 +168,11 @@ def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False) -> G
     Seeds (initial positions and motion profiles) are generated once and used for all frames.
     """
     seeds = utils.build_motion_seeds(cfg)
+    fixed_spot_generator = SpotGenerator(cfg.fixed_spots, cfg.img_size)
+    moving_spot_generator = SpotGenerator(cfg.moving_spots, cfg.img_size)
+
     for frame_idx in range(cfg.num_frames):
-        yield render_frame(cfg, seeds, frame_idx, return_mask=return_mask)
+        yield render_frame(cfg, seeds, frame_idx, fixed_spot_generator, moving_spot_generator, return_mask=return_mask)
 
 
 def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):

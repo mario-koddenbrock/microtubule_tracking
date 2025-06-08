@@ -1,8 +1,9 @@
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple
 
 from .base import BaseConfig
+from .spots import SpotConfig
 
 
 @dataclass(eq=False)
@@ -82,34 +83,15 @@ class SyntheticDataConfig(BaseConfig):
     invert_contrast: bool = True  # whether to invert the contrast of the image
     global_blur_sigma: float = 0.9  # global blur applied to the whole image
 
-    fixed_spot_count: int = 30
-    fixed_spot_intensity_min: float = 0.005
-    fixed_spot_intensity_max: float = 0.1
-    fixed_spot_radius_min: int = 1
-    fixed_spot_radius_max: int = 3
-    fixed_spot_kernel_size_min: int = 0
-    fixed_spot_kernel_size_max: int = 3
-    fixed_spot_sigma: float = 0.1
-
-    moving_spot_count: int = 20
-    moving_spot_intensity_min: float = 0.005
-    moving_spot_intensity_max: float = 0.08
-    moving_spot_radius_min: int = 1
-    moving_spot_radius_max: int = 3
-    moving_spot_kernel_size_min: int = 0
-    moving_spot_kernel_size_max: int = 2
-    moving_spot_sigma: float = 0.3
-    moving_spot_max_step: int = 5
-
-
-    random_spot_count: int = 20
-    random_spot_intensity_min: float = 0.005
-    random_spot_intensity_max: float = 0.08
-    random_spot_radius_min: int = 1
-    random_spot_radius_max: int = 5
-    random_spot_kernel_size_min: int = 0
-    random_spot_kernel_size_max: int = 2
-    random_spot_sigma: float = 0.5
+    fixed_spots: SpotConfig = field(default_factory=lambda: SpotConfig(
+        count=30, intensity_max=0.1, radius_max=3, kernel_size_max=3, sigma=0.1
+    ))
+    moving_spots: SpotConfig = field(default_factory=lambda: SpotConfig(
+        count=20, intensity_max=0.08, radius_max=3, kernel_size_max=2, sigma=0.3, max_step=5
+    ))
+    random_spots: SpotConfig = field(default_factory=lambda: SpotConfig(
+        count=20, intensity_max=0.08, radius_max=5, kernel_size_max=2, sigma=0.5
+    ))
 
     # ─── annotations ─────────────────────────────────────
     show_time:bool = True
