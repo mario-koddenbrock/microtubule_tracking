@@ -172,9 +172,9 @@ class ImageEmbeddingExtractor:
         raw_embeddings = []
         frame_generator = generate_frames(synthetic_cfg)
 
-        for frame_uint8, *_ in tqdm(frame_generator, total=synthetic_cfg.num_frames,
+        for frame, *_ in tqdm(frame_generator, total=synthetic_cfg.num_frames,
                                     desc="Generating and processing frames"):
-            rgb_frame = cv2.cvtColor(frame_uint8, cv2.COLOR_GRAY2RGB)
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
             emb = self._compute_embedding(rgb_frame)
             raw_embeddings.append(emb)
 

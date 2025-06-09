@@ -19,13 +19,17 @@ class BaseConfig(ABC):
         """
         data = {}
         if config_path:
-            if not os.path.exists(config_path):
-                raise FileNotFoundError(f"Config file not found: {config_path}")
+            # Convert to string here to handle both str and Path objects
+            config_path_str = str(config_path)
 
-            with open(config_path, 'r') as f:
-                if config_path.endswith(('.yml', '.yaml')):
+            if not os.path.exists(config_path_str):
+                raise FileNotFoundError(f"Config file not found: {config_path_str}")
+
+            with open(config_path_str, 'r') as f:
+                # Use the string version for checks
+                if config_path_str.endswith(('.yml', '.yaml')):
                     data = yaml.safe_load(f) or {}
-                elif config_path.endswith('.json'):
+                elif config_path_str.endswith('.json'):
                     data = json.load(f) or {}
                 else:
                     raise ValueError("Unsupported config file format. Use .yml, .yaml, or .json")
