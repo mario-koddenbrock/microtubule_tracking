@@ -31,7 +31,7 @@ def test_create_config_from_trial():
         "shrink_frames": 15,
         "grow_frames": 25,
         "profile_noise": 5.0,
-        "mmin_base_wagon_length": 20.0,
+        "min_base_wagon_length": 20.0,
         "max_base_wagon_length": 30.0,
         "max_num_wagons": 5,
         "max_angle": 1.0,

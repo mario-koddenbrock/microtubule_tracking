@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Optional, Generator
+from typing import List, Tuple, Optional
 
 import cv2
 import imageio
@@ -9,13 +9,11 @@ from tqdm import tqdm
 from config.synthetic_data import SyntheticDataConfig
 from data_generation import utils
 from data_generation.spots import SpotGenerator
-from data_generation.utils import apply_random_spots
 from data_generation.tubuli import Microtubule
+from data_generation.utils import apply_random_spots
 from data_generation.utils import build_motion_seeds
 from file_io.utils import save_ground_truth
 from plotting.plotting import mask_to_color
-
-
 
 
 def render_frame(
@@ -70,13 +68,14 @@ def render_frame(
     frame *= vignette
     frame *= decay
     frame *= vignette
-     if cfg.gaussian_noise > 0.0:
+    if cfg.gaussian_noise > 0.0:
         frame += np.random.normal(0, cfg.gaussian_noise, frame.shape).astype(np.float32)
+
 
     frame = utils.apply_global_blur(frame, cfg)
 
     frame = utils.annotate_frame(frame, frame_idx, fps=cfg.fps, show_time=cfg.show_time, show_scale=cfg.show_scale,
-                           scale_um_per_pixel=cfg.um_per_pixel, scale_length_um=cfg.scale_bar_um)
+                                 scale_um_per_pixel=cfg.um_per_pixel, scale_length_um=cfg.scale_bar_um)
 
     if cfg.invert_contrast:
         frame = 2 * cfg.background_level - frame
@@ -92,7 +91,6 @@ def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False):
     mts = []
 
     for idx, (start_pt, motion_profile) in enumerate(build_motion_seeds(cfg), start=1):
-
         # 1) Randomize base orientation as before:
         base_orient = np.random.uniform(0.0, 2 * np.pi)
 
@@ -136,7 +134,8 @@ def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False):
 
     # 2) For each frame, step each microtubule and draw it:
     for frame_idx in range(cfg.num_frames):
-        frame, all_gt, mask = render_frame(cfg, mts, frame_idx, fixed_spot_generator, moving_spot_generator, return_mask=return_mask)
+        frame, all_gt, mask = render_frame(cfg, mts, frame_idx, fixed_spot_generator, moving_spot_generator,
+                                           return_mask=return_mask)
         yield frame, all_gt, mask
 
 

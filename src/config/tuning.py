@@ -117,7 +117,7 @@ class TuningConfig(BaseConfig):
     pause_on_min_length_range: Tuple[int, int] = (0, 10)
 
     # ─── Wagon kinematics ranges (NEWLY ADDED) ────────────────────────
-    mmin_base_wagon_length_range: Tuple[float, float] = (10.0, 50.0)
+    min_base_wagon_length_range: Tuple[float, float] = (10.0, 50.0)
     max_base_wagon_length_range: Tuple[float, float] = (10.0, 50.0)
     max_num_wagons_range: Tuple[int, int] = (1, 10)
     max_angle_range: Tuple[float, float] = (0.1, math.pi / 2)
@@ -201,7 +201,7 @@ class TuningConfig(BaseConfig):
         pause_on_min_length = trial.suggest_int("pause_on_min_length", *self.pause_on_min_length_range)
 
         # Wagon kinematics (NEWLY ADDED)
-        mmin_base_wagon_length = trial.suggest_float("mmin_base_wagon_length", *self.mmin_base_wagon_length_range)
+        min_base_wagon_length = trial.suggest_float("min_base_wagon_length", *self.min_base_wagon_length_range)
         max_base_wagon_length = trial.suggest_float("max_base_wagon_length", *self.max_base_wagon_length_range)
         max_num_wagons = trial.suggest_int("max_num_wagons", *self.max_num_wagons_range)
         max_angle = trial.suggest_float("max_angle", *self.max_angle_range)
@@ -254,7 +254,7 @@ class TuningConfig(BaseConfig):
             grow_frames=grow_frames,
             shrink_frames=shrink_frames,
             profile_noise=profile_noise,
-            mmin_base_wagon_length=mmin_base_wagon_length,
+            min_base_wagon_length=min_base_wagon_length,
             max_base_wagon_length=max_base_wagon_length,
             max_num_wagons=max_num_wagons,
             max_angle=max_angle,
