@@ -3,7 +3,7 @@ import optuna
 from sklearn.metrics.pairwise import cosine_similarity
 
 from config.tuning import TuningConfig
-from data_generation.embeddings import ImageEmbeddingExtractor
+from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 
 
 def evaluate_similarity(

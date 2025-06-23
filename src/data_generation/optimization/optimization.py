@@ -1,12 +1,10 @@
 import os
 from functools import partial
-from pathlib import Path
 
 import optuna
 
-from data_generation.embeddings import ImageEmbeddingExtractor
+from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.optimization.objective import objective
-from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
 
 

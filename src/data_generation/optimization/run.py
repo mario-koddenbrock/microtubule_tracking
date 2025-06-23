@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
 from config.synthetic_data import SyntheticDataConfig
-from data_generation.embeddings import ImageEmbeddingExtractor
+from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 
 
 def run_objective(
