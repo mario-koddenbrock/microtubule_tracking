@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from config.tuning import TuningConfig
-from data_generation.embeddings import ImageEmbeddingExtractor
+from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 
 
 @pytest.fixture
