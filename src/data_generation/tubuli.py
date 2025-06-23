@@ -55,6 +55,7 @@ class Microtubule:
         # 3) Store parameters for later use:
         self.base_point = base_point.copy()
         self.base_orientation = base_orientation
+        self.base_wagon_length = base_wagon_length
         self.profile = profile         # sawtooth or sinusoid length over time
         self.max_num_wagons = max_num_wagons
         self.max_angle = max_angle
@@ -71,81 +72,72 @@ class Microtubule:
     def total_length(self) -> float:
         return sum(w.length for w in self.wagons)
 
+
     def step_to_length(self, frame_idx: int):
         """
         Adjust wagons so that total_length == profile[frame_idx],
-        never touching the fixed base wagon (index 0).
+        preserving the angular chain for both shrinking and growing.
         """
         target_length = self.profile[frame_idx]
-        current_length = sum(w.length for w in self.wagons)
-        delta_length = target_length - current_length
 
-        # If only the base wagon exists, and we need to grow:
-        if len(self.wagons) == 1 and target_length > self.wagons[0].length:
-            new_len = target_length - self.wagons[0].length
-            # sample a random angle if allowed
-            angle = 0.0
-            if self.angle_change_prob > 0.0:
-                angle = np.random.uniform(-self.max_angle, self.max_angle)
-            self.wagons.append(Wagon(length=new_len, angle=angle, fixed=False))
-            self.current_length = target_length
+        # 1. The base wagon can shrink if the total length is less than its
+        #    default length, but it grows back to its default length otherwise.
+        self.wagons[0].length = min(self.base_wagon_length, target_length)
+
+        # 2. The target length for the DYNAMIC part of the train is whatever
+        #    remains after the base wagon is accounted for.
+        target_dynamic_length = max(0.0, target_length - self.wagons[0].length)
+
+        # 3. Get the current length of all dynamic wagons (index >= 1).
+        current_dynamic_length = sum(w.length for w in self.wagons[1:])
+
+        # 4. Calculate the change needed for the dynamic part.
+        delta = target_dynamic_length - current_dynamic_length
+
+        if abs(delta) < 1e-6:  # No significant change needed
+            self.current_length = sum(w.length for w in self.wagons)
             return
 
-        # Otherwise, distribute delta_length among dynamic wagons (indices ≥ 1)
-        remainder = delta_length
+        # ─── GROWING DYNAMIC PART ──────────────────────────────────────────
+        if delta > 0:
+            to_add = delta
+            # First, re-inflate existing dynamic wagons that have shrunk.
+            # This makes the microtubule "remember" its shape.
+            for i in range(1, len(self.wagons)):
+                wagon = self.wagons[i]
+                space_available = self.max_wagon_length - wagon.length
+                can_add = min(to_add, space_available)
 
-        # ─── GROWING ─────────────────────────────────────────────────────────
-        if delta_length > 0:
-            idx = len(self.wagons) - 1  # start with the tip wagon
-            while remainder > 0 and idx >= 1:
-                w = self.wagons[idx]
-                w.length += remainder
-                # If it exceeds max_wagon_length and can split:
-                if w.length > self.max_wagon_length and len(self.wagons) < self.max_num_wagons:
-                    excess = w.length - self.max_wagon_length
-                    w.length = self.max_wagon_length
-                    # create a new wagon for the excess
-                    angle = 0.0
-                    if self.angle_change_prob > 0.0:
-                        angle = np.random.uniform(-self.max_angle, self.max_angle)
-                    self.wagons.append(Wagon(length=excess, angle=angle, fixed=False))
-                    remainder = excess
-                    idx = len(self.wagons) - 1
-                else:
-                    remainder = 0.0
-                # If we still have remainder but cannot add more wagons (we’re at max):
-                if remainder > 0 and idx == 1 and len(self.wagons) == self.max_num_wagons:
-                    # clamp the tip beyond max if needed
-                    w.length += remainder
-                    remainder = 0.0
-                idx -= 1
+                wagon.length += can_add
+                to_add -= can_add
 
-        # ─── SHRINKING ────────────────────────────────────────────────────────
-        elif delta_length < 0:
-            remainder = -delta_length  # positive amount to remove
-            idx = len(self.wagons) - 1
-            while remainder > 0 and idx >= 1:
-                w = self.wagons[idx]
-                w.length -= remainder
-                if w.length < self.min_wagon_length and idx > 1:
-                    deficit = self.min_wagon_length - w.length
-                    # remove this entire wagon
-                    self.wagons.pop(idx)
-                    idx -= 1
-                    self.wagons[idx].length -= deficit
-                    remainder = deficit
-                else:
-                    if w.length < 0:
-                        w.length = 0.0
-                    remainder = 0.0
-                idx -= 1
+                if to_add <= 1e-6:
+                    break
 
-            # If we still have “too much shrink” and only base remains:
-            if remainder > 0:
-                # collapse everything except the base
-                self.wagons = [self.wagons[0]]
-                self.wagons[0].length = self.profile[frame_idx]
-        # Update total
+            # If there's still growth left, it means all existing wagons are full.
+            # Now, and only now, we add new wagons at the tip.
+            while to_add > 1e-6 and len(self.wagons) < self.max_num_wagons:
+                angle = np.random.uniform(-self.max_angle, self.max_angle) if self.angle_change_prob > 0 else 0.0
+                new_wagon_len = min(to_add, self.max_wagon_length)
+                self.wagons.append(Wagon(length=new_wagon_len, angle=angle, fixed=False))
+                to_add -= new_wagon_len
+
+        # ─── SHRINKING DYNAMIC PART ────────────────────────────────────────
+        elif delta < 0:
+            to_remove = -delta
+            # Shrink from the tip backwards. We set length to 0 but do not delete
+            # the wagon, which preserves the angle for the next growth cycle.
+            for i in range(len(self.wagons) - 1, 0, -1):
+                wagon = self.wagons[i]
+                length_to_remove_from_this_wagon = min(to_remove, wagon.length)
+
+                wagon.length -= length_to_remove_from_this_wagon
+                to_remove -= length_to_remove_from_this_wagon
+
+                if to_remove <= 1e-6:
+                    break
+
+        # Update total length for convenience.
         self.current_length = sum(w.length for w in self.wagons)
 
     def maybe_rebend(self):
