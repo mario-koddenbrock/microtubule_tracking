@@ -61,7 +61,7 @@ class SyntheticDataConfig(BaseConfig):
     pause_on_min_length: int = 10
 
     num_tubulus: int = 20
-    tubuli_min_dist:int = 20
+    tubuli_min_dist:int = 50
     margin: int = 5
 
     width_var_std: float = 0.05  # std of the width variation (relative to the mean width)
