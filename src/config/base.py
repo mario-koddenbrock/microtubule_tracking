@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from abc import abstractmethod, ABC
@@ -113,6 +114,14 @@ class BaseConfig(ABC):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as f:
             json.dump(self.asdict(), f, indent=2)
+
+    def copy(self, deep: bool = True):
+        if deep:
+            # Use the standard library's deepcopy for a robust, recursive copy.
+            return copy.deepcopy(self)
+        else:
+            # Use the standard library's shallow copy.
+            return copy.copy(self)
 
     # These classmethods now just become simple wrappers around load()
     @classmethod
