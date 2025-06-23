@@ -32,33 +32,33 @@ class SyntheticDataConfig(BaseConfig):
     # ─── core video info ────────────────────────────────────
     id: int | str = 0
     img_size: Tuple[int, int] = (462, 462)  # (H, W)
-    fps: int = 1
-    num_frames: int = 30
+    fps: int = 5
+    num_frames: int = 100
     color_mode: bool = False
 
     # ─── microtubule kinematics ────────────────────────────
-    grow_frames: int = 20
+    grow_frames: int = 30
     shrink_frames: int = 10
     profile_noise: float = 5
 
-    min_base_wagon_length: float = 30.0
-    max_base_wagon_length: float = 30.0
-    max_num_wagons: int = 5
-    max_angle: float = math.pi / 4
-    max_angle_change_prob: float = 0.05
+    min_base_wagon_length: float = 10.0
+    max_base_wagon_length: float = 60.0
+    max_num_wagons: int = 20
+    max_angle: float = math.pi / 16
+    max_angle_change_prob: float = 0.001
 
     min_length_min: int = 50
     min_length_max: int = 80
     max_length_min: int = 100
     max_length_max: int = 200
 
-    min_wagon_length_min: int = 5  # smallest length a wagon can shrink to
-    min_wagon_length_max: int = 10  # (you can tune this range later)
-    max_wagon_length_min: int = 50  # when a wagon exceeds this, split
-    max_wagon_length_max: int = 100  #
+    min_wagon_length_min: int = 5
+    min_wagon_length_max: int = 20
+    max_wagon_length_min: int = 20
+    max_wagon_length_max: int = 100
 
-    pause_on_max_length: int = 2
-    pause_on_min_length: int = 5
+    pause_on_max_length: int = 5
+    pause_on_min_length: int = 10
 
     num_tubulus: int = 20
     tubuli_min_dist:int = 20
