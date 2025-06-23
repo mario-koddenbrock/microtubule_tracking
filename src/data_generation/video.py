@@ -13,7 +13,7 @@ from data_generation.tubuli import Microtubule
 from data_generation.utils import apply_random_spots
 from data_generation.utils import build_motion_seeds
 from file_io.utils import save_ground_truth
-from plotting.plotting import mask_to_color
+from skimage.color import label2rgb
 
 
 def render_frame(
@@ -34,7 +34,7 @@ def render_frame(
     jitter = np.random.normal(0, cfg.jitter_px, 2) if cfg.jitter_px > 0 else np.zeros(2)
     cfg._frame_idx = frame_idx
 
-    all_gt = []
+    gt_data = []
 
     # 2) For each microtubule, step its length and draw
     for mt in mts:
@@ -46,7 +46,7 @@ def render_frame(
 
         # C) Draw its wagons and collect ground truth:
         gt_info = mt.draw(frame, mask, cfg)
-        all_gt.extend(gt_info)
+        gt_data.extend(gt_info)
 
         # D) Remove the jitter offset so it doesn’t accumulate next frame:
         mt.base_point -= jitter
@@ -81,7 +81,7 @@ def render_frame(
     frame = np.clip(frame, 0.0, 1.0)
     frame_uint8 = (frame * 255).astype(np.uint8)
 
-    return (frame_uint8, all_gt, mask) if return_mask else (frame_uint8, all_gt, None)
+    return (frame_uint8, gt_data, mask) if return_mask else (frame_uint8, gt_data, None)
 
 
 def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False):
@@ -132,9 +132,11 @@ def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False):
 
     # 2) For each frame, step each microtubule and draw it:
     for frame_idx in range(cfg.num_frames):
-        frame, all_gt, mask = render_frame(cfg, mts, frame_idx, fixed_spot_generator, moving_spot_generator,
+        frame, gt_data, mask = render_frame(cfg, mts, frame_idx, fixed_spot_generator, moving_spot_generator,
                                            return_mask=return_mask)
-        yield frame, all_gt, mask
+        yield frame, gt_data, mask
+
+
 
 
 def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
@@ -161,25 +163,34 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
     mask_writer = (cv2.VideoWriter(mask_video_path, fourcc, cfg.fps, cfg.img_size[::-1]) if cfg.generate_mask else None)
 
     frames = []
-    mask_frames = []
+    masks = []
+    all_gt_data = []
     cfg._bend_params = {}  # Reset per-video bending memory
 
-    for frame, gt_frame, mask in tqdm(generate_frames(cfg, return_mask=cfg.generate_mask), total=cfg.num_frames,
+    for frame, gt_data, mask in tqdm(generate_frames(cfg, return_mask=cfg.generate_mask), total=cfg.num_frames,
                                       desc=f"Series {cfg.id}"):
         frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        mask_frames.extend(gt_frame)
+        all_gt_data.extend(gt_data)
         writer.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR))
 
         if cfg.generate_mask:
-            mask_vis = mask_to_color(mask)
-            mask_writer.write(mask_vis)
+            masks.append(mask)
+
+            mask_vis_float = label2rgb(mask, bg_label=0)
+            mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
+
+            # scikit-image produces RGB, but cv2.VideoWriter expects BGR
+            mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
+
+            mask_writer.write(mask_vis_bgr)
+
 
     writer.release()
     if cfg.generate_mask:
         mask_writer.release()
 
     imageio.mimsave(gif_path, frames, fps=cfg.fps)
-    save_ground_truth(mask_frames, gt_path_json)
+    save_ground_truth(all_gt_data, gt_path_json, masks)
 
     return video_path, gt_path_json, mask_video_path
 
