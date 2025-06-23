@@ -186,16 +186,3 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
     return video_path, gt_path_json, mask_video_path
 
 
-if __name__ == "__main__":
-    output_dir = "../data/synthetic"
-    config_path = "../config/synthetic_config.json"
-
-    config = SyntheticDataConfig.load()
-    config.id = 34
-    config.to_json(config_path)
-
-    video_path, gt_path_json, gt_path_video = generate_video(config, output_dir)
-
-    print(f"Saved video: {video_path}")
-    print(f"Saved gt JSON: {gt_path_json}")
-    print(f"Saved gt Video: {gt_path_video}")
