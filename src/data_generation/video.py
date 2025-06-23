@@ -66,8 +66,6 @@ def render_frame(
 
     frame *= decay
     frame *= vignette
-    frame *= decay
-    frame *= vignette
     if cfg.gaussian_noise > 0.0:
         frame += np.random.normal(0, cfg.gaussian_noise, frame.shape).astype(np.float32)
 
