@@ -1,12 +1,11 @@
 import os
-from pathlib import Path
 
 import optuna
 import optuna.visualization as vis
 
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
-from data_generation.embeddings import ImageEmbeddingExtractor
+from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.video import generate_video
 from plotting.plotting import visualize_embeddings
 
