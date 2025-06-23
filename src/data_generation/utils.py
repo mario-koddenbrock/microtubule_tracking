@@ -23,12 +23,24 @@ def build_motion_seeds(
 
     # Step 1: Get random seed positions via Poisson‐disk sampling.
     #    get_poisson_seeds returns a list of ((slope, intercept), center) pairs.
-    tubulus_seeds = get_poisson_seeds(
+    tubulus_seeds = get_random_seeds(
         img_size=cfg.img_size,
         margin=cfg.margin,
         min_dist=cfg.tubuli_min_dist,
         max_tubuli=cfg.num_tubulus
     )
+
+    # x_coords = [p[1][0] for p in tubulus_seeds]
+    # y_coords = [p[1][1] for p in tubulus_seeds]
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots()
+    # ax.scatter(x_coords, y_coords)
+    # ax.set_xlim(0, cfg.img_size[1])
+    # ax.set_ylim(0, cfg.img_size[0])
+    # ax.set_aspect('equal', adjustable='box')
+    # ax.invert_yaxis()  # Match image coordinate system (0,0 at top-left)
+    # plt.title(f"Generated {len(tubulus_seeds)} Points")
+    # plt.show()
 
     motion_seeds: List[Tuple[np.ndarray, np.ndarray]] = []
     for (_slope_intercept, center) in tubulus_seeds:
@@ -139,6 +151,80 @@ def poisson_noise(image, snr):
     return np.clip(noisy / max_val if max_val > 0 else image, 0, 1)
 
 
+
+def get_random_seeds(img_size: tuple[int, int],
+                               margin: int,
+                               min_dist: int,
+                               max_tubuli: int = 100):
+    """
+    Generates tubuli seeds using simple random rejection sampling.
+
+    This method is simpler than Poisson-disk sampling but can be much slower if
+    the number of tubuli is high or the minimum distance is large, as it becomes
+    harder to find valid empty spots.
+
+    Args:
+        img_size: (height, width) of the image.
+        margin: Margin from the edges where no points will be placed.
+        min_dist: The minimum required distance between the center of any two tubuli.
+        max_tubuli: The maximum number of tubuli to generate.
+
+    Returns:
+        List of tuples: [(slope, intercept), center_point]
+    """
+    # Define the usable area for placing points
+    usable_min_x = margin
+    usable_max_x = img_size[1] - margin
+    usable_min_y = margin
+    usable_max_y = img_size[0] - margin
+
+    if usable_max_x <= usable_min_x or usable_max_y <= usable_min_y:
+        print("Warning: Usable area is zero or negative due to large margin. No points will be generated.")
+        return []
+
+    points = []
+
+    # To prevent an infinite loop if the area becomes too crowded to place new points,
+    # we'll set a limit on the number of failed attempts.
+    # A reasonable limit is 100 failed attempts for every point we want to place.
+    max_attempts = max_tubuli * 100
+    attempts = 0
+
+    while len(points) < max_tubuli and attempts < max_attempts:
+        # Step 1: Generate a random candidate point within the usable area
+        candidate_x = np.random.uniform(usable_min_x, usable_max_x)
+        candidate_y = np.random.uniform(usable_min_y, usable_max_y)
+        candidate_point = (candidate_x, candidate_y)
+
+        # Step 2: Check if the candidate is too close to any existing point
+        is_valid = True
+        for existing_point in points:
+            if distance.euclidean(candidate_point, existing_point) < min_dist:
+                is_valid = False
+                break  # No need to check other points, it's already invalid
+
+        # Step 3: If it's valid, add it to our list. Otherwise, do nothing.
+        if is_valid:
+            points.append(candidate_point)
+
+        attempts += 1
+
+    # If the loop terminated due to reaching max attempts, print a warning
+    if attempts >= max_attempts and len(points) < max_tubuli:
+        print(f"Warning: Reached max attempts ({max_attempts}) before finding all tubuli. "
+              f"Generated {len(points)} out of {max_tubuli} requested. "
+              "Consider reducing min_dist or max_tubuli.")
+
+    # Convert the final points into the desired seed format with slope and intercept
+    seeds = []
+    for x, y in points:
+        slope = np.random.uniform(-1.5, 1.5)
+        intercept = y - slope * x
+        seeds.append(((slope, intercept), (x, y)))
+
+    return seeds
+
+
 def get_poisson_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max_tubuli: int = 100):
     """
     Generate tubuli seeds using improved Poisson disk sampling to ensure even spacing.
@@ -152,82 +238,84 @@ def get_poisson_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max
     Returns:
         List of tuples: [(slope, intercept), center_point]
     """
+    if min_dist <= 0:
+        raise ValueError("min_dist must be positive.")
+
     usable_width = img_size[1] - 2 * margin
     usable_height = img_size[0] - 2 * margin
 
-    # Bridson's algorithm for better Poisson disk sampling
+    if usable_width <= 0 or usable_height <= 0:
+        print("Warning: Usable area is zero or negative due to large margin. No points will be generated.")
+        return []
+
     # Step 1: Define the grid for acceleration
     cell_size = min_dist / np.sqrt(2)
     grid_width = int(np.ceil(usable_width / cell_size))
     grid_height = int(np.ceil(usable_height / cell_size))
     grid = [None] * (grid_width * grid_height)
 
-    # Maps point to grid cell
-    def get_cell_idx(point):
+    def get_grid_coords(point):
         x, y = point
+        # This translates image coordinates to grid cell coordinates (0-indexed)
         grid_x = int((x - margin) / cell_size)
         grid_y = int((y - margin) / cell_size)
-        grid_x = min(max(0, grid_x), grid_width - 1)
-        grid_y = min(max(0, grid_y), grid_height - 1)
-        return grid_y * grid_width + grid_x
+        return grid_x, grid_y
 
-    # Check if point is far enough from existing points
-    def is_valid_point(point, points, min_dist):
-        # Get nearby cells to check
-        cell_x = int((point[0] - margin) / cell_size)
-        cell_y = int((point[1] - margin) / cell_size)
+    def is_valid_point(point):
+        grid_x, grid_y = get_grid_coords(point)
 
-        # Search surrounding cells (3x3 neighborhood)
+        # Search the surrounding 5x5 neighborhood of cells for collisions
         search_radius = 2
-        for i in range(max(0, cell_y - search_radius), min(grid_height, cell_y + search_radius + 1)):
-            for j in range(max(0, cell_x - search_radius), min(grid_width, cell_x + search_radius + 1)):
+        for i in range(max(0, grid_y - search_radius), min(grid_height, grid_y + search_radius + 1)):
+            for j in range(max(0, grid_x - search_radius), min(grid_width, grid_x + search_radius + 1)):
                 cell_idx = i * grid_width + j
-                if grid[cell_idx] is not None:
-                    if distance.euclidean(point, grid[cell_idx]) < min_dist:
-                        return False
+                existing_point = grid[cell_idx]
+                if existing_point and distance.euclidean(point, existing_point) < min_dist:
+                    return False
         return True
 
-    # Generate initial point
+    # ---- Main Algorithm ----
     points = []
     active_list = []
 
-    # Add first random point
-    x = np.random.uniform(margin, margin + usable_width)
-    y = np.random.uniform(margin, margin + usable_height)
+    # Add the first random point
+    x = margin + np.random.uniform(0, usable_width)
+    y = margin + np.random.uniform(0, usable_height)
     first_point = (x, y)
-    points.append(first_point)
+
     active_list.append(first_point)
-    grid[get_cell_idx(first_point)] = first_point
+    points.append(first_point)
+    grid_x, grid_y = get_grid_coords(first_point)
+    grid[grid_y * grid_width + grid_x] = first_point
 
-    # Generate other points from active list
-    k = 30  # Number of attempts before rejection
+    k = 30  # Number of attempts before deactivating a point
     while active_list and len(points) < max_tubuli:
-        # Get random point from active list
         idx = np.random.randint(0, len(active_list))
-        point = active_list[idx]
+        source_point = active_list[idx]
 
-        # Try to find a valid new point around this point
-        found = False
+        found_new_point = False
         for _ in range(k):
-            # Generate point at distance between r and 2r from the source
             theta = np.random.uniform(0, 2 * np.pi)
-            radius = min_dist * (1 + np.random.uniform(0, 1))
-            new_x = point[0] + radius * np.cos(theta)
-            new_y = point[1] + radius * np.sin(theta)
+            radius = np.random.uniform(min_dist, 2 * min_dist)
+            new_x = source_point[0] + radius * np.cos(theta)
+            new_y = source_point[1] + radius * np.sin(theta)
             new_point = (new_x, new_y)
 
-            # Check if within bounds and valid
-            if (margin <= new_x <= margin + usable_width and
-                    margin <= new_y <= margin + usable_height and
-                    is_valid_point(new_point, points, min_dist)):
+            # CRUCIAL: Check bounds FIRST, then validate distance.
+            # Use strict inequality for the upper bound to avoid the boundary bug.
+            if (margin <= new_x < margin + usable_width and
+                    margin <= new_y < margin + usable_height and
+                    is_valid_point(new_point)):
                 points.append(new_point)
                 active_list.append(new_point)
-                grid[get_cell_idx(new_point)] = new_point
-                found = True
+
+                new_grid_x, new_grid_y = get_grid_coords(new_point)
+                grid[new_grid_y * grid_width + new_grid_x] = new_point
+
+                found_new_point = True
                 break
 
-        # If no valid point found, remove from active list
-        if not found:
+        if not found_new_point:
             active_list.pop(idx)
 
     seeds = []
