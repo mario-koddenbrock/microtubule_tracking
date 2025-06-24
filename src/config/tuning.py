@@ -13,79 +13,8 @@ from .synthetic_data import SyntheticDataConfig
 class TuningConfig(BaseConfig):
     """
     Configuration for hyperparameter tuning of synthetic microtubule data generation.
-
-    Attributes:
-        # General tuning settings
-        direction (str): Optimization direction ("maximize" or "minimize").
-        metric (str): Metric to optimize (e.g., "cosine_similarity").
-        model_name (str): Hugging Face model name for feature extraction.
-        hf_cache_dir (str): Directory for Hugging Face model cache.
-        reference_series_dir (str): Directory path with original reference video series.
-        num_compare_series (int): Number of synthetic/reference series to compare.
-        num_compare_frames (int): Number of frames to compare per series.
-        temp_dir (str): Temporary directory for synthetic data generation.
-        output_config_file (str): Where to store the optimal config JSON.
-        num_trials (int): Number of optimization trials.
-
-        # Motion profile parameters
-        grow_frames (int): Number of frames over which growth occurs.
-        shrink_frames (int): Number of frames over which shrinkage occurs.
-        profile_noise (float): Noise level added to motion profile.
-        pause_on_max_length (int): Frames to pause at maximum length.
-        pause_on_min_length (int): Frames to pause at minimum length.
-
-        # Tubule parameters
-        motion (float): Scaling factor for motion per frame.
-        min_length_min (int): Minimum lower bound for tubule length.
-        min_length_max (int): Maximum lower bound for tubule length.
-        max_length_min (int): Minimum upper bound for tubule length.
-        max_length_max (int): Maximum upper bound for tubule length.
-        num_tubulus_range (Tuple[int, int]): Range of number of tubules per series.
-        tubuli_min_dist (int): Minimum distance between tubule seeds.
-        margin (int): Border margin to keep tubules inside frame.
-
-        # Bending and variation
-        width_var_std (float): Std dev of width variation (relative).
-        bend_amplitude (float): Maximum lateral offset for bending.
-        bend_prob (float): Probability of a tubule being bent.
-        bend_straight_fraction (float): Fraction of length before bending.
-
-        # PSF / drawing width (ranges)
-        sigma_x_range (Tuple[float, float]): Range for sigma_x.
-        sigma_y_range (Tuple[float, float]): Range for sigma_y.
-
-        # Photophysics / camera realism (ranges)
-        background_level_range (Tuple[float, float]): Range for background intensity.
-        tubulus_contrast_range (Tuple[float, float]): Range for tubule contrast.
-        gaussian_noise_range (Tuple[float, float]): Range for Gaussian noise.
-        bleach_tau_range (Tuple[float, float]): Range for bleaching time constant.
-        jitter_px_range (Tuple[float, float]): Range for jitter in pixels.
-        vignetting_strength_range (Tuple[float, float]): Range for vignetting strength.
-        invert_contrast_options (List[bool]): Options for contrast inversion.
-        global_blur_sigma_range (Tuple[float, float]): Range for global blur sigma.
-
-        # Static spots (ranges)
-        fixed_spot_count_range (Tuple[int, int]): Range for number of fixed spots.
-        fixed_spot_intensity_range (Tuple[float, float]): Range for fixed spot intensity.
-        fixed_spot_radius_range (Tuple[int, int]): Range for fixed spot radius.
-        fixed_spot_kernel_size_range (Tuple[int, int]): Range for fixed spot kernel size.
-        fixed_spot_sigma_range (Tuple[float, float]): Range for fixed spot sigma.
-
-        # Moving spots (ranges)
-        moving_spot_count_range (Tuple[int, int]): Range for number of moving spots.
-        moving_spot_intensity_range (Tuple[float, float]): Range for moving spot intensity.
-        moving_spot_radius_range (Tuple[int, int]): Range for moving spot radius.
-        moving_spot_kernel_size_range (Tuple[int, int]): Range for moving spot kernel size.
-        moving_spot_sigma_range (Tuple[float, float]): Range for moving spot sigma.
-
-        # Annotations
-        show_time_options (List[bool]): Options to show or hide time.
-        show_scale_options (List[bool]): Options to show or hide scale bar.
-        um_per_pixel_range (Tuple[float, float]): Range for microns per pixel.
-        scale_bar_um_range (Tuple[float, float]): Range for scale bar length in microns.
     """
-
-    # Default values for “static” tuning parameters
+    # ─── General tuning settings ────────────────────────────────────
     model_name: str = "openai/clip-vit-base-patch32"
     hf_cache_dir: Optional[str] = None
     reference_series_dir: str = "reference_data"
@@ -94,14 +23,14 @@ class TuningConfig(BaseConfig):
     temp_dir: str = "temp_synthetic_data"
     output_config_file: str = "best_synthetic_config.json"
     output_config_id: int | str = "best_synthetic_config"
-    output_config_num_frames: int = 30  # Number of frames for the final video
+    output_config_num_frames: int = 30
     direction: str = "maximize"
     metric: str = "cosine_similarity"
     num_trials: int = 100
     pca_components: Optional[int] = 64
-    load_if_exists:bool = False
+    load_if_exists: bool = False
 
-    # --- Static Video Properties ---
+    # ─── Static Video Properties ────────────────────────────────────
     img_size: Tuple[int, int] = (462, 462)
     fps: int = 5
 
@@ -109,14 +38,15 @@ class TuningConfig(BaseConfig):
     # PARAMETER RANGES FOR OPTIMIZATION
     # =========================================================================
 
-    # ─── Motion-profile ranges ───────────────────────────────────────
-    grow_frames_range: Tuple[int, int] = (10, 30)
-    shrink_frames_range: Tuple[int, int] = (5, 20)
-    profile_noise_range: Tuple[float, float] = (0.0, 10.0)
+    # ─── Motion-profile (stochastic) ranges ───────────────────────
+    growth_speed_range: Tuple[float, float] = (0.5, 5.0)
+    shrink_speed_range: Tuple[float, float] = (2.0, 10.0)
+    catastrophe_prob_range: Tuple[float, float] = (0.001, 0.05)
+    rescue_prob_range: Tuple[float, float] = (0.0005, 0.02)
     pause_on_max_length_range: Tuple[int, int] = (0, 10)
     pause_on_min_length_range: Tuple[int, int] = (0, 10)
 
-    # ─── Wagon kinematics ranges (NEWLY ADDED) ────────────────────────
+    # ─── Wagon kinematics ranges ──────────────────────────────────
     min_base_wagon_length_range: Tuple[float, float] = (10.0, 50.0)
     max_base_wagon_length_range: Tuple[float, float] = (10.0, 50.0)
     max_num_wagons_range: Tuple[int, int] = (1, 10)
@@ -127,7 +57,7 @@ class TuningConfig(BaseConfig):
     max_wagon_length_min_range: Tuple[int, int] = (80, 150)
     max_wagon_length_max_range: Tuple[int, int] = (150, 300)
 
-    # ─── Tubule geometry ranges (motion_range removed) ────────────────
+    # ─── Tubule geometry & rendering ranges ───────────────────────
     min_length_min_range: Tuple[int, int] = (20, 80)
     min_length_max_range: Tuple[int, int] = (min_length_min_range[1], 120)
     max_length_min_range: Tuple[int, int] = (80, 150)
@@ -135,20 +65,19 @@ class TuningConfig(BaseConfig):
     num_tubulus_range: Tuple[int, int] = (10, 30)
     tubuli_min_dist_range: Tuple[int, int] = (5, 50)
     margin_range: Tuple[int, int] = (0, 20)
-
-    # ... (Bending, PSF, Photophysics ranges are the same) ...
     width_var_std_range: Tuple[float, float] = (0.0, 0.2)
     bend_amplitude_range: Tuple[float, float] = (0.0, 10.0)
     bend_prob_range: Tuple[float, float] = (0.0, 0.5)
     bend_straight_fraction_range: Tuple[float, float] = (0.1, 1.0)
-
-    # ─── PSF / drawing width ranges ────────────────────────────────────────────
     sigma_x_range: Tuple[float, float] = (0.1, 2.0)
     sigma_y_range: Tuple[float, float] = (0.1, 2.0)
 
-    # ─── Photophysics / camera realism ranges ─────────────────────────────────
+    # CORRECTED: Single, unified block for photophysics and realism
+    # ─── Photophysics / camera realism ranges ─────────────────────
     background_level_range: Tuple[float, float] = (0.5, 1.0)
     tubulus_contrast_range: Tuple[float, float] = (0.0, 0.5)
+    tip_brightness_factor_range: Tuple[float, float] = (1.0, 3.0)
+    quantum_efficiency_range: Tuple[float, float] = (10.0, 150.0)
     gaussian_noise_range: Tuple[float, float] = (0.0, 0.2)
     bleach_tau_range: Tuple[float, float] = (10.0, 1000.0)
     jitter_px_range: Tuple[float, float] = (0.0, 2.0)
@@ -156,25 +85,18 @@ class TuningConfig(BaseConfig):
     invert_contrast_options: Tuple[bool] = (True, False)
     global_blur_sigma_range: Tuple[float, float] = (0.0, 3.0)
 
-    # ─── Spot Tuning Ranges (Refactored) ──────────────────────────────────
+    # ─── Spot Tuning Ranges ───────────────────────────────────────
     fixed_spots_tuning: SpotTuningConfig = field(default_factory=lambda: SpotTuningConfig(
-        count_range=(0, 100),
-        intensity_min_range=(0.0001, 0.1), # Range for the minimum value
-        intensity_max_range=(0.1, 0.3)  # Range for the maximum value
+        count_range=(0, 100), intensity_min_range=(0.0001, 0.1), intensity_max_range=(0.1, 0.3)
     ))
     moving_spots_tuning: SpotTuningConfig = field(default_factory=lambda: SpotTuningConfig(
-        count_range=(0, 50),
-        intensity_min_range=(0.0001, 0.1),
-        intensity_max_range=(0.1, 0.3),
-        max_step_range=(1, 10)
+        count_range=(0, 50), intensity_min_range=(0.0001, 0.1), intensity_max_range=(0.1, 0.3), max_step_range=(1, 10)
     ))
     random_spots_tuning: SpotTuningConfig = field(default_factory=lambda: SpotTuningConfig(
-        count_range=(0, 50),
-        intensity_min_range=(0.0001, 0.1),
-        intensity_max_range=(0.0, 0.5)
+        count_range=(0, 50), intensity_min_range=(0.0001, 0.1), intensity_max_range=(0.0, 0.5)
     ))
 
-    # ─── Annotation ranges ────────────────────────────────────────────────
+    # ─── Annotation ranges ────────────────────────────────────────
     show_time_options: Tuple[bool] = (True, False)
     show_scale_options: Tuple[bool] = (True, False)
     um_per_pixel_range: Tuple[float, float] = (0.01, 1.0)
@@ -191,16 +113,18 @@ class TuningConfig(BaseConfig):
         an Optuna trial and returns a corresponding SyntheticDataConfig.
         """
         # --- Suggest all parameters from trial ---
+        # Note: The logic in this method was already correct and did not use the duplicated fields.
+        # Only the class definition above was incorrect.
 
-        # Motion profile
-        shrink_frames = trial.suggest_int("shrink_frames", *self.shrink_frames_range)
-        grow_frames = trial.suggest_int("grow_frames", max(shrink_frames + 1, self.grow_frames_range[0]),
-                                        self.grow_frames_range[1])
-        profile_noise = trial.suggest_float("profile_noise", *self.profile_noise_range)
+        # Motion
+        growth_speed = trial.suggest_float("growth_speed", *self.growth_speed_range)
+        shrink_speed = trial.suggest_float("shrink_speed", *self.shrink_speed_range)
+        catastrophe_prob = trial.suggest_float("catastrophe_prob", *self.catastrophe_prob_range, log=True)
+        rescue_prob = trial.suggest_float("rescue_prob", *self.rescue_prob_range, log=True)
         pause_on_max_length = trial.suggest_int("pause_on_max_length", *self.pause_on_max_length_range)
         pause_on_min_length = trial.suggest_int("pause_on_min_length", *self.pause_on_min_length_range)
 
-        # Wagon kinematics (NEWLY ADDED)
+        # Wagons
         min_base_wagon_length = trial.suggest_float("min_base_wagon_length", *self.min_base_wagon_length_range)
         max_base_wagon_length = trial.suggest_float("max_base_wagon_length", *self.max_base_wagon_length_range)
         max_num_wagons = trial.suggest_int("max_num_wagons", *self.max_num_wagons_range)
@@ -215,7 +139,7 @@ class TuningConfig(BaseConfig):
                                                  max(max_wagon_length_min + 1, self.max_wagon_length_max_range[0]),
                                                  self.max_wagon_length_max_range[1])
 
-        # Tubule geometry (motion removed)
+        # Tubules
         min_length_min = trial.suggest_int("min_length_min", *self.min_length_min_range)
         min_length_max = trial.suggest_int("min_length_max", max(min_length_min + 1, self.min_length_max_range[0]),
                                            self.min_length_max_range[1])
@@ -225,11 +149,21 @@ class TuningConfig(BaseConfig):
         num_tubulus = trial.suggest_int("num_tubulus", *self.num_tubulus_range)
         tubuli_min_dist = trial.suggest_int("tubuli_min_dist", *self.tubuli_min_dist_range)
         margin = trial.suggest_int("margin", *self.margin_range)
-
         width_var_std = trial.suggest_float("width_var_std", *self.width_var_std_range)
-        global_blur_sigma = trial.suggest_float("global_blur_sigma", *self.global_blur_sigma_range)
 
-        # Spots (Refactored)
+        # Realism
+        global_blur_sigma = trial.suggest_float("global_blur_sigma", *self.global_blur_sigma_range)
+        tip_brightness_factor = trial.suggest_float("tip_brightness_factor", *self.tip_brightness_factor_range)
+        quantum_efficiency = trial.suggest_float("quantum_efficiency", *self.quantum_efficiency_range)
+        gaussian_noise = trial.suggest_float("gaussian_noise", *self.gaussian_noise_range)
+        background_level = trial.suggest_float("background_level", *self.background_level_range)
+        tubulus_contrast = trial.suggest_float("tubulus_contrast", *self.tubulus_contrast_range)
+        bleach_tau = trial.suggest_float("bleach_tau", *self.bleach_tau_range)
+        jitter_px = trial.suggest_float("jitter_px", *self.jitter_px_range)
+        vignetting_strength = trial.suggest_float("vignetting_strength", *self.vignetting_strength_range)
+        invert_contrast = trial.suggest_categorical("invert_contrast", self.invert_contrast_options)
+
+        # Spots
         fixed_spots_cfg = SpotConfig.from_trial(trial, "fixed_spots", self.fixed_spots_tuning)
         moving_spots_cfg = SpotConfig.from_trial(trial, "moving_spots", self.moving_spots_tuning)
         random_spots_cfg = SpotConfig.from_trial(trial, "random_spots", self.random_spots_tuning)
@@ -243,17 +177,15 @@ class TuningConfig(BaseConfig):
 
         # --- Build the SyntheticDataConfig object ---
         synth_cfg = SyntheticDataConfig(
-            # Static fields
             id="current_trial",
             img_size=self.img_size,
             fps=self.fps,
             num_frames=self.num_compare_frames,
             color_mode=color_mode,
-
-            # Motion & Tubules
-            grow_frames=grow_frames,
-            shrink_frames=shrink_frames,
-            profile_noise=profile_noise,
+            growth_speed=growth_speed,
+            shrink_speed=shrink_speed,
+            catastrophe_prob=catastrophe_prob,
+            rescue_prob=rescue_prob,
             min_base_wagon_length=min_base_wagon_length,
             max_base_wagon_length=max_base_wagon_length,
             max_num_wagons=max_num_wagons,
@@ -274,17 +206,22 @@ class TuningConfig(BaseConfig):
             margin=margin,
             width_var_std=width_var_std,
             global_blur_sigma=global_blur_sigma,
-
-            # Spots
+            background_level=background_level,
+            tubulus_contrast=tubulus_contrast,
+            bleach_tau=bleach_tau,
+            jitter_px=jitter_px,
+            vignetting_strength=vignetting_strength,
+            invert_contrast=invert_contrast,
             fixed_spots=fixed_spots_cfg,
             moving_spots=moving_spots_cfg,
             random_spots=random_spots_cfg,
-
-            # Annotations
             show_time=show_time,
             show_scale=show_scale,
             um_per_pixel=um_per_pixel,
             scale_bar_um=scale_bar_um,
+            tip_brightness_factor=tip_brightness_factor,
+            quantum_efficiency=quantum_efficiency,
+            gaussian_noise=gaussian_noise,
         )
 
         synth_cfg.validate()
