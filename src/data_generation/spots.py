@@ -1,9 +1,9 @@
-import numpy as np
-from typing import List, Tuple
+from typing import Tuple
 
-from config.synthetic_data import SyntheticDataConfig
+import cv2
+import numpy as np
+
 from config.spots import SpotConfig
-from data_generation.utils import draw_spots
 
 
 class SpotGenerator:
@@ -82,7 +82,7 @@ class SpotGenerator:
             return img
 
         # Assuming a draw_spots function exists with this signature
-        return draw_spots(
+        return self.draw_spots(
             img,
             self.coords,
             self.intensities,
@@ -90,3 +90,21 @@ class SpotGenerator:
             self.kernel_sizes,
             self.cfg.sigma
         )
+
+    @staticmethod
+    def draw_spots(img, spot_coords, intensity, radii, kernel_size, sigma):
+        h, w = img.shape
+
+        if isinstance(intensity, list):
+            if len(intensity) != len(spot_coords):
+                raise ValueError("Intensity list must match the length of spot coordinates.")
+        else:
+            intensity = [intensity] * len(spot_coords)
+
+        for idx, (y, x) in enumerate(spot_coords):
+            mask = np.zeros((h, w), dtype=np.float32)
+            mask = cv2.circle(mask, (int(x), int(y)), radii[idx], intensity[idx], -1)
+            kernel = 2 * kernel_size[idx] + 1
+            mask = cv2.GaussianBlur(mask, (kernel, kernel), sigma)
+            img += mask
+        return img

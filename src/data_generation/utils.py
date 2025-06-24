@@ -9,6 +9,8 @@ from config.synthetic_data import SyntheticDataConfig
 from .sawtooth_profile import create_sawtooth_profile
 from scipy.ndimage import gaussian_filter
 
+from .spots import SpotGenerator
+
 
 def build_motion_seeds(
     cfg: SyntheticDataConfig
@@ -89,22 +91,7 @@ def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
     return image
 
 
-def draw_spots(img, spot_coords, intensity, radii, kernel_size, sigma):
-    h, w = img.shape
 
-    if isinstance(intensity, list):
-        if len(intensity) != len(spot_coords):
-            raise ValueError("Intensity list must match the length of spot coordinates.")
-    else:
-        intensity = [intensity] * len(spot_coords)
-
-    for idx, (y, x) in enumerate(spot_coords):
-        mask = np.zeros((h, w), dtype=np.float32)
-        mask = cv2.circle(mask, (int(x), int(y)), radii[idx], intensity[idx], -1)
-        kernel = 2 * kernel_size[idx] + 1
-        mask = cv2.GaussianBlur(mask, (kernel, kernel), sigma)
-        img += mask
-    return img
 
 
 def apply_random_spots(img: np.ndarray, spot_cfg: SpotConfig) -> np.ndarray:
@@ -130,7 +117,7 @@ def apply_random_spots(img: np.ndarray, spot_cfg: SpotConfig) -> np.ndarray:
     radii = [np.random.randint(spot_cfg.radius_min, spot_cfg.radius_max + 1) for _ in range(n_spots)]
     kernel_sizes = [np.random.randint(spot_cfg.kernel_size_min, spot_cfg.kernel_size_max + 1) for _ in range(n_spots)]
 
-    return draw_spots(img, coords, intensities, radii, kernel_sizes, spot_cfg.sigma)
+    return SpotGenerator.draw_spots(img, coords, intensities, radii, kernel_sizes, spot_cfg.sigma)
 
 
 def apply_global_blur(img: np.ndarray, cfg) -> np.ndarray:
