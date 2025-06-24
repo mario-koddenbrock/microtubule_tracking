@@ -48,7 +48,7 @@ def test_generator_apply_calls_draw(mocker):
     We use a mocker to 'spy' on the drawing function.
     """
     # Mock the external draw_spots function
-    mock_draw = mocker.patch("data_generation.spots.draw_spots", return_value=np.zeros((10, 10)))
+    mock_draw = mocker.patch("data_generation.spots.SpotGenerator.draw_spots", return_value=np.zeros((10, 10)))
 
     spot_cfg = SpotConfig(count=5, sigma=1.23)
     img_shape = (10, 10)
