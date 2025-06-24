@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Tuple, Literal
 
 from .base import BaseConfig
 from .spots import SpotConfig
@@ -12,10 +12,10 @@ class SyntheticDataConfig(BaseConfig):
     Configuration for synthetic microtubule video generation.
     """
     # ─── core video info ────────────────────────────────────
-    id: int | str = 0
+    id: int | str = 300
     img_size: Tuple[int, int] = (462, 462)
     fps: int = 5
-    num_frames: int = 100
+    num_frames: int = 1
     color_mode: bool = True
 
     # ─── microtubule kinematics (stochastic model) ─────────────────────────
@@ -57,23 +57,21 @@ class SyntheticDataConfig(BaseConfig):
     sigma_y: float = 0.8
 
     # ─── new photophysics / camera realism ─────────────────
-    background_level: float = 0.74
-    tubulus_contrast: float = 0.2
+    background_level: float = 0.8
+    tubulus_contrast: float = -0.4
+    seed_red_channel_boost: float = 0.5  # Boost the red channel of the seed color
 
-    seed_color_rgb: Tuple[float, float, float] = (1.0, 0.2, 0.2)
-    tubulus_color_rgb: Tuple[float, float, float] = (0.2, 1.0, 0.2)
+    annotation_color_rgb: Tuple[float, float, float] = (1.0, 1.0, 1.0)
 
-    # NEW: Tip-tracking protein simulation
-    tip_brightness_factor: float = 1.5  # How much brighter growing tips are
+    tip_brightness_factor: float = 1.0
 
-    # NEW: Mixed noise model parameters
     quantum_efficiency: float = 50.0  # Higher value = less Poisson noise
     gaussian_noise: float = 0.09  # Camera read noise
 
     bleach_tau: float = math.inf
     jitter_px: float = 0.5
     vignetting_strength: float = 0.05
-    invert_contrast: bool = True
+
     global_blur_sigma: float = 0.9
 
     fixed_spots: SpotConfig = field(default_factory=lambda: SpotConfig(
