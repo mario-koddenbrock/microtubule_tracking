@@ -68,8 +68,8 @@ def main():
 
     # Load the base configuration once
     try:
-        base_config = SyntheticDataConfig.load(args.config)
-        # base_config = SyntheticDataConfig()
+        # base_config = SyntheticDataConfig.load(args.config)
+        base_config = SyntheticDataConfig()
         print(f"Successfully loaded base config from '{args.config}'")
         base_config.save(args.config)
     except Exception as e:

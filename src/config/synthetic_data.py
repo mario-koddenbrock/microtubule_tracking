@@ -12,10 +12,10 @@ class SyntheticDataConfig(BaseConfig):
     Configuration for synthetic microtubule video generation.
     """
     # ─── core video info ────────────────────────────────────
-    id: int | str = 300
+    id: int | str = 306
     img_size: Tuple[int, int] = (462, 462)
     fps: int = 5
-    num_frames: int = 1
+    num_frames: int = 50
     color_mode: bool = True
 
     # ─── microtubule kinematics (stochastic model) ─────────────────────────
@@ -25,20 +25,22 @@ class SyntheticDataConfig(BaseConfig):
     rescue_prob: float = 0.005
 
     min_base_wagon_length: float = 10.0
-    max_base_wagon_length: float = 60.0
+    max_base_wagon_length: float = 50.0
     max_num_wagons: int = 20
-    max_angle: float = math.pi / 16
-    max_angle_change_prob: float = 0.001
+    max_angle: float = 0.1  # Max angle in radians between wagons
+
+    max_angle_sign_changes: int = 1  # 0 for C-shape, 1 for S-shape, etc.
+    prob_to_flip_bend: float = 0.001  # Probability to use an available sign change
 
     min_length_min: int = 50
     min_length_max: int = 80
     max_length_min: int = 100
     max_length_max: int = 200
 
-    min_wagon_length_min: int = 5
-    min_wagon_length_max: int = 20
-    max_wagon_length_min: int = 20
-    max_wagon_length_max: int = 100
+    min_wagon_length_min: int = 1
+    min_wagon_length_max: int = 5
+    max_wagon_length_min: int = 10
+    max_wagon_length_max: int = 20
 
     pause_on_max_length: int = 5
     pause_on_min_length: int = 10

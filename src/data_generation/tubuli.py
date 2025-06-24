@@ -1,5 +1,7 @@
+# FILE: data_generation/tubuli.py
+
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 
@@ -21,7 +23,10 @@ def _generate_stochastic_profile(
 ) -> np.ndarray:
     """Generates a length-over-time profile based on stochastic parameters."""
     profile = np.zeros(num_frames)
-    state = "growing"
+
+    # The initial state is chosen randomly
+    state = np.random.choice(["growing", "shrinking"])
+
     current_length = min_len
     pause_counter = 0
 
@@ -72,7 +77,7 @@ class Wagon:
 
 class Microtubule:
     """
-    Represents a single microtubule as a chain (“train”) of straight wagons (segments).
+    Represents a single microtubule as a chain of wagons with stateful bending.
     """
 
     def __init__(
@@ -81,14 +86,13 @@ class Microtubule:
             base_point: np.ndarray,
             instance_id: int = 0,
     ):
-
         base_orientation = np.random.uniform(0.0, 2 * np.pi)
         base_wagon_length = np.random.uniform(
             cfg.min_base_wagon_length,
             cfg.max_base_wagon_length
         )
 
-        # 1) Generate the length-over-time profile internally
+        # 1) Generate the length-over-time profile internally.
         min_len = np.random.uniform(cfg.min_length_min, cfg.min_length_max)
         max_len = np.random.uniform(cfg.max_length_min, cfg.max_length_max)
         self.profile = _generate_stochastic_profile(
@@ -104,52 +108,69 @@ class Microtubule:
             Wagon(length=base_wagon_length, angle=0.0, fixed=True)
         ]
 
-        # 3) If the profile’s initial total length > base length, create a tip wagon
-        initial_total = self.profile[0]
-        tip_length = max(initial_total - base_wagon_length, 0.0)
-        if tip_length > 0:
-            angle = 0.0
-            if cfg.max_angle_change_prob > 0.0:
-                angle = np.random.uniform(-cfg.max_angle, cfg.max_angle)
-            self.wagons.append(Wagon(length=tip_length, angle=angle, fixed=False))
-
         # 4) Store parameters and state
         self.base_point = base_point.copy()
         self.base_orientation = base_orientation
         self.base_wagon_length = base_wagon_length
         self.max_num_wagons = cfg.max_num_wagons
         self.max_angle = cfg.max_angle
-        self.angle_change_prob = cfg.max_angle_change_prob
         self.min_wagon_length = np.random.uniform(cfg.min_wagon_length_min, cfg.min_wagon_length_max)
         self.max_wagon_length = np.random.uniform(cfg.max_wagon_length_min, cfg.max_wagon_length_max)
 
-        # NEW: Store current state
-        self.state = "growing"  # Initial state
+        self.max_angle_sign_changes = cfg.max_angle_sign_changes
+        self.prob_to_flip_bend = cfg.prob_to_flip_bend
+        self._current_bend_sign = np.random.choice([-1.0, 1.0])
+        self._sign_changes_count = 0
+
+        self.state = "growing"
         self.current_length = sum(w.length for w in self.wagons)
         self.frame_idx = 0
         self.instance_id = instance_id
+
+        # 3) Initialize the microtubule to its starting length from the profile
+        initial_total = self.profile[0]
+        initial_delta = initial_total - self.current_length
+        if initial_delta > 0:
+            self._add_new_wagons(initial_delta)
 
     @property
     def total_length(self) -> float:
         return sum(w.length for w in self.wagons)
 
+    def _add_new_wagons(self, amount_to_add: float):
+        """A helper function that adds new wagons with controlled bending."""
+        to_add = amount_to_add
+        while to_add > 1e-6 and len(self.wagons) < self.max_num_wagons:
+            can_flip = self._sign_changes_count < self.max_angle_sign_changes
+            if can_flip and np.random.random() < self.prob_to_flip_bend:
+                self._current_bend_sign *= -1.0
+                self._sign_changes_count += 1
+
+            angle_magnitude = np.random.uniform(0, self.max_angle)
+            angle = self._current_bend_sign * angle_magnitude
+
+            new_wagon_len = min(to_add, self.max_wagon_length)
+            self.wagons.append(Wagon(length=new_wagon_len, angle=angle, fixed=False))
+            to_add -= new_wagon_len
+
     def step_to_length(self, frame_idx: int):
-        """
-        Adjust wagons to match profile[frame_idx] and update the dynamic state.
-        """
+        """Adjust wagons to match profile[frame_idx] and update the dynamic state."""
         target_length = self.profile[frame_idx]
 
-        # NEW: Update the state based on length change
         if frame_idx > 0:
             if self.profile[frame_idx] > self.profile[frame_idx - 1]:
                 self.state = "growing"
             elif self.profile[frame_idx] < self.profile[frame_idx - 1]:
                 self.state = "shrinking"
-            # If length is the same, state remains unchanged (pausing)
         else:
-            self.state = "growing"  # Start by growing
+            # For the very first frame, determine state by looking ahead
+            if len(self.profile) > 1 and self.profile[1] > self.profile[0]:
+                self.state = "growing"
+            elif len(self.profile) > 1 and self.profile[1] < self.profile[0]:
+                self.state = "shrinking"
+            else:
+                self.state = "pausing"  # Or growing, as a default
 
-        # ... (the rest of the logic is the same as before) ...
         self.wagons[0].length = min(self.base_wagon_length, target_length)
         target_dynamic_length = max(0.0, target_length - self.wagons[0].length)
         current_dynamic_length = sum(w.length for w in self.wagons[1:])
@@ -167,13 +188,12 @@ class Microtubule:
                 can_add = min(to_add, space_available)
                 wagon.length += can_add
                 to_add -= can_add
-                if to_add <= 1e-6: break
+                if to_add <= 1e-6:
+                    break
 
-            while to_add > 1e-6 and len(self.wagons) < self.max_num_wagons:
-                angle = np.random.uniform(-self.max_angle, self.max_angle) if self.angle_change_prob > 0 else 0.0
-                new_wagon_len = min(to_add, self.max_wagon_length)
-                self.wagons.append(Wagon(length=new_wagon_len, angle=angle, fixed=False))
-                to_add -= new_wagon_len
+            if to_add > 1e-6:
+                self._add_new_wagons(to_add)
+
         elif delta < 0:
             to_remove = -delta
             for i in range(len(self.wagons) - 1, 0, -1):
@@ -181,22 +201,13 @@ class Microtubule:
                 length_to_remove_from_this_wagon = min(to_remove, wagon.length)
                 wagon.length -= length_to_remove_from_this_wagon
                 to_remove -= length_to_remove_from_this_wagon
-                if to_remove <= 1e-6: break
+                if to_remove <= 1e-6:
+                    break
 
         self.current_length = sum(w.length for w in self.wagons)
 
-    def maybe_rebend(self):
-        """
-        For each non‐fixed wagon (index ≥1), re-sample angle with prob=angle_change_prob
-        """
-        for i in range(1, len(self.wagons)):
-            if np.random.random() < self.angle_change_prob:
-                self.wagons[i].angle = np.random.uniform(-self.max_angle, self.max_angle)
-
     def draw(self, frame: np.ndarray, mask: np.ndarray, cfg: SyntheticDataConfig) -> list[dict]:
-        """
-        Rasterizes each wagon using the new flexible contrast model.
-        """
+        """Rasterizes each wagon using the flexible contrast model."""
         abs_angle = self.base_orientation
         abs_pos = self.base_point.copy()
         gt_info = []
@@ -209,8 +220,6 @@ class Microtubule:
 
             sigma_x = cfg.sigma_x * (1 + np.random.normal(0, cfg.width_var_std))
             sigma_y = cfg.sigma_y * (1 + np.random.normal(0, cfg.width_var_std))
-
-            # --- NEW LOGIC: Calculate per-channel contrast ---
 
             # 1. Start with the base contrast for all channels.
             #    This can be positive (bright) or negative (dark).
