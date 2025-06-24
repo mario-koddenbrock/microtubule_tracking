@@ -69,8 +69,9 @@ def main():
     # Load the base configuration once
     try:
         base_config = SyntheticDataConfig.load(args.config)
+        # base_config = SyntheticDataConfig()
         print(f"Successfully loaded base config from '{args.config}'")
-        base_config.save()
+        base_config.save(args.config)
     except Exception as e:
         print(f"Error: Failed to load or parse the config file '{args.config}'.")
         print(f"Details: {e}")
@@ -120,7 +121,7 @@ def main():
             print(f"Error: An unexpected error occurred while generating video ID {video_id}.")
             print(f"Details: {e}")
             # Optionally, re-raise the exception if you want to stop the whole process on error.
-            # raise
+            raise e
 
     print("\nAll requested videos have been generated.")
 
