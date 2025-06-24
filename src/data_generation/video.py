@@ -36,9 +36,6 @@ def render_frame(
 
     gt_data = []
 
-    if frame_idx == 15:
-        print(f"Rendering frame {frame_idx} with {len(mts)} microtubules")
-
     # 2) For each microtubule, step its length and draw
     for mt in mts:
         # A) Step to match the length profile:
@@ -143,61 +140,98 @@ def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False):
         yield frame, gt_data, mask
 
 
-
+# In video.py
 
 def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
     """
-    Generates a synthetic video sequence of microtubules along with ground truth annotations.
+    Generates a synthetic video sequence and saves all outputs in a streaming fashion
+    to minimize memory usage.
 
-    Saves:
-    - Video (MP4)
-    - Animated preview (GIF)
-    - Ground truth data (JSON)
-    - Optional instance segmentation mask video (MP4)
-
-    Returns:
-        Tuple of file paths: (video, ground truth JSON, mask video or None)
+    Saves the following files based on a consistent naming scheme:
+    - Primary Data:
+        - series_{id}_video.tif (Grayscale uint8 video)
+        - series_{id}_masks.tif (Integer uint16 instance masks)
+    - Previews:
+        - series_{id}_video_preview.mp4
+        - series_{id}_video_preview.gif
+        - series_{id}_masks_preview.mp4
+    - Metadata:
+        - series_{id}_gt.json
     """
     os.makedirs(base_output_dir, exist_ok=True)
-    video_path = os.path.join(base_output_dir, f"series_{cfg.id}.mp4")
-    gif_path = os.path.join(base_output_dir, f"series_{cfg.id}.gif")
-    mask_video_path = (os.path.join(base_output_dir, f"series_{cfg.id}_mask.mp4") if cfg.generate_mask else None)
-    gt_path_json = os.path.join(base_output_dir, f"series_{cfg.id}_gt.json")
 
+    # --- 1. Define all output paths using the new naming scheme ---
+    base_name = f"series_{cfg.id}"
+    video_tiff_path = os.path.join(base_output_dir, f"{base_name}_video.tif")
+    masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_masks.tif")
+    video_mp4_path = os.path.join(base_output_dir, f"{base_name}_video_preview.mp4")
+    masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
+    gif_path = os.path.join(base_output_dir, f"{base_name}_video_preview.gif")
+    gt_json_path = os.path.join(base_output_dir, f"{base_name}_gt.json")
+
+    # --- 2. Initialize writers within a try...finally block ---
+    # This ensures all files are properly closed even if an error occurs.
+
+    # imageio writers for high-quality data (TIFF) and GIF
+    video_tiff_writer = imageio.get_writer(video_tiff_path, format='TIFF')
+    gif_writer = imageio.get_writer(gif_path, fps=cfg.fps)
+    mask_tiff_writer = imageio.get_writer(masks_tiff_path, format='TIFF') if cfg.generate_mask else None
+
+    # cv2 writers for compressed MP4 previews
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(video_path, fourcc, cfg.fps, cfg.img_size[::-1])
-    mask_writer = (cv2.VideoWriter(mask_video_path, fourcc, cfg.fps, cfg.img_size[::-1]) if cfg.generate_mask else None)
+    img_h, img_w = cfg.img_size
+    video_mp4_writer = cv2.VideoWriter(video_mp4_path, fourcc, cfg.fps, (img_w, img_h))
+    mask_mp4_writer = cv2.VideoWriter(masks_mp4_path, fourcc, cfg.fps, (img_w, img_h)) if cfg.generate_mask else None
 
-    frames = []
-    masks = []
-    all_gt_data = []
-    cfg._bend_params = {}  # Reset per-video bending memory
+    try:
+        all_gt_data = []
+        cfg._bend_params = {}  # Reset per-video bending memory
 
-    for frame, gt_data, mask in tqdm(generate_frames(cfg, return_mask=cfg.generate_mask), total=cfg.num_frames,
-                                      desc=f"Series {cfg.id}"):
-        frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        all_gt_data.extend(gt_data)
-        writer.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR))
+        print(f"Generating and writing {cfg.num_frames} frames for Series {cfg.id}...")
 
-        if cfg.generate_mask:
-            masks.append(mask)
+        # --- 3. Process and write each frame one-by-one ---
+        for frame_img, gt_data_for_frame, mask_img in tqdm(
+                generate_frames(cfg, return_mask=cfg.generate_mask),
+                total=cfg.num_frames
+        ):
+            # A. Accumulate JSON data (this is small, so it's fine to keep in memory)
+            all_gt_data.extend(gt_data_for_frame)
 
-            mask_vis_float = label2rgb(mask, bg_label=0)
-            mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
+            # B. Write the main video frames
+            video_tiff_writer.append_data(frame_img)  # Raw uint8 data
 
+            # For previews, convert grayscale to color
+            frame_bgr = cv2.cvtColor(frame_img, cv2.COLOR_GRAY2BGR)
+            video_mp4_writer.write(frame_bgr)
 
-            mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
+            frame_rgb = cv2.cvtColor(frame_img, cv2.COLOR_GRAY2RGB)
+            gif_writer.append_data(frame_rgb)
 
-            mask_writer.write(mask_vis_bgr)
+            # C. Write the mask frames (if enabled)
+            if cfg.generate_mask and mask_img is not None:
+                mask_tiff_writer.append_data(mask_img)  # Raw uint16 data
 
+                # Create and write the colorized preview for the mask
+                mask_vis_float = label2rgb(mask_img, bg_label=0)
+                mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
+                mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
+                mask_mp4_writer.write(mask_vis_bgr)
 
-    writer.release()
-    if cfg.generate_mask:
-        mask_writer.release()
+        # --- 4. Save the collected ground truth data after the loop ---
+        save_ground_truth(all_gt_data, gt_json_path)
 
-    imageio.mimsave(gif_path, frames, fps=cfg.fps)
-    save_ground_truth(all_gt_data, gt_path_json, masks)
+    finally:
+        # --- 5. Close all writers to finalize the files ---
+        print("Closing all file writers...")
+        video_tiff_writer.close()
+        gif_writer.close()
+        video_mp4_writer.release()
+        if mask_tiff_writer:
+            mask_tiff_writer.close()
+        if mask_mp4_writer:
+            mask_mp4_writer.release()
+        print("All files saved successfully.")
 
-    return video_path, gt_path_json, mask_video_path
+    return video_tiff_path, gt_json_path, masks_tiff_path
 
 
