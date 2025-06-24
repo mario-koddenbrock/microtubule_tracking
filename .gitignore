@@ -179,3 +179,4 @@ cython_debug/
 *.gif
 /plots/
 *.db
+*.tif
