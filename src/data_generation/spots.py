@@ -100,3 +100,29 @@ class SpotGenerator:
                 img += mask
 
         return img
+
+    @staticmethod
+    def apply_random_spots(img: np.ndarray, spot_cfg: SpotConfig) -> np.ndarray:
+        """
+        Adds stateless spots that are regenerated completely on every frame.
+        This function is now RGB-aware.
+        """
+        n_spots = spot_cfg.count
+        if n_spots == 0:
+            return img
+
+        # CHANGED: Correctly get image dimensions, handling both grayscale and RGB.
+        if img.ndim == 3:
+            h, w, _ = img.shape
+        else:
+            h, w = img.shape
+
+        # Generate all properties on-the-fly for each frame
+        coords = [(np.random.randint(0, h), np.random.randint(0, w)) for _ in range(n_spots)]
+        intensities = [np.random.uniform(spot_cfg.intensity_min, spot_cfg.intensity_max) for _ in range(n_spots)]
+        radii = [np.random.randint(spot_cfg.radius_min, spot_cfg.radius_max + 1) for _ in range(n_spots)]
+        kernel_sizes = [np.random.randint(spot_cfg.kernel_size_min, spot_cfg.kernel_size_max + 1) for _ in
+                        range(n_spots)]
+
+        # This call is now safe because SpotGenerator.draw_spots is RGB-aware.
+        return SpotGenerator.draw_spots(img, coords, intensities, radii, kernel_sizes, spot_cfg.sigma)

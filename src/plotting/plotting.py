@@ -129,3 +129,27 @@ def mask_to_color(mask: np.ndarray) -> np.ndarray:
     bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
     bgr[mask == 0] = 0
     return bgr
+
+
+def show_frame(frame: np.ndarray, title:str = "") -> None:
+    """
+    Display a single frame using matplotlib.
+
+    Parameters
+    ----------
+    frame : np.ndarray
+        The image frame to display, expected to be in BGR format.
+        :param frame:
+        :param title:
+    """
+    if frame.ndim == 2:  # Grayscale image
+        plt.imshow(frame, cmap='gray')
+    elif frame.ndim == 3:  # Color image
+        plt.imshow(frame)
+    else:
+        raise ValueError("Frame must be a 2D or 3D numpy array.")
+
+    print(f"{title}: {frame.max()} ({frame.dtype})")
+    plt.title(title)
+    plt.axis('off')  # Hide axes
+    plt.show()

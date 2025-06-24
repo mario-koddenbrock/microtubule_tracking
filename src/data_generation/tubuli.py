@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 from config.synthetic_data import SyntheticDataConfig
-from data_generation.utils import draw_colored_gaussian_line
+from data_generation.utils import draw_gaussian_line_on_rgb
 
 
 # HELPER FUNCTION to generate the length profile
@@ -79,10 +79,15 @@ class Microtubule:
             self,
             cfg: SyntheticDataConfig,
             base_point: np.ndarray,
-            base_orientation: float,
-            base_wagon_length: float,
             instance_id: int = 0,
     ):
+
+        base_orientation = np.random.uniform(0.0, 2 * np.pi)
+        base_wagon_length = np.random.uniform(
+            cfg.min_base_wagon_length,
+            cfg.max_base_wagon_length
+        )
+
         # 1) Generate the length-over-time profile internally
         min_len = np.random.uniform(cfg.min_length_min, cfg.min_length_max)
         max_len = np.random.uniform(cfg.max_length_min, cfg.max_length_max)
@@ -190,7 +195,7 @@ class Microtubule:
 
     def draw(self, frame: np.ndarray, mask: np.ndarray, cfg: SyntheticDataConfig) -> list[dict]:
         """
-        Rasterize each wagon, applying brighter contrast to the growing tip.
+        Rasterizes each wagon using the new flexible contrast model.
         """
         abs_angle = self.base_orientation
         abs_pos = self.base_point.copy()
@@ -205,33 +210,47 @@ class Microtubule:
             sigma_x = cfg.sigma_x * (1 + np.random.normal(0, cfg.width_var_std))
             sigma_y = cfg.sigma_y * (1 + np.random.normal(0, cfg.width_var_std))
 
-            is_seed_wagon = (idx == 0)
-            color_rgb = cfg.seed_color_rgb if is_seed_wagon else cfg.tubulus_color_rgb
+            # --- NEW LOGIC: Calculate per-channel contrast ---
 
-            # CHANGED: Apply brightness factor for growing tips
-            contrast = cfg.tubulus_contrast
+            # 1. Start with the base contrast for all channels.
+            #    This can be positive (bright) or negative (dark).
+            base_contrast = cfg.tubulus_contrast
+
+            # 2. Apply tip brightness factor if applicable.
             is_tip_wagon = (idx == len(self.wagons) - 1)
             if self.state == "growing" and is_tip_wagon:
-                contrast *= cfg.tip_brightness_factor
+                base_contrast *= cfg.tip_brightness_factor
 
-            draw_colored_gaussian_line(
+            # 3. Create the RGB contrast tuple.
+            r_contrast = base_contrast
+            g_contrast = base_contrast
+            b_contrast = base_contrast
+
+            # 4. For seed segments, add the red channel boost.
+            is_seed_wagon = (idx == 0)
+            if is_seed_wagon:
+                r_contrast += cfg.seed_red_channel_boost
+
+            color_contrast_rgb = (r_contrast, g_contrast, b_contrast)
+
+            # 5. Call the drawing function with the final calculated values.
+            draw_gaussian_line_on_rgb(
                 frame, mask, abs_pos, new_pos,
                 sigma_x=sigma_x, sigma_y=sigma_y,
-                contrast=contrast,  # Use the potentially modified contrast
-                color_rgb=color_rgb,
+                color_contrast_rgb=color_contrast_rgb,
                 mask_idx=self.instance_id
             )
 
+            # Ground truth generation
             gt_info.append({
-                "frame_idx": cfg._frame_idx,
+                "frame_idx": -1, # Will be set later
                 "wagon_index": idx,
-                "start": abs_pos.tolist(),  # .tolist() converts numpy array to list
+                "start": abs_pos.tolist(),
                 "end": new_pos.tolist(),
-                "angle": float(w.angle),  # float() converts numpy float to python float
+                "angle": float(w.angle),
                 "length": float(w.length),
                 "instance_id": self.instance_id,
             })
-
             abs_pos = new_pos.copy()
 
         return gt_info
