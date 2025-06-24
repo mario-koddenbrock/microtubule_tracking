@@ -222,8 +222,16 @@ class Microtubule:
                 mask_idx=self.instance_id
             )
 
-            # ... (ground truth generation is the same) ...
-            gt_info.append({...})
+            gt_info.append({
+                "frame_idx": cfg._frame_idx,
+                "wagon_index": idx,
+                "start": abs_pos.tolist(),  # .tolist() converts numpy array to list
+                "end": new_pos.tolist(),
+                "angle": float(w.angle),  # float() converts numpy float to python float
+                "length": float(w.length),
+                "instance_id": self.instance_id,
+            })
+
             abs_pos = new_pos.copy()
 
         return gt_info
