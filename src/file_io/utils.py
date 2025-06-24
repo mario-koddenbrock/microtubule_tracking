@@ -63,34 +63,11 @@ def extract_frames(video_path, color_mode: str = "grayscale") -> List[np.ndarray
     return frames, fps
 
 
-def save_ground_truth(
-        gt_data: List[dict],
-        json_output_path: str,
-        mask_frames: Optional[List[np.ndarray]] = None,
-):
-    """
-    Saves ground truth data.
 
-    1. Saves annotation data (for detection/tracking) as a JSON file.
-    2. If mask_frames are provided, saves the raw integer instance masks
-       as a multi-page TIFF file.
+def save_ground_truth(gt_data: List[dict], json_output_path: str):
     """
-    # --- 1. Save the JSON ground truth  ---
+    Saves annotation data (for detection/tracking) as a JSON file.
+    """
     with open(json_output_path, "w") as fh:
         json.dump(gt_data, fh, indent=2)
     print(f"Saved JSON ground truth to: {json_output_path}")
-
-    # --- 2. Save the raw masks to a multipage TIFF ---
-    if mask_frames and len(mask_frames) > 0:
-        # Generate the TIFF file path from the JSON path
-        # e.g., 'series_1_gt.json' -> 'series_1_gt_masks.tif'
-        base_path, _ = os.path.splitext(json_output_path)
-        tiff_output_path = f"{base_path}_masks.tif"
-
-        print(f"Saving {len(mask_frames)} raw integer masks to: {tiff_output_path}...")
-
-        # Use imageio.mimwrite to save a stack of images into one file
-        # The TIFF format will preserve the uint16 data type perfectly.
-        imageio.mimwrite(tiff_output_path, mask_frames)
-
-        print("TIFF saving complete.")
