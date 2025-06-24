@@ -102,6 +102,5 @@ class SyntheticDataConfig(BaseConfig):
 
         # ─── checks for wagons ───────────────────────────
         assert self.max_num_wagons >= 1, "max_num_wagons must be ≥1"
-        assert 0 <= self.max_angle_change_prob <= 1, "angle_change_prob must be between 0 and 1"
         assert self.min_wagon_length_min < self.min_wagon_length_max, "min_wagon_length_min < min_wagon_length_max"
         assert self.max_wagon_length_min < self.max_wagon_length_max, "max_wagon_length_min < max_wagon_length_max"
