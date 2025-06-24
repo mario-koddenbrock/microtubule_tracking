@@ -36,6 +36,9 @@ def render_frame(
 
     gt_data = []
 
+    if frame_idx == 15:
+        print(f"Rendering frame {frame_idx} with {len(mts)} microtubules")
+
     # 2) For each microtubule, step its length and draw
     for mt in mts:
         # A) Step to match the length profile:
@@ -80,6 +83,9 @@ def render_frame(
 
     frame = np.clip(frame, 0.0, 1.0)
     frame_uint8 = (frame * 255).astype(np.uint8)
+
+    if mask.min() > 0:
+        print(f"Warning: Mask has no instance IDs (min={mask.min()})")
 
     return (frame_uint8, gt_data, mask) if return_mask else (frame_uint8, gt_data, None)
 
@@ -179,7 +185,7 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
             mask_vis_float = label2rgb(mask, bg_label=0)
             mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
 
-            # scikit-image produces RGB, but cv2.VideoWriter expects BGR
+
             mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
 
             mask_writer.write(mask_vis_bgr)

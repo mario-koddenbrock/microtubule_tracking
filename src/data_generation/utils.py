@@ -418,68 +418,60 @@ def draw_gaussian_line(frame: np.ndarray,
                        ):
     """
     Rasterize a straight line from start_pt → end_pt by placing small 2D Gaussian
-    spots (with standard deviations sigma_x, sigma_y and given contrast) at regular
-    intervals (~0.5 px) along the line. This modifies `frame` in place.
+    spots at regular intervals. Modifies `frame` and `mask` in place.
 
-    Parameters:
-        frame:      2D numpy array of shape (H, W), float32 or float64, holding the image.
-        mask:       2D numpy array of shape (H, W), float32 or float64, holding the mask.
-        start_pt:   length-2 array-like (x0, y0) giving the line’s starting coordinates.
-        end_pt:     length-2 array-like (x1, y1) giving the line’s end coordinates.
-        sigma_x:    Standard deviation of the Gaussian in the x-direction (pixels).
-        sigma_y:    Standard deviation of the Gaussian in the y-direction (pixels).
-        contrast:   Scalar multiplier for each Gaussian spot’s amplitude.
-        mask_idx:   Index for the mask, if applicable (default 0).
-
-    Notes:
-        - If the line length is zero (start == end), this simply draws one Gaussian at start_pt.
-        - For performance, we compute a meshgrid (frame_x, frame_y) once per call,
-          though in a tight loop you might precompute it outside and pass it in.
+    This version uses safe NumPy indexing to modify the mask, avoiding memory
+    corruption associated with using cv2.circle on uint16 arrays.
     """
     H, W = frame.shape
-    # Create coordinate grids for all pixel centers
-    yy, xx = np.mgrid[0: H, 0: W]  # yy[i,j]=i, xx[i,j]=j
+    # Create coordinate grids for all pixel centers.
+    # We only need to do this once.
+    yy, xx = np.mgrid[0:H, 0:W]
 
-    # Convert inputs to numpy arrays of dtype float
     x0, y0 = float(start_pt[0]), float(start_pt[1])
     x1, y1 = float(end_pt[0]), float(end_pt[1])
 
-    # Vector from start to end
     vec = np.array([x1 - x0, y1 - y0], dtype=np.float32)
     length = np.linalg.norm(vec)
 
-    # If the segment has zero length, just draw a single Gaussian at (x0, y0)
-    if length == 0:
+    # Define a threshold to determine which pixels belong to the object in the mask
+    # A small fraction of the peak contrast is a good choice.
+    mask_threshold = 0.01
+
+    # If the segment has zero length, just draw a single Gaussian
+    if length < 1e-6:  # Use a small tolerance for floating point comparison
         dx = xx - x0
         dy = yy - y0
         gaussian = np.exp(-((dx ** 2) / (2 * sigma_x ** 2) + (dy ** 2) / (2 * sigma_y ** 2)))
+
+        # Add the gaussian to the frame
         frame += contrast * gaussian
-        mask[yy, xx] = mask_idx  # Set mask at the single point
-        return frame, mask
 
-    # Unit direction vector
-    direction = vec / length
+        # FIXED: Use safe NumPy boolean indexing to set the mask.
+        # This only sets the mask where the gaussian is strong enough.
+        mask[gaussian > mask_threshold] = mask_idx
+        return  # No need to return frame/mask as they are modified in-place
 
-    # Choose step size ≈0.5 px (adjust for smoother/faster drawing)
+    # For lines longer than 0, iterate along the line
     step = 0.5
     num_steps = int(np.ceil(length / step))
+    # Avoid division by zero if num_steps is 0 for very short lines
+    if num_steps == 0:
+        num_steps = 1
 
-    # For each sample point along the line, place a 2D Gaussian:
     for i in range(num_steps + 1):
         t = i / num_steps
-        x = x0 + t * vec[0]
-        y = y0 + t * vec[1]
+        px = x0 + t * vec[0]
+        py = y0 + t * vec[1]
 
-        # Compute squared distances from (x, y) to every pixel center:
-        dx = xx - x
-        dy = yy - y
+        # Compute gaussian centered at the current point (px, py)
+        dx = xx - px
+        dy = yy - py
         gaussian = np.exp(-((dx ** 2) / (2 * sigma_x ** 2) + (dy ** 2) / (2 * sigma_y ** 2)))
 
-        # Accumulate into the frame
+        # Add the gaussian shape to the main image
         frame += contrast * gaussian
 
-        # Update the mask at this point
-        center_pt = (int(np.round(x)), int(np.round(y)))
-        cv2.circle(mask, center_pt, 1, mask_idx, thickness=1, lineType=8, shift=0)
-
-    return frame, mask
+        # FIXED: Use safe NumPy boolean indexing instead of cv2.circle
+        # This correctly updates the uint16 mask without memory errors.
+        mask[gaussian > mask_threshold] = mask_idx

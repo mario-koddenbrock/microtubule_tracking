@@ -170,7 +170,7 @@ class Microtubule:
             sigma_x = cfg.sigma_x * (1 + np.random.normal(0, cfg.width_var_std))
             sigma_y = cfg.sigma_y * (1 + np.random.normal(0, cfg.width_var_std))
 
-            frame, mask = draw_gaussian_line(
+            draw_gaussian_line(
                 frame,
                 mask,
                 abs_pos, new_pos,
