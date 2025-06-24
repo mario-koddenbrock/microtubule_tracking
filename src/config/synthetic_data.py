@@ -49,14 +49,10 @@ class SyntheticDataConfig(BaseConfig):
     tubuli_min_dist: int = 50
     margin: int = 5
 
-    width_var_std: float = 0.05
-    bend_amplitude: float = 5.0
-    bend_prob: float = 0.01
-    bend_straight_fraction: float = 0.9
-
     # ─── PSF / drawing width ───────────────────────────────
     sigma_x: float = 0.3
     sigma_y: float = 0.8
+    width_var_std: float = 0.05
 
     # ─── new photophysics / camera realism ─────────────────
     background_level: float = 0.8
@@ -89,7 +85,7 @@ class SyntheticDataConfig(BaseConfig):
     # ─── annotations ─────────────────────────────────────
     show_time:bool = True
     show_scale:bool = True
-    um_per_pixel:float = 0.108
+    um_per_pixel:float = 0.1
     scale_bar_um:float = 5.0
 
     # ─── misc ──────────────────────────────────────────────
