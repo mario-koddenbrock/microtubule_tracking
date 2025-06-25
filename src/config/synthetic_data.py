@@ -20,16 +20,16 @@ class SyntheticDataConfig(BaseConfig):
 
     # ─── microtubule kinematics (stochastic model) ─────────────────────────
     growth_speed: float = 2.5
-    shrink_speed: float = 5.0
+    shrink_speed: float = 5.0  # up to 20x growth_speed
     catastrophe_prob: float = 0.01
     rescue_prob: float = 0.005
 
-    min_base_wagon_length: float = 10.0
+    min_base_wagon_length: float = 10.0 # base wagon length is fixed and is never undergoing a catastrophe
     max_base_wagon_length: float = 50.0
     max_num_wagons: int = 20
     max_angle: float = 0.1  # Max angle in radians between wagons
 
-    max_angle_sign_changes: int = 1  # 0 for C-shape, 1 for S-shape, etc.
+    max_angle_sign_changes: int = 0  # 0 for C-shape, 1 for S-shape, etc.
     prob_to_flip_bend: float = 0.001  # Probability to use an available sign change
 
     min_length_min: int = 50
