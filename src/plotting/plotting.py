@@ -22,6 +22,8 @@ def visualize_embeddings(best_cfg, ref_vecs, best_vecs, output_dir:str = "plots/
     max_labels : int, optional – maximum tick labels on the heat‑map axes
     """
 
+    # TODO: use UMap instead of t‑SNE
+
     os.makedirs(output_dir, exist_ok=True)
 
     # 1 – Heat‑map -----------------------------------------------------------
