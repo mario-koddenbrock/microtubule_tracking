@@ -1,10 +1,8 @@
 import os
 from glob import glob
-from pathlib import Path  # Use pathlib for more robust path handling
+from pathlib import Path
 
 import cv2
-import matplotlib.pyplot as plt
-import numpy as np
 from tqdm import tqdm
 
 from file_io.utils import extract_frames
