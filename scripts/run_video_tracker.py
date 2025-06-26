@@ -11,6 +11,7 @@ from tracking.filters.morphology import MorphologyFilter
 from tracking.filters.spatial import CornerExclusionFilter
 from tracking.iou_tracker import IoUTracker
 from tracking.opencv_tracker import OpenCVTracker
+from tracking.projection_tracker import ProjectionTracker
 
 
 def main(args):
@@ -36,6 +37,9 @@ def main(args):
         tracker = CentroidTracker(max_distance=args.max_distance)
     elif args.tracker == 'csrt':
         tracker = OpenCVTracker(tracker_type='csrt', iou_threshold=args.iou_threshold)
+    elif args.tracker == 'projection':
+        tracker = ProjectionTracker(iou_threshold=args.iou_threshold)
+        raise NotImplementedError("ProjectionTracker is not yet implemented.")
     else:
         raise ValueError(f"Unknown tracker type: {args.tracker}")
     print(f"Using {tracker.__class__.__name__} for tracking.")
@@ -68,7 +72,7 @@ def main(args):
         tracked_masks,
         video_path,
         fps,
-        alpha=0,
+        alpha=1,
     )
 
 
@@ -86,7 +90,7 @@ if __name__ == "__main__":
                         help="Path to save the output MP4 video.")
 
     # Model and Tracker choice
-    parser.add_argument("--tracker", type=str, choices=['iou', 'centroid', 'csrt'], default='csrt',
+    parser.add_argument("--tracker", type=str, choices=['iou', 'centroid', 'csrt', 'projection'], default='csrt',
                         help="Tracking algorithm to use.")
     parser.add_argument("--device", type=str, default=None,
                         help="Device for model inference (e.g., 'cuda', 'cpu'). Auto-detects if not set.")
