@@ -15,7 +15,14 @@ class VideoOutputManager:
     (TIFF, MP4, GIF) to simplify the main video generation loop.
     """
 
-    def __init__(self, cfg: SyntheticDataConfig, base_output_dir: str):
+    def __init__(
+            self,
+            cfg: SyntheticDataConfig,
+            base_output_dir: str,
+            export_video: bool = False,
+            export_gif_preview: bool = True,
+            export_mp4_preview: bool = True,
+    ):
         """
         Initializes all file paths and writer objects based on the config.
         """
@@ -30,13 +37,27 @@ class VideoOutputManager:
         masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
         gif_path = os.path.join(base_output_dir, f"{base_name}_video_preview.gif")
 
-        # --- 2. Initialize writers ---
-        self.video_tiff_writer = imageio.get_writer(video_tiff_path, format='TIFF')
-        self.gif_writer = imageio.get_writer(gif_path, fps=cfg.fps)
+        self.export_video = export_video
+        self.export_gif_preview = export_gif_preview
+        self.export_mp4_preview = export_mp4_preview
 
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        img_h, img_w = cfg.img_size
-        self.video_mp4_writer = cv2.VideoWriter(video_mp4_path, fourcc, cfg.fps, (img_w, img_h))
+        # --- 2. Initialize writers ---
+        if self.export_video:
+            self.video_tiff_writer = imageio.get_writer(video_tiff_path, format='TIFF')
+        else:
+            self.video_tiff_writer = None
+
+        if self.export_gif_preview:
+            self.gif_writer = imageio.get_writer(gif_path, fps=cfg.fps)
+        else:
+            self.gif_writer = None
+
+        if self.export_mp4_preview:
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            img_h, img_w = cfg.img_size
+            self.video_mp4_writer = cv2.VideoWriter(video_mp4_path, fourcc, cfg.fps, (img_w, img_h))
+        else:
+            self.video_mp4_writer = None
 
         if cfg.generate_mask:
             self.mask_tiff_writer = imageio.get_writer(masks_tiff_path, format='TIFF')
@@ -50,12 +71,16 @@ class VideoOutputManager:
         Appends a new frame and its mask to all relevant output files.
         """
         # A. Write the main video frames (which are already uint8 RGB)
-        self.video_tiff_writer.append_data(frame_img_rgb)
-        self.gif_writer.append_data(frame_img_rgb)
+        if self.video_tiff_writer:
+            self.video_tiff_writer.append_data(frame_img_rgb)
+
+        if self.gif_writer:
+            self.gif_writer.append_data(frame_img_rgb)
 
         # Convert RGB to BGR for OpenCV's VideoWriter
         frame_bgr = cv2.cvtColor(frame_img_rgb, cv2.COLOR_RGB2BGR)
-        self.video_mp4_writer.write(frame_bgr)
+        if self.video_mp4_writer:
+            self.video_mp4_writer.write(frame_bgr)
 
         # B. Write the mask frames (if enabled)
         if self.cfg.generate_mask and mask_img is not None:
@@ -70,9 +95,12 @@ class VideoOutputManager:
     def close(self):
         """Closes all writer objects to finalize files."""
         print("Closing all file writers...")
-        self.video_tiff_writer.close()
-        self.gif_writer.close()
-        self.video_mp4_writer.release()
+        if self.video_tiff_writer:
+            self.video_tiff_writer.close()
+        if self.gif_writer:
+            self.gif_writer.close()
+        if self.mask_tiff_writer:
+            self.video_mp4_writer.release()
         if self.mask_tiff_writer:
             self.mask_tiff_writer.close()
         if self.mask_mp4_writer:
