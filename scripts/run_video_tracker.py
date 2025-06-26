@@ -66,11 +66,11 @@ def main(args):
 
     # 6. Visualize and Export
     print("Stage 3/3: Visualizing results and exporting video...")
-    video_path = args.output[:-4] + "_" + args.tracker + args.output[-4:]
     visualize_tracked_masks(
         frames,
         tracked_masks,
-        video_path,
+        args.video,
+        args.output_path,
         fps,
         alpha=1,
     )
@@ -86,8 +86,8 @@ if __name__ == "__main__":
                         help="Path to the input video file (.mp4, .avi, .tif, etc.).")
     parser.add_argument("--config", type=str, required=True,
                         help="Path to the cellpose_config.json file.")
-    parser.add_argument("--output", type=str, required=True,
-                        help="Path to save the output MP4 video.")
+    parser.add_argument("--output_path", type=str, required=True,
+                        help="Path to save the output video.")
 
     # Model and Tracker choice
     parser.add_argument("--tracker", type=str, choices=['iou', 'centroid', 'csrt', 'projection'], default='csrt',

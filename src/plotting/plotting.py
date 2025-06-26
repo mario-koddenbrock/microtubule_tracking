@@ -185,6 +185,7 @@ def get_colormap(all_track_ids, cmap_name='tab20'):
 def visualize_tracked_masks(
         frames: List[np.ndarray],
         tracked_masks: List[np.ndarray],
+        video_path: str,
         output_path: str,
         fps: float,
         alpha: float = 0.5,
@@ -210,10 +211,11 @@ def visualize_tracked_masks(
     color_map = get_colormap(all_track_ids)
 
     # --- 2. Prepare paths and writers ---
-    base_path = Path(output_path)
-    video_output_path = base_path.with_suffix('.mp4')
-    gif_output_path = base_path.with_suffix('.gif')
-    kymograph_dir = base_path.parent / "kymographs"
+    base_path = Path(os.path.abspath(output_path))
+    video_name = Path(video_path).stem
+    video_output_path = base_path / (video_name + '.mp4')
+    gif_output_path = base_path / (video_name + '.gif')
+    kymograph_dir = base_path / (video_name + "_kymographs")
 
     h, w = frames[0].shape[:2]
 
