@@ -44,6 +44,16 @@ def extract_frames(video_path, color_mode: str = "grayscale") -> (List[np.ndarra
                 break
             frames.append(frame)
         cap.release()
+    elif video_path.lower().endswith((".mp4", ".mov", ".mkv")):
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames.append(frame)
+        cap.release()
     elif video_path.lower().endswith((".tif", ".tiff")):
         data = tifffile.imread(video_path)
         # Assuming a default FPS for TIFF stacks, as it's not stored in the file.
