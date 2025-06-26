@@ -19,7 +19,6 @@ class OpenCVTracker(BaseTracker):
         self.tracker_type = tracker_type.lower()
         self.iou_threshold = iou_threshold
         self.active_trackers: Dict[int, Any] = {}
-        print(f"OpenCVTracker initialized with type: '{self.tracker_type}'")
 
     def _create_tracker(self) -> Any:
         # ... (this function is unchanged)

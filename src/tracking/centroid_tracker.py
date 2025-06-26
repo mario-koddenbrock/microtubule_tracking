@@ -23,7 +23,6 @@ class CentroidTracker(BaseTracker):
         """
         super().__init__()
         self.max_distance = max_distance
-        print(f"CentroidTracker initialized with max_distance: {self.max_distance}")
 
     def _get_centroids(self, mask: np.ndarray):
         """Calculates the center of mass for each object in a mask."""
