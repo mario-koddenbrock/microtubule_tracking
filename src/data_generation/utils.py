@@ -136,7 +136,8 @@ def draw_gaussian_line_on_rgb(frame: np.ndarray,
             frame[..., c] += color_contrast_rgb[c] * gaussian_blob
 
         # Update the instance mask where the Gaussian is strong enough
-        mask[gaussian_blob > mask_threshold] = mask_idx
+        if mask:
+            mask[gaussian_blob > mask_threshold] = mask_idx
     # --- End of Helper Function ---
 
     # If the line has no length, just draw a single spot at the start point.
