@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List
 
 import cv2
@@ -28,6 +29,10 @@ class CustomJsonEncoder(json.JSONEncoder):
 
 
 def extract_frames(video_path, color_mode: str = "grayscale") -> List[np.ndarray]:
+
+    if not os.path.isfile(video_path):
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+
     frames = []
     if video_path.lower().endswith(".avi"):
         cap = cv2.VideoCapture(video_path)
