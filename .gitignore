@@ -180,3 +180,4 @@ cython_debug/
 /plots/
 *.db
 *.tif
+/results/
