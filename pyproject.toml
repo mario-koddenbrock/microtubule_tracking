@@ -23,8 +23,8 @@ dependencies = [
   "imageio",
   "scikit-image",
   "transformers",
+  "cellpose-adapt @ git+https://github.com/mario-koddenbrock/cellpose-adapt.git"
 ]
 
 [project.urls]
 source = "https://github.com/mario-koddenbrock/microtubule_tracking"
-
