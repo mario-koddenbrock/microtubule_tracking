@@ -216,7 +216,6 @@ def visualize_tracked_masks(
     kymograph_dir = base_path.parent / "kymographs"
 
     h, w = frames[0].shape[:2]
-    video_writer = cv2.VideoWriter(str(video_output_path), cv2.VideoWriter_fourcc(*"mp4v"), max(1, fps), (w, h))
 
     # --- 3. Generate all visualized frames ---
     print("Generating visualized frames...")
@@ -255,12 +254,13 @@ def visualize_tracked_masks(
                 cv2.putText(overlay, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         # Blend the overlay and store the final frame
-        cv2.addWeighted(overlay, alpha, vis_frame, alpha, 0, vis_frame)
+        cv2.addWeighted(overlay, alpha, vis_frame, 1 - alpha, 0, vis_frame)
         visualized_frames.append(vis_frame)
 
     # --- 4. Save the generated frames to files ---
     print("\nSaving output files...")
     # Save MP4 video
+    video_writer = cv2.VideoWriter(str(video_output_path), cv2.VideoWriter_fourcc(*"mp4v"), max(1, fps), (w, h))
     for vis_frame in tqdm(visualized_frames, desc="Saving MP4"):
         video_writer.write(vis_frame)
     video_writer.release()
