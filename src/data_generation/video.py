@@ -100,7 +100,11 @@ def generate_frames(cfg: SyntheticDataConfig, *, return_mask: bool = False):
         yield frame, gt_data, mask
 
 
-def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
+def generate_video(
+        cfg: SyntheticDataConfig,
+        base_output_dir: str,
+        export_gt_data: bool = True,
+):
     """
     Generates a synthetic video sequence using a dedicated manager for file I/O.
     """
@@ -124,7 +128,8 @@ def generate_video(cfg: SyntheticDataConfig, base_output_dir: str):
             output_manager.append(frame_img_rgb, mask_img)
 
         # 3. Save the collected ground truth data after the loop
-        save_ground_truth(all_gt_data, gt_json_path)
+        if export_gt_data:
+            save_ground_truth(all_gt_data, gt_json_path)
 
     finally:
         # 4. Close all writers to finalize the files
