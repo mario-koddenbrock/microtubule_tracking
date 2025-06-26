@@ -90,7 +90,7 @@ class MorphologyFilter(BaseFilter):
                 continue
 
             # If all checks pass, keep this object
-            filtered_mask[labeled_mask == prop.label] = 150
+            filtered_mask[labeled_mask == prop.label] = prop.label
 
         # plt.imshow(filtered_mask)
         # plt.title("Filtered Mask")

@@ -32,7 +32,7 @@ class CentroidTracker(BaseTracker):
         centroids = center_of_mass(mask, mask, ids)
         return dict(zip(ids, centroids))
 
-    def track_frames(self, raw_masks: List[np.ndarray]) -> List[np.ndarray]:
+    def track_frames(self, raw_masks: List[np.ndarray], frames: List[np.ndarray]) -> List[np.ndarray]:
         """
         Processes raw masks to produce tracked masks using the centroid distance algorithm.
         """

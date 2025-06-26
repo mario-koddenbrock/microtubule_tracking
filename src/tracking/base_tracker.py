@@ -17,7 +17,7 @@ class BaseTracker(ABC):
         self.tracks: Dict[int, Dict] = {} # A generic place to store info about active tracks
 
     @abstractmethod
-    def track_frames(self, raw_masks: List[np.ndarray]) -> List[np.ndarray]:
+    def track_frames(self, raw_masks: List[np.ndarray], frames: List[np.ndarray]) -> List[np.ndarray]:
         """
         Processes a list of raw segmentation masks to produce tracked masks.
 
@@ -26,6 +26,7 @@ class BaseTracker(ABC):
         Args:
             raw_masks (List[np.ndarray]): A list of independently segmented masks
                                        where labels are not consistent over time.
+            frames (List[np.ndarray]): A list of original pixel frames corresponding
 
         Returns:
             List[np.ndarray]: A list of re-labeled masks with consistent tracking IDs.

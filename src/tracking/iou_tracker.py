@@ -43,7 +43,7 @@ class IoUTracker(BaseTracker):
                 iou_matrix[i, j] = intersection / union
         return iou_matrix, prev_ids, current_ids
 
-    def track_frames(self, raw_masks: List[np.ndarray]) -> List[np.ndarray]:
+    def track_frames(self, raw_masks: List[np.ndarray], frames: List[np.ndarray]) -> List[np.ndarray]:
         """
         Processes raw masks to produce tracked masks using the IoU algorithm.
         """

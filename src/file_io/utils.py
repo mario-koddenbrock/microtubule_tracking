@@ -28,7 +28,7 @@ class CustomJsonEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def extract_frames(video_path, color_mode: str = "grayscale") -> List[np.ndarray]:
+def extract_frames(video_path, color_mode: str = "grayscale") -> (List[np.ndarray], int):
 
     if not os.path.isfile(video_path):
         raise FileNotFoundError(f"Video file not found: {video_path}")
