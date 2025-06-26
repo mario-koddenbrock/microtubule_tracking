@@ -5,6 +5,7 @@ from data_generation.optimization.eval import evaluate_results
 from data_generation.optimization.optimization import run_optimization
 
 if __name__ == "__main__":
+
     project_root = Path(__file__).resolve().parent.parent.parent.parent
     output_base_dir = os.path.join(project_root, "data", "synthetic_output")
 
