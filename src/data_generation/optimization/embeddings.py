@@ -117,6 +117,10 @@ class ImageEmbeddingExtractor:
         embeddings = []
         ref_dir = self.config.reference_series_dir
         video_files = glob(os.path.join(ref_dir, "*.avi")) + glob(os.path.join(ref_dir, "*.tif"))
+
+        if not video_files:
+            raise ValueError(f"No reference video files found in directory: {ref_dir}")
+
         video_files = video_files[:self.config.num_compare_series]
 
         for video_idx, video_path in enumerate(video_files):
@@ -174,7 +178,13 @@ class ImageEmbeddingExtractor:
 
         for frame, *_ in tqdm(frame_generator, total=synthetic_cfg.num_frames,
                                     desc="Generating and processing frames"):
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+            if frame.ndim == 2:
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+            else:
+                # TODO check if the frame is already in RGB format
+                # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                rgb_frame = frame
+
             emb = self._compute_embedding(rgb_frame)
             raw_embeddings.append(emb)
 
