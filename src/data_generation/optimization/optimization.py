@@ -76,7 +76,7 @@ def run_optimization(tuning_config_path: str):
     best_cfg.validate()
     best_cfg.to_json(tuning_cfg.output_config_file)
 
-    print(f"✓ Best config saved to: {tuning_cfg.output_config_file}")
-    print("Optimization complete.")
+    print(f"Best config saved to: {tuning_cfg.output_config_file}")
+
 
 

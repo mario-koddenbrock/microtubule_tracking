@@ -24,7 +24,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
 
     # Load the best synthetic config found during optimization
     best_cfg = SyntheticDataConfig.load(tuning_cfg.output_config_file)
-    print(f"✓ Loaded best configuration from: {tuning_cfg.output_config_file}")
+    print(f"Loaded best configuration from: {tuning_cfg.output_config_file}")
 
     # Load the completed Optuna study from its database file
     study_db_path = f"sqlite:///{os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')}"
@@ -33,7 +33,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
             study_name=tuning_cfg.output_config_id,
             storage=study_db_path
         )
-        print(f"✓ Loaded Optuna study from: {study_db_path}")
+        print(f"Loaded Optuna study from: {study_db_path}")
     except KeyError:
         print(f"ERROR: Could not find study '{tuning_cfg.output_config_id}' in the database file.")
         print("Please ensure you have run the optimization script first.")
@@ -52,17 +52,16 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     # =========================================================================
     print("\n--- Step 3: Generating final video and embeddings ---")
     video_path, gt_path_json, gt_path_video = generate_video(best_cfg, output_dir)
-    print("✓ Best video and ground truth saved to:")
+    print("Best video and ground truth saved to:")
     print(f"  Video: {video_path}")
+
+    # Re-calculate the reference embeddings for the t-SNE plot comparison
+    ref_vecs = embedding_extractor.extract_from_references()
 
     # Generate embeddings for the final, best video
     best_vecs = embedding_extractor.extract_from_synthetic_config(best_cfg)
 
-    # Re-calculate the reference embeddings for the t-SNE plot comparison
-    # This ensures the PCA model is consistent if it's used.
-    ref_vecs = embedding_extractor.extract_from_references()
-
-    print(f"✓ Generated embeddings for comparison (Reference: {ref_vecs.shape}, Best: {best_vecs.shape})")
+    print(f"Generated embeddings for comparison (Reference: {ref_vecs.shape}, Best: {best_vecs.shape})")
 
     # =========================================================================
     # 4. CREATE VISUALIZATIONS
@@ -73,13 +72,13 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
 
     # t-SNE plot
     visualize_embeddings(best_cfg, ref_vecs, best_vecs, plot_output_dir)
-    print(f"✓ t-SNE plot saved in {plot_output_dir}")
+    print(f"t-SNE plot saved in {plot_output_dir}")
 
     # Optimization history plot
     try:
         history_path = os.path.join(plot_output_dir, "optimization_history.html")
         vis.plot_optimization_history(study).write_html(history_path)
-        print(f"✓ Optimization history saved to {history_path}")
+        print(f"Optimization history saved to {history_path}")
     except ImportError:
         print("Install 'optuna[visualization]' to enable the progress plot.")
     except Exception as e:
