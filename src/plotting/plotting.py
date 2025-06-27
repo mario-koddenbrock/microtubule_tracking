@@ -59,7 +59,7 @@ def plot_tsne(ref_2d: np.ndarray, best_2d: np.ndarray, colour: np.ndarray, save_
     plt.scatter(ref_2d[:, 0], ref_2d[:, 1], alpha=.3, s=35, label="reference")
     sc = plt.scatter(best_2d[:, 0], best_2d[:, 1], c=colour, cmap="viridis",
                      marker="x", s=80, linewidths=2, label="synthetic frames")
-    plt.colorbar(sc, label="mean cosine sim → reference")
+    plt.colorbar(sc, label="max cosine sim → reference")
     plt.legend()
     plt.title("t‑SNE of embeddings")
     plt.tight_layout()
