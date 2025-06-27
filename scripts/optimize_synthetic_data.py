@@ -6,16 +6,15 @@ from data_generation.optimization.optimization import run_optimization
 
 if __name__ == "__main__":
 
-    project_root = Path(__file__).resolve().parent.parent.parent.parent
-    output_base_dir = os.path.join(project_root, "data", "synthetic_output")
+    output_base_dir = os.path.join("data", "optimization")
 
     # --- Configuration for Job A ---
-    cfg_path_A = os.path.join(project_root, "config", "tuning_config_A.json")
+    cfg_path_A = os.path.join("config", "tuning_config_A.json")
     output_dir_A = os.path.join(output_base_dir, "config_A")
     os.makedirs(output_dir_A, exist_ok=True)
 
     # --- Configuration for Job B ---
-    cfg_path_B = os.path.join(project_root, "config", "tuning_config_B.json")
+    cfg_path_B = os.path.join("config", "tuning_config_B.json")
     output_dir_B = os.path.join(output_base_dir, "config_B")
     os.makedirs(output_dir_B, exist_ok=True)
 
