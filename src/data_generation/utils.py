@@ -136,7 +136,7 @@ def draw_gaussian_line_on_rgb(frame: np.ndarray,
             frame[..., c] += color_contrast_rgb[c] * gaussian_blob
 
         # Update the instance mask where the Gaussian is strong enough
-        if mask:
+        if mask is not None:
             mask[gaussian_blob > mask_threshold] = mask_idx
     # --- End of Helper Function ---
 
