@@ -51,6 +51,7 @@ class TuningConfig(BaseConfig):
     max_num_wagons_range: Tuple[int, int] = (1, 20)
     max_angle_range: Tuple[float, float] = (0.05, 0.4)
     max_angle_sign_changes_range: Tuple[int, int] = (0, 3)
+    bending_prob_range: Tuple[float, float] = (0.001, 0.5)
     prob_to_flip_bend_range: Tuple[float, float] = (0.001, 0.1)
     min_wagon_length_min_range: Tuple[int, int] = (1, 10)
     min_wagon_length_max_range: Tuple[int, int] = (10, 20)
@@ -63,7 +64,7 @@ class TuningConfig(BaseConfig):
     max_length_min_range: Tuple[int, int] = (80, 150)
     max_length_max_range: Tuple[int, int] = (150, 300)
     num_tubulus_range: Tuple[int, int] = (10, 40)
-    tubuli_min_dist_range: Tuple[int, int] = (10, 50)
+    tubuli_seed_min_dist_range: Tuple[int, int] = (10, 50)
     margin_range: Tuple[int, int] = (0, 20)
     width_var_std_range: Tuple[float, float] = (0.0, 0.2)
     sigma_x_range: Tuple[float, float] = (0.1, 1.0)
@@ -129,6 +130,7 @@ class TuningConfig(BaseConfig):
         max_num_wagons = trial.suggest_int("max_num_wagons", *self.max_num_wagons_range)
         max_angle = trial.suggest_float("max_angle", *self.max_angle_range)
         max_angle_sign_changes = trial.suggest_int("max_angle_sign_changes", *self.max_angle_sign_changes_range)
+        bending_prob = trial.suggest_float("bending_prob", *self.bending_prob_range)
         prob_to_flip_bend = trial.suggest_float("prob_to_flip_bend", *self.prob_to_flip_bend_range)
         min_wagon_length_min = trial.suggest_int("min_wagon_length_min", *self.min_wagon_length_min_range)
         min_wagon_length_max = trial.suggest_int("min_wagon_length_max",
@@ -139,7 +141,7 @@ class TuningConfig(BaseConfig):
                                                  max(max_wagon_length_min + 1, self.max_wagon_length_max_range[0]),
                                                  self.max_wagon_length_max_range[1])
         num_tubulus = trial.suggest_int("num_tubulus", *self.num_tubulus_range)
-        tubuli_min_dist = trial.suggest_int("tubuli_min_dist", *self.tubuli_min_dist_range)
+        tubuli_seed_min_dist = trial.suggest_int("tubuli_seed_min_dist", *self.tubuli_seed_min_dist_range)
         margin = trial.suggest_int("margin", *self.margin_range)
 
         # Rendering & Realism
@@ -185,6 +187,7 @@ class TuningConfig(BaseConfig):
             max_num_wagons=max_num_wagons,
             max_angle=max_angle,
             max_angle_sign_changes=max_angle_sign_changes,
+            bending_prob=bending_prob,
             prob_to_flip_bend=prob_to_flip_bend,
             min_length_min=min_length_min,
             min_length_max=min_length_max,
@@ -197,7 +200,7 @@ class TuningConfig(BaseConfig):
             pause_on_max_length=pause_on_max_length,
             pause_on_min_length=pause_on_min_length,
             num_tubulus=num_tubulus,
-            tubuli_min_dist=tubuli_min_dist,
+            tubuli_seed_min_dist=tubuli_seed_min_dist,
             margin=margin,
             width_var_std=width_var_std,
             sigma_x=sigma_x,

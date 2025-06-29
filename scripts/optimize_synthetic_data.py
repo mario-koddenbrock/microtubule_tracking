@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # You could run this part on a powerful machine,
     # and it would only produce .json and .db files.
     # =========================================
-    run_optimization(cfg_path_A)
+    # run_optimization(cfg_path_A)
     # run_optimization(cfg_path_B)
 
     # =========================================

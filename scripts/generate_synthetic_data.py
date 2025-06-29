@@ -2,7 +2,6 @@ import argparse
 import sys
 from pathlib import Path
 
-# Make sure to import your necessary classes
 from config.synthetic_data import SyntheticDataConfig
 from data_generation.video import generate_video
 
@@ -68,8 +67,8 @@ def main():
 
     # Load the base configuration once
     try:
-        # base_config = SyntheticDataConfig.load(args.config)
-        base_config = SyntheticDataConfig()
+        base_config = SyntheticDataConfig.load(args.config)
+        # base_config = SyntheticDataConfig()
         print(f"Successfully loaded base config from '{args.config}'")
         base_config.save(args.config)
     except Exception as e:
@@ -116,7 +115,7 @@ def main():
 
         # Generate the video and associated files.
         try:
-            generate_video(config_for_id, str(args.output_dir))
+            generate_video(config_for_id, str(args.output_dir), export_gt_data=False)
         except Exception as e:
             print(f"Error: An unexpected error occurred while generating video ID {video_id}.")
             print(f"Details: {e}")
