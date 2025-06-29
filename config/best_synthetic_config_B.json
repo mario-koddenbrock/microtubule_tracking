@@ -17,7 +17,7 @@
   "max_length_max": 170,
   "pause_on_max_length": 4,
   "pause_on_min_length": 6,
-  "num_tubulus": 17,
+  "num_tubuli": 17,
   "tubuli_min_dist": 15,
   "margin": 12,
   "width_var_std": 0.10247582415635194,

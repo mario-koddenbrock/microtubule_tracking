@@ -46,7 +46,7 @@ class SyntheticDataConfig(BaseConfig):
     pause_on_max_length: int = 5
     pause_on_min_length: int = 10
 
-    num_tubulus: int = 20
+    num_tubuli: int = 20
     tubuli_seed_min_dist: int = 50
     margin: int = 5
 

@@ -63,7 +63,7 @@ class TuningConfig(BaseConfig):
     min_length_max_range: Tuple[int, int] = (80, 120)
     max_length_min_range: Tuple[int, int] = (80, 150)
     max_length_max_range: Tuple[int, int] = (150, 300)
-    num_tubulus_range: Tuple[int, int] = (10, 40)
+    num_tubuli_range: Tuple[int, int] = (10, 40)
     tubuli_seed_min_dist_range: Tuple[int, int] = (10, 50)
     margin_range: Tuple[int, int] = (0, 20)
     width_var_std_range: Tuple[float, float] = (0.0, 0.2)
@@ -140,7 +140,7 @@ class TuningConfig(BaseConfig):
         max_wagon_length_max = trial.suggest_int("max_wagon_length_max",
                                                  max(max_wagon_length_min + 1, self.max_wagon_length_max_range[0]),
                                                  self.max_wagon_length_max_range[1])
-        num_tubulus = trial.suggest_int("num_tubulus", *self.num_tubulus_range)
+        num_tubuli = trial.suggest_int("num_tubuli", *self.num_tubuli_range)
         tubuli_seed_min_dist = trial.suggest_int("tubuli_seed_min_dist", *self.tubuli_seed_min_dist_range)
         margin = trial.suggest_int("margin", *self.margin_range)
 
@@ -199,7 +199,7 @@ class TuningConfig(BaseConfig):
             max_wagon_length_max=max_wagon_length_max,
             pause_on_max_length=pause_on_max_length,
             pause_on_min_length=pause_on_min_length,
-            num_tubulus=num_tubulus,
+            num_tubuli=num_tubuli,
             tubuli_seed_min_dist=tubuli_seed_min_dist,
             margin=margin,
             width_var_std=width_var_std,
