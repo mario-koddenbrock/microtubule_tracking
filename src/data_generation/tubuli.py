@@ -113,7 +113,8 @@ class Microtubule:
         self.base_orientation = base_orientation
         self.base_wagon_length = base_wagon_length
         self.max_num_wagons = cfg.max_num_wagons
-        self.max_angle = cfg.max_angle
+        self.bending = (np.random.random() < cfg.bending_prob)
+        self.max_angle = cfg.max_angle if self.bending else 0.0
         self.min_wagon_length = np.random.uniform(cfg.min_wagon_length_min, cfg.min_wagon_length_max)
         self.max_wagon_length = np.random.uniform(cfg.max_wagon_length_min, cfg.max_wagon_length_max)
 

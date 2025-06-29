@@ -11,13 +11,14 @@ class SpotGenerator:
     Manages the state and drawing of a collection of spots (fixed or moving).
     """
 
-    def __init__(self, spot_cfg: SpotConfig, img_shape: Tuple[int, int]):
+    def __init__(self, spot_cfg: SpotConfig, img_shape: Tuple[int, int], color_mode: str = "dark"):
         """
         Initializes the generator and all its spot properties.
         """
         self.cfg = spot_cfg
         self.img_shape = img_shape
         self.n_spots = self.cfg.count
+        self.color_mode = color_mode
         self._initialize_properties()
 
     def _initialize_properties(self):
@@ -64,11 +65,12 @@ class SpotGenerator:
             self.intensities,
             self.radii,
             self.kernel_sizes,
-            self.cfg.sigma
+            self.cfg.sigma,
+            color_mode=self.color_mode
         )
 
     @staticmethod
-    def draw_spots(img, spot_coords, intensity, radii, kernel_size, sigma):
+    def draw_spots(img, spot_coords, intensity, radii, kernel_size, sigma, color_mode="dark"):
         # CHANGED: Correctly get image dimensions, handling both grayscale and RGB.
         if img.ndim == 3:
             h, w, _ = img.shape
@@ -94,10 +96,16 @@ class SpotGenerator:
                 # Use NumPy broadcasting to add the 2D mask to each of the 3 color channels.
                 # `mask[..., np.newaxis]` changes its shape from (H, W) to (H, W, 1),
                 # which NumPy then automatically applies to all 3 channels of `img`.
-                img += mask[..., np.newaxis]
+                if color_mode == "dark":
+                    img -= mask[..., np.newaxis]
+                else:
+                    img += mask[..., np.newaxis]
             else:
                 # image is grayscale
-                img += mask
+                if color_mode == "dark":
+                    img -= mask
+                else:
+                    img += mask
 
         return img
 
@@ -125,4 +133,12 @@ class SpotGenerator:
                         range(n_spots)]
 
         # This call is now safe because SpotGenerator.draw_spots is RGB-aware.
-        return SpotGenerator.draw_spots(img, coords, intensities, radii, kernel_sizes, spot_cfg.sigma)
+        return SpotGenerator.draw_spots(
+            img,
+            coords,
+            intensities,
+            radii,
+            kernel_sizes,
+            spot_cfg.sigma,
+            color_mode=spot_cfg.color_mode,
+        )

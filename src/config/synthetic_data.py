@@ -28,6 +28,7 @@ class SyntheticDataConfig(BaseConfig):
     max_base_wagon_length: float = 50.0
     max_num_wagons: int = 20
     max_angle: float = 0.1  # Max angle in radians between wagons
+    bending_prob: float = 0.01  # Probability of bending at all
 
     max_angle_sign_changes: int = 0  # 0 for C-shape, 1 for S-shape, etc.
     prob_to_flip_bend: float = 0.001  # Probability to use an available sign change
@@ -46,7 +47,7 @@ class SyntheticDataConfig(BaseConfig):
     pause_on_min_length: int = 10
 
     num_tubulus: int = 20
-    tubuli_min_dist: int = 50
+    tubuli_seed_min_dist: int = 50
     margin: int = 5
 
     # ─── PSF / drawing width ───────────────────────────────

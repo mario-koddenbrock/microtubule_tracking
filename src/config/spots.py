@@ -33,6 +33,9 @@ class SpotConfig(BaseConfig):
     kernel_size_min: int = 0
     kernel_size_max: int = 2
     sigma: float = 0.5
+    color_mode:str = "dark"
+    """Color mode for the spots, either 'dark' or 'bright'."""
+
     # Specific to moving spots
     max_step: Optional[int] = None
 
