@@ -1,8 +1,8 @@
 {
   "id": 12,
   "img_size": [
-    500,
-    500
+    2000,
+    2000
   ],
   "fps": 5,
   "num_frames": 20,
@@ -28,7 +28,7 @@
   "max_wagon_length_max": 20,
   "pause_on_max_length": 5,
   "pause_on_min_length": 10,
-  "num_tubulus": 5,
+  "num_tubuli": 20,
   "tubuli_seed_min_dist": 50,
   "margin": 5,
   "sigma_x": 0.3,
@@ -50,7 +50,7 @@
   "vignetting_strength": 0.05,
   "global_blur_sigma": 0.9,
   "fixed_spots": {
-    "count": 30,
+    "count": 300,
     "intensity_min": 0.005,
     "intensity_max": 0.4,
     "radius_min": 1,
@@ -62,7 +62,7 @@
     "max_step": null
   },
   "moving_spots": {
-    "count": 20,
+    "count": 200,
     "intensity_min": 0.005,
     "intensity_max": 0.1,
     "radius_min": 1,
@@ -74,7 +74,7 @@
     "max_step": 5
   },
   "random_spots": {
-    "count": 20,
+    "count": 200,
     "intensity_min": 0.005,
     "intensity_max": 0.1,
     "radius_min": 1,

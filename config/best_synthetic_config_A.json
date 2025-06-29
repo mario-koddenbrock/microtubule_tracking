@@ -27,7 +27,7 @@
   "max_wagon_length_max": 22,
   "pause_on_max_length": 5,
   "pause_on_min_length": 5,
-  "num_tubulus": 13,
+  "num_tubuli": 13,
   "tubuli_min_dist": 48,
   "margin": 6,
   "sigma_x": 0.6566813242722165,

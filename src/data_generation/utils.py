@@ -21,7 +21,7 @@ def build_motion_seeds(
         img_size=cfg.img_size,
         margin=cfg.margin,
         min_dist=cfg.tubuli_seed_min_dist,
-        max_tubuli=cfg.num_tubulus
+        max_tubuli=cfg.num_tubuli
     )
     start_points = [np.array(center, dtype=np.float32) for (_slope_intercept, center) in tubulus_seeds]
     return start_points
