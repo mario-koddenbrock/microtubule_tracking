@@ -47,7 +47,7 @@ def test_create_config_from_trial():
         "prob_to_flip_bend": 0.05,
         "min_wagon_length_min": 5, "min_wagon_length_max": 15,
         "max_wagon_length_min": 15, "max_wagon_length_max": 30,
-        "num_tubulus": 25, "tubuli_min_dist": 30, "margin": 10,
+        "num_tubulus": 25, "tubuli_seed_min_dist": 30, "margin": 10,
 
         # Rendering & Realism
         "sigma_x": 0.4, "sigma_y": 0.9,

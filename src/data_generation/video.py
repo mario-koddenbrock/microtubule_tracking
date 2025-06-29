@@ -1,6 +1,7 @@
 import os
 from typing import List, Tuple, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -72,6 +73,10 @@ def render_frame(
     # 6. Add frame index to the ground truth data.
     for entry in gt_data:
         entry['frame_index'] = frame_idx
+
+    # plt.imshow(frame_uint8)
+    # plt.axis('off')
+    # plt.show()
 
     return (frame_uint8, gt_data, mask) if return_mask else (frame_uint8, gt_data, None)
 
