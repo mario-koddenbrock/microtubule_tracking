@@ -29,6 +29,8 @@ def render_frame(
     # ─── Initialization ──────────────────────────────────────────
     frame = np.full((*cfg.img_size, 3), cfg.background_level, dtype=np.float32)
     tubuli_mask = np.zeros(cfg.img_size, dtype=np.uint16) if return_tubuli_mask else None
+    if frame_idx == 0 and return_seed_mask:
+        seed_mask = np.zeros(cfg.img_size, dtype=np.uint16)
     gt_data = []
 
     jitter = np.random.normal(0, cfg.jitter_px, 2) if cfg.jitter_px > 0 else np.zeros(2)
@@ -40,7 +42,6 @@ def render_frame(
         mt.base_point += jitter
         # Masks are filled/written here in-place
         if frame_idx == 0 and return_seed_mask:
-            seed_mask = np.zeros(cfg.img_size, dtype=np.uint16) if return_seed_mask else None
             gt_info = mt.draw(frame, tubuli_mask, cfg, seed_mask)
         else:
             gt_info = mt.draw(frame, tubuli_mask, cfg)
