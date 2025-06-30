@@ -1,12 +1,10 @@
-# FILE: data_generation/tubuli.py
-
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 
 import numpy as np
 
 from config.synthetic_data import SyntheticDataConfig
-from data_generation.utils import draw_gaussian_line_on_rgb
+from data_generation.utils import draw_gaussian_line_rgb
 
 
 # HELPER FUNCTION to generate the length profile
@@ -254,7 +252,7 @@ class Microtubule:
 
             # 5. Call the drawing function with the final calculated values.
             additional_mask = seed_mask if is_seed_wagon else None
-            draw_gaussian_line_on_rgb(
+            draw_gaussian_line_rgb(
                 frame,
                 tubuli_mask,
                 abs_pos,

@@ -1,5 +1,5 @@
 {
-  "id": 12,
+  "id": 13,
   "img_size": [
     2000,
     2000
@@ -84,6 +84,30 @@
     "sigma": 0.5,
     "color_mode": "bright",
     "max_step": null
+  },
+  "albumentations": {
+    "p": 0.0,
+    "rotate_limit": 15,
+    "shift_scale_rotate_p": 0.5,
+    "horizontal_flip_p": 0.5,
+    "vertical_flip_p": 0.5,
+    "elastic_p": 0.3,
+    "elastic_alpha": 1,
+    "elastic_sigma": 20,
+    "elastic_alpha_affine": 20,
+    "grid_distortion_p": 0.2,
+    "brightness_contrast_p": 0.5,
+    "brightness_limit": 0.1,
+    "contrast_limit": 0.1,
+    "gauss_noise_p": 0.3,
+    "gauss_noise_mean_range": [
+      -0.1,
+      0.1
+    ],
+    "gauss_noise_std_range": [
+      0.1,
+      0.5
+    ]
   },
   "show_time": false,
   "show_scale": false,

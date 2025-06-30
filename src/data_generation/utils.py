@@ -1,12 +1,12 @@
-# FILE: data_generation/utils.py
+from typing import Tuple, List, Union
 
-from typing import Tuple, List
-
+import albumentations as A
 import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import distance
 
+from config.album_config import AlbumentationsConfig
 from config.synthetic_data import SyntheticDataConfig
 
 
@@ -35,12 +35,8 @@ def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
         x = np.arange(0, image.shape[1])
         y = np.arange(0, image.shape[0])
         x, y = np.meshgrid(x, y)
-        gaussian = np.exp(
-            -(
-                ((x - center[0]) ** 2) / (2 * length_std**2)
-                + ((y - center[1]) ** 2) / (2 * width_std**2)
-            )
-        )
+        gaussian = np.exp(-(((x - center[0]) ** 2) / (2 * length_std ** 2) +
+                            ((y - center[1]) ** 2) / (2 * width_std ** 2)))
         image += contrast * gaussian
     return image
 
@@ -51,7 +47,12 @@ def apply_global_blur(img: np.ndarray, cfg) -> np.ndarray:
     return gaussian_filter(img, sigma=sigma) if sigma > 0 else img
 
 
-def get_random_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max_tubuli: int = 100):
+def get_random_seeds(
+        img_size: tuple[int, int],
+        margin: int,
+        min_dist: int,
+        max_tubuli: int = 100,
+):
     usable_min_x = margin
     usable_max_x = img_size[1] - margin
     usable_min_y = margin
@@ -75,8 +76,7 @@ def get_random_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max_
         attempts += 1
     if attempts >= max_attempts and len(points) < max_tubuli:
         print(
-            f"Warning: Reached max attempts ({max_attempts}) before finding all tubuli. Generated {len(points)} out of {max_tubuli} requested."
-        )
+            f"Warning: Reached max attempts ({max_attempts}) before finding all tubuli. Generated {len(points)} out of {max_tubuli} requested.")
     seeds = []
     for x, y in points:
         slope = np.random.uniform(-1.5, 1.5)
@@ -88,23 +88,23 @@ def get_random_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max_
 def compute_vignette(cfg: SyntheticDataConfig) -> np.ndarray:
     if cfg.vignetting_strength <= 0.0:
         return 1.0
-    yy, xx = np.mgrid[: cfg.img_size[0], : cfg.img_size[1]]
+    yy, xx = np.mgrid[:cfg.img_size[0], :cfg.img_size[1]]
     norm_x = (xx - cfg.img_size[1] / 2) / (cfg.img_size[1] / 2)
     norm_y = (yy - cfg.img_size[0] / 2) / (cfg.img_size[0] / 2)
-    vignette = 1.0 - cfg.vignetting_strength * (norm_x**2 + norm_y**2)
+    vignette = 1.0 - cfg.vignetting_strength * (norm_x ** 2 + norm_y ** 2)
     return np.clip(vignette, 0.5, 1.0)
 
 
-def draw_gaussian_line_on_rgb(
-    frame: np.ndarray,
-    mask: np.ndarray,
-    start_pt: np.ndarray,
-    end_pt: np.ndarray,
-    sigma_x: float,
-    sigma_y: float,
-    color_contrast_rgb: Tuple[float, float, float],
-    mask_idx: int,
-    additional_mask: np.ndarray | None = None,
+def draw_gaussian_line_rgb(
+        frame: np.ndarray,
+        mask: np.ndarray,
+        start_pt: np.ndarray,
+        end_pt: np.ndarray,
+        sigma_x: float,
+        sigma_y: float,
+        color_contrast_rgb: Tuple[float, float, float],
+        mask_idx: int,
+        additional_mask: np.ndarray | None = None,
 ):
     """
     Rasterizes a line by placing small 2D Gaussian spots at regular intervals.
@@ -133,7 +133,7 @@ def draw_gaussian_line_on_rgb(
         dy = yy - py
 
         # Calculate the 2D Gaussian blob
-        gaussian_blob = np.exp(-((dx**2) / (2 * sigma_x**2) + (dy**2) / (2 * sigma_y**2)))
+        gaussian_blob = np.exp(-((dx ** 2) / (2 * sigma_x ** 2) + (dy ** 2) / (2 * sigma_y ** 2)))
 
         # Apply the contrast to each RGB channel and add it to the frame
         for c in range(3):
@@ -190,3 +190,74 @@ def annotate_frame(frame, cfg, frame_idx):
         cv2.rectangle(annotated, (x_start, y_end), (x_end, y_start), color_bgr, -1)
 
     return annotated
+
+
+def build_albumentations_pipeline(cfg: Union[AlbumentationsConfig, dict]) -> A.Compose:
+    """
+    Constructs an Albumentations composition from the configuration.
+    This pipeline should be applied to the final uint8 frame and mask.
+    """
+    if cfg is None:
+        return None
+
+    if isinstance(cfg, dict):
+        get = lambda key, default: cfg.get(key, default)
+    else:
+        get = lambda key, default: getattr(cfg, key, default)
+
+    transforms = []
+
+    # --- Geometric transforms ---
+    if get("horizontal_flip_p", 0.0) > 0:
+        transforms.append(A.HorizontalFlip(p=get("horizontal_flip_p", 0.0)))
+
+    if get("vertical_flip_p", 0.0) > 0:
+        transforms.append(A.VerticalFlip(p=get("vertical_flip_p", 0.0)))
+
+    if get("rotate_limit", 0) > 0:
+        transforms.append(A.Affine(
+            rotate=get("rotate_limit", 0),
+            scale=1.0,  # FIX: Provide 1.0 for no scaling instead of None
+            shear=0.0,  # FIX: Provide 0.0 for no shearing instead of None
+            p=get("affine_p", 0.5),
+            fill=0,  # Fill value for pixels outside the boundaries
+            border_mode=cv2.BORDER_CONSTANT
+        ))
+
+    if get("elastic_p", 0.0) > 0:
+        transforms.append(A.ElasticTransform(
+            p=get("elastic_p", 0.0),
+            alpha=get("elastic_alpha", 1),
+            sigma=get("elastic_sigma", 20),
+            border_mode=cv2.BORDER_CONSTANT,
+            fill=0
+        ))
+
+    if get("grid_distortion_p", 0.0) > 0:
+        transforms.append(A.GridDistortion(
+            p=get("grid_distortion_p", 0.0),
+            border_mode=cv2.BORDER_CONSTANT,
+            fill=0
+        ))
+
+    if get("brightness_contrast_p", 0.0) > 0:
+        transforms.append(A.RandomBrightnessContrast(
+            brightness_limit=get("brightness_limit", 0.1),
+            contrast_limit=get("contrast_limit", 0.1),
+            p=get("brightness_contrast_p", 0.0)
+        ))
+
+    if get("gauss_noise_p", 0.0) > 0:
+        transforms.append(A.GaussNoise(
+            std_range=get("gauss_noise_std_range", (0.05, 0.1)),
+            mean_range=get("gauss_noise_mean_range", (0.0, 0.0)),
+            per_channel=True,
+            p=get("gauss_noise_p", 0.0)
+        ))
+
+    master_p = get("p", 0.75)
+
+    if not transforms or master_p <= 0.0:
+        return None
+
+    return A.Compose(transforms, p=master_p)

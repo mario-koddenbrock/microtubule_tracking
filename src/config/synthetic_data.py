@@ -1,7 +1,8 @@
 import math
 from dataclasses import dataclass, field
-from typing import Tuple, Literal
+from typing import Tuple, Optional
 
+from .album_config import AlbumentationsConfig
 from .base import BaseConfig
 from .spots import SpotConfig
 
@@ -91,6 +92,8 @@ class SyntheticDataConfig(BaseConfig):
             count=20, intensity_max=0.08, radius_max=5, kernel_size_max=2, sigma=0.5
         )
     )
+
+    albumentations: Optional[AlbumentationsConfig] = field(default_factory=AlbumentationsConfig)
 
     # ─── annotations ─────────────────────────────────────
     show_time: bool = True
