@@ -21,13 +21,11 @@ class OpenCVTracker(BaseTracker):
         self.active_trackers: Dict[int, Any] = {}
 
     def _create_tracker(self) -> Any:
-        # ... (this function is unchanged)
-        if self.tracker_type == "csrt": return cv2.TrackerCSRT_create()
-        if self.tracker_type == "kcf": return cv2.TrackerKCF_create()
+        if self.tracker_type == "csrt": return cv2.TrackerCSRT()
+        if self.tracker_type == "kcf": return cv2.TrackerKCF()
         raise ValueError(f"Unsupported OpenCV tracker type: '{self.tracker_type}'")
 
     def _get_bounding_boxes(self, mask: np.ndarray) -> Dict[int, Tuple[int, int, int, int]]:
-        # ... (this function is unchanged, our previous fix is still correct)
         boxes = {}
         properties = regionprops(mask)
         for prop in properties:
@@ -39,7 +37,6 @@ class OpenCVTracker(BaseTracker):
         return boxes
 
     def _calculate_bbox_iou(self, boxA, boxB):
-        # ... (this function is unchanged)
         xA = max(boxA[0], boxB[0])
         yA = max(boxA[1], boxB[1])
         xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
@@ -109,7 +106,6 @@ class OpenCVTracker(BaseTracker):
             # --- 2. Match predictions with current segmentations ---
             current_bboxes = self._get_bounding_boxes(raw_mask)
 
-            # ... (matching logic remains the same) ...
             if predicted_boxes and current_bboxes:
                 pred_ids, pred_bboxes_list = list(predicted_boxes.keys()), list(predicted_boxes.values())
                 curr_ids, curr_bboxes_list = list(current_bboxes.keys()), list(current_bboxes.values())
