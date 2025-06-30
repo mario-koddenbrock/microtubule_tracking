@@ -24,9 +24,7 @@ dependencies = [
   "scikit-image",
   "transformers",
   "cellpose-adapt @ git+https://github.com/mario-koddenbrock/cellpose-adapt.git",
-  "albumentations",
-  "staintools",
-  "spams"
+  "albumentations"
 ]
 
 [project.urls]
