@@ -19,7 +19,7 @@ class VideoOutputManager:
         self,
         cfg: SyntheticDataConfig,
         base_output_dir: str,
-        export_video: bool = False,
+        export_video: bool = True,
         export_gif_preview: bool = True,
         export_mp4_preview: bool = True,
     ):
