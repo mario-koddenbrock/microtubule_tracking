@@ -107,7 +107,7 @@ def main():
         # Set the correct ID for this generation run.
         config_for_id.id = video_id
 
-        # Optionally save the exact config used for this video for reproducibility.
+        # Optionally, save the exact config used for this video for reproducibility.
         if args.save_config:
             save_path = args.output_dir / f"series_{video_id}_config.json"
             config_for_id.to_json(save_path)
