@@ -6,6 +6,7 @@ from tqdm import tqdm
 from file_io.utils import extract_frames
 from plotting.plotting import visualize_tracked_masks
 from segmentation.cellpose import CellposePredictor
+from tracking.btack_tracker import BTrackTracker
 from tracking.centroid_tracker import CentroidTracker
 from tracking.filters.morphology import MorphologyFilter
 from tracking.filters.spatial import CornerExclusionFilter
@@ -35,6 +36,9 @@ def main(args):
         tracker = IoUTracker(iou_threshold=args.iou_threshold)
     elif args.tracker == 'centroid':
         tracker = CentroidTracker(max_distance=args.max_distance)
+    elif args.tracker == 'btrack':
+        config_path = "config/btrack.json"
+        tracker = BTrackTracker(config_path=config_path, max_search_radius=args.max_search_radius)
     elif args.tracker == 'csrt':
         tracker = OpenCVTracker(tracker_type='csrt', iou_threshold=args.iou_threshold)
     elif args.tracker == 'projection':
@@ -90,7 +94,7 @@ if __name__ == "__main__":
                         help="Path to save the output video.")
 
     # Model and Tracker choice
-    parser.add_argument("--tracker", type=str, choices=['iou', 'centroid', 'csrt', 'projection'], default='csrt',
+    parser.add_argument("--tracker", type=str, choices=['iou', 'centroid', 'csrt', 'projection', 'btrack'], default='csrt',
                         help="Tracking algorithm to use.")
     parser.add_argument("--device", type=str, default=None,
                         help="Device for model inference (e.g., 'cuda', 'cpu'). Auto-detects if not set.")
@@ -100,6 +104,8 @@ if __name__ == "__main__":
                         help="IoU threshold for the tracker.")
     parser.add_argument("--max-distance", type=int, default=50,
                         help="Max centroid distance for the Centroid tracker.")
+    parser.add_argument("--max_search_radius", type=int, default=50,
+                        help="Max search radius for the BTrack tracker.")
 
     args = parser.parse_args()
 
