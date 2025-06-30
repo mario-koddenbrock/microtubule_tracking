@@ -93,7 +93,7 @@ The synthetic video generation is controlled by a single JSON configuration file
 | **Other Realism Effects**   | Adds other common experimental artifacts like photobleaching (signal fading over time) and sample drift/jitter.                          | `bleach_tau`, `jitter_px`                                                                                                                |
 | **Background Particles**    | Adds various types of spots to simulate cellular debris or other fluorescent particles. Each is an object with its own sub-parameters.   | `fixed_spots`, `moving_spots`, `random_spots`                                                                                            |
 | **Frame Annotations**       | Overlays a timestamp and scale bar on the final video for easier analysis and presentation.                                              | `show_time`, `show_scale`, `um_per_pixel`, `scale_bar_um`                                                                                |
-| **Output Settings**         | Controls whether to generate a pixel-perfect instance segmentation mask alongside the video, which is vital for training ML models.      | `generate_mask`                                                                                                                          |
+| **Output Settings**         | Controls whether to generate a pixel-perfect instance segmentation mask alongside the video, which is vital for training ML models.      | `generate_tubuli_mask`, `generate_seed_mask`                                                                                             |
 
 ## Contributing
 

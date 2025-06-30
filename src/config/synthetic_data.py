@@ -11,6 +11,7 @@ class SyntheticDataConfig(BaseConfig):
     """
     Configuration for synthetic microtubule video generation.
     """
+
     # ─── core video info ────────────────────────────────────
     id: int | str = 306
     img_size: Tuple[int, int] = (462, 462)
@@ -24,7 +25,9 @@ class SyntheticDataConfig(BaseConfig):
     catastrophe_prob: float = 0.01
     rescue_prob: float = 0.005
 
-    min_base_wagon_length: float = 10.0 # base wagon length is fixed and is never undergoing a catastrophe
+    min_base_wagon_length: float = (
+        10.0  # base wagon length is fixed and is never undergoing a catastrophe
+    )
     max_base_wagon_length: float = 50.0
     max_num_wagons: int = 20
     max_angle: float = 0.1  # Max angle in radians between wagons
@@ -73,24 +76,31 @@ class SyntheticDataConfig(BaseConfig):
 
     global_blur_sigma: float = 0.9
 
-    fixed_spots: SpotConfig = field(default_factory=lambda: SpotConfig(
-        count=30, intensity_max=0.1, radius_max=3, kernel_size_max=3, sigma=0.1
-    ))
-    moving_spots: SpotConfig = field(default_factory=lambda: SpotConfig(
-        count=20, intensity_max=0.08, radius_max=3, kernel_size_max=2, sigma=0.3, max_step=5
-    ))
-    random_spots: SpotConfig = field(default_factory=lambda: SpotConfig(
-        count=20, intensity_max=0.08, radius_max=5, kernel_size_max=2, sigma=0.5
-    ))
+    fixed_spots: SpotConfig = field(
+        default_factory=lambda: SpotConfig(
+            count=30, intensity_max=0.1, radius_max=3, kernel_size_max=3, sigma=0.1
+        )
+    )
+    moving_spots: SpotConfig = field(
+        default_factory=lambda: SpotConfig(
+            count=20, intensity_max=0.08, radius_max=3, kernel_size_max=2, sigma=0.3, max_step=5
+        )
+    )
+    random_spots: SpotConfig = field(
+        default_factory=lambda: SpotConfig(
+            count=20, intensity_max=0.08, radius_max=5, kernel_size_max=2, sigma=0.5
+        )
+    )
 
     # ─── annotations ─────────────────────────────────────
-    show_time:bool = True
-    show_scale:bool = True
-    um_per_pixel:float = 0.1
-    scale_bar_um:float = 5.0
+    show_time: bool = True
+    show_scale: bool = True
+    um_per_pixel: float = 0.1
+    scale_bar_um: float = 5.0
 
     # ─── misc ──────────────────────────────────────────────
-    generate_mask: bool = True
+    generate_tubuli_mask: bool = True
+    generate_seed_mask: bool = False
 
     # ─── validation helper (optional) ─────────────────────
     def validate(self):
@@ -103,5 +113,9 @@ class SyntheticDataConfig(BaseConfig):
 
         # ─── checks for wagons ───────────────────────────
         assert self.max_num_wagons >= 1, "max_num_wagons must be ≥1"
-        assert self.min_wagon_length_min < self.min_wagon_length_max, "min_wagon_length_min < min_wagon_length_max"
-        assert self.max_wagon_length_min < self.max_wagon_length_max, "max_wagon_length_min < max_wagon_length_max"
+        assert (
+            self.min_wagon_length_min < self.min_wagon_length_max
+        ), "min_wagon_length_min < min_wagon_length_max"
+        assert (
+            self.max_wagon_length_min < self.max_wagon_length_max
+        ), "max_wagon_length_min < max_wagon_length_max"

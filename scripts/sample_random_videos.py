@@ -10,8 +10,8 @@ from data_generation.video import generate_video
 
 
 def sample_hyperparameters(
-        tuning_config_path: Path,
-        output_dir: Path,
+    tuning_config_path: Path,
+    output_dir: Path,
 ) -> list[Path]:
     tuning_config = TuningConfig.from_json(tuning_config_path)
 
@@ -28,7 +28,7 @@ def sample_hyperparameters(
 
         sampled_config = tuning_config.create_synthetic_config_from_trial(trial)
         sampled_config.id = sample_id
-        sampled_config.generate_mask = False
+        sampled_config.generate_tubuli_mask = False
 
         config_filename = output_dir / f"series_{sample_id:04d}_config.json"
         sampled_config.save(config_filename)
@@ -46,13 +46,14 @@ def main():
         "--tuning-config",
         type=Path,
         required=True,
-        help="Path to the tuning_config.json file that defines the hyperparameter search space."
+        help="Path to the tuning_config.json file that defines the hyperparameter search space.",
     )
     parser.add_argument(
-        "-o", "--output-dir",
+        "-o",
+        "--output-dir",
         type=Path,
         required=True,
-        help="Main directory to save all outputs. Subfolders for configs and videos will be created here."
+        help="Main directory to save all outputs. Subfolders for configs and videos will be created here.",
     )
 
     args = parser.parse_args()

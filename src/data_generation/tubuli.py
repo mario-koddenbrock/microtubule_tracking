@@ -1,7 +1,7 @@
 # FILE: data_generation/tubuli.py
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 
@@ -11,15 +11,15 @@ from data_generation.utils import draw_gaussian_line_on_rgb
 
 # HELPER FUNCTION to generate the length profile
 def _generate_stochastic_profile(
-        num_frames: int,
-        min_len: float,
-        max_len: float,
-        growth_speed: float,
-        shrink_speed: float,
-        catastrophe_prob: float,
-        rescue_prob: float,
-        pause_on_min: int,
-        pause_on_max: int
+    num_frames: int,
+    min_len: float,
+    max_len: float,
+    growth_speed: float,
+    shrink_speed: float,
+    catastrophe_prob: float,
+    rescue_prob: float,
+    pause_on_min: int,
+    pause_on_max: int,
 ) -> np.ndarray:
     """Generates a length-over-time profile based on stochastic parameters."""
     profile = np.zeros(num_frames)
@@ -81,42 +81,45 @@ class Microtubule:
     """
 
     def __init__(
-            self,
-            cfg: SyntheticDataConfig,
-            base_point: np.ndarray,
-            instance_id: int = 0,
+        self,
+        cfg: SyntheticDataConfig,
+        base_point: np.ndarray,
+        instance_id: int = 0,
     ):
         base_orientation = np.random.uniform(0.0, 2 * np.pi)
-        base_wagon_length = np.random.uniform(
-            cfg.min_base_wagon_length,
-            cfg.max_base_wagon_length
-        )
+        base_wagon_length = np.random.uniform(cfg.min_base_wagon_length, cfg.max_base_wagon_length)
 
         # 1) Generate the length-over-time profile internally.
         min_len = np.random.uniform(cfg.min_length_min, cfg.min_length_max)
         max_len = np.random.uniform(cfg.max_length_min, cfg.max_length_max)
         self.profile = _generate_stochastic_profile(
             num_frames=cfg.num_frames,
-            min_len=min_len, max_len=max_len,
-            growth_speed=cfg.growth_speed, shrink_speed=cfg.shrink_speed,
-            catastrophe_prob=cfg.catastrophe_prob, rescue_prob=cfg.rescue_prob,
-            pause_on_min=cfg.pause_on_min_length, pause_on_max=cfg.pause_on_max_length
+            min_len=min_len,
+            max_len=max_len,
+            growth_speed=cfg.growth_speed,
+            shrink_speed=cfg.shrink_speed,
+            catastrophe_prob=cfg.catastrophe_prob,
+            rescue_prob=cfg.rescue_prob,
+            pause_on_min=cfg.pause_on_min_length,
+            pause_on_max=cfg.pause_on_max_length,
         )
 
         # 2) Create the fixed base wagon
-        self.wagons: List[Wagon] = [
-            Wagon(length=base_wagon_length, angle=0.0, fixed=True)
-        ]
+        self.wagons: List[Wagon] = [Wagon(length=base_wagon_length, angle=0.0, fixed=True)]
 
         # 4) Store parameters and state
         self.base_point = base_point.copy()
         self.base_orientation = base_orientation
         self.base_wagon_length = base_wagon_length
         self.max_num_wagons = cfg.max_num_wagons
-        self.bending = (np.random.random() < cfg.bending_prob)
+        self.bending = np.random.random() < cfg.bending_prob
         self.max_angle = cfg.max_angle if self.bending else 0.0
-        self.min_wagon_length = np.random.uniform(cfg.min_wagon_length_min, cfg.min_wagon_length_max)
-        self.max_wagon_length = np.random.uniform(cfg.max_wagon_length_min, cfg.max_wagon_length_max)
+        self.min_wagon_length = np.random.uniform(
+            cfg.min_wagon_length_min, cfg.min_wagon_length_max
+        )
+        self.max_wagon_length = np.random.uniform(
+            cfg.max_wagon_length_min, cfg.max_wagon_length_max
+        )
 
         self.max_angle_sign_changes = cfg.max_angle_sign_changes
         self.prob_to_flip_bend = cfg.prob_to_flip_bend
@@ -207,7 +210,13 @@ class Microtubule:
 
         self.current_length = sum(w.length for w in self.wagons)
 
-    def draw(self, frame: np.ndarray, mask: np.ndarray, cfg: SyntheticDataConfig) -> list[dict]:
+    def draw(
+        self,
+        frame: np.ndarray,
+        tubuli_mask: np.ndarray,
+        cfg: SyntheticDataConfig,
+        seed_mask: Optional[np.ndarray | None] = None,
+    ) -> list[dict]:
         """Rasterizes each wagon using the flexible contrast model."""
         abs_angle = self.base_orientation
         abs_pos = self.base_point.copy()
@@ -227,7 +236,7 @@ class Microtubule:
             base_contrast = cfg.tubulus_contrast
 
             # 2. Apply tip brightness factor if applicable.
-            is_tip_wagon = (idx == len(self.wagons) - 1)
+            is_tip_wagon = idx == len(self.wagons) - 1
             if self.state == "growing" and is_tip_wagon:
                 base_contrast *= cfg.tip_brightness_factor
 
@@ -237,30 +246,38 @@ class Microtubule:
             b_contrast = base_contrast
 
             # 4. For seed segments, add the red channel boost.
-            is_seed_wagon = (idx == 0)
+            is_seed_wagon = idx == 0
             if is_seed_wagon:
                 r_contrast += cfg.seed_red_channel_boost
 
             color_contrast_rgb = (r_contrast, g_contrast, b_contrast)
 
             # 5. Call the drawing function with the final calculated values.
+            additional_mask = seed_mask if is_seed_wagon else None
             draw_gaussian_line_on_rgb(
-                frame, mask, abs_pos, new_pos,
-                sigma_x=sigma_x, sigma_y=sigma_y,
+                frame,
+                tubuli_mask,
+                abs_pos,
+                new_pos,
+                sigma_x=sigma_x,
+                sigma_y=sigma_y,
                 color_contrast_rgb=color_contrast_rgb,
-                mask_idx=self.instance_id
+                mask_idx=self.instance_id,
+                additional_mask=additional_mask,
             )
 
             # Ground truth generation
-            gt_info.append({
-                "frame_idx": -1, # Will be set later
-                "wagon_index": idx,
-                "start": abs_pos.tolist(),
-                "end": new_pos.tolist(),
-                "angle": float(w.angle),
-                "length": float(w.length),
-                "instance_id": self.instance_id,
-            })
+            gt_info.append(
+                {
+                    "frame_idx": -1,  # Will be set later
+                    "wagon_index": idx,
+                    "start": abs_pos.tolist(),
+                    "end": new_pos.tolist(),
+                    "angle": float(w.angle),
+                    "length": float(w.length),
+                    "instance_id": self.instance_id,
+                }
+            )
             abs_pos = new_pos.copy()
 
         return gt_info

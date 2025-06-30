@@ -10,9 +10,7 @@ from scipy.spatial import distance
 from config.synthetic_data import SyntheticDataConfig
 
 
-def build_motion_seeds(
-        cfg: SyntheticDataConfig
-) -> List[np.ndarray]:
+def build_motion_seeds(cfg: SyntheticDataConfig) -> List[np.ndarray]:
     """
     Precompute the base anchor point for each microtubule. The microtubule object
     will handle its own motion profile generation.
@@ -21,9 +19,11 @@ def build_motion_seeds(
         img_size=cfg.img_size,
         margin=cfg.margin,
         min_dist=cfg.tubuli_seed_min_dist,
-        max_tubuli=cfg.num_tubuli
+        max_tubuli=cfg.num_tubuli,
     )
-    start_points = [np.array(center, dtype=np.float32) for (_slope_intercept, center) in tubulus_seeds]
+    start_points = [
+        np.array(center, dtype=np.float32) for (_slope_intercept, center) in tubulus_seeds
+    ]
     return start_points
 
 
@@ -35,8 +35,12 @@ def draw_tubulus(image, center, length_std, width_std, contrast=1.0):
         x = np.arange(0, image.shape[1])
         y = np.arange(0, image.shape[0])
         x, y = np.meshgrid(x, y)
-        gaussian = np.exp(-(((x - center[0]) ** 2) / (2 * length_std ** 2) +
-                            ((y - center[1]) ** 2) / (2 * width_std ** 2)))
+        gaussian = np.exp(
+            -(
+                ((x - center[0]) ** 2) / (2 * length_std**2)
+                + ((y - center[1]) ** 2) / (2 * width_std**2)
+            )
+        )
         image += contrast * gaussian
     return image
 
@@ -47,10 +51,7 @@ def apply_global_blur(img: np.ndarray, cfg) -> np.ndarray:
     return gaussian_filter(img, sigma=sigma) if sigma > 0 else img
 
 
-def get_random_seeds(img_size: tuple[int, int],
-                     margin: int,
-                     min_dist: int,
-                     max_tubuli: int = 100):
+def get_random_seeds(img_size: tuple[int, int], margin: int, min_dist: int, max_tubuli: int = 100):
     usable_min_x = margin
     usable_max_x = img_size[1] - margin
     usable_min_y = margin
@@ -74,7 +75,8 @@ def get_random_seeds(img_size: tuple[int, int],
         attempts += 1
     if attempts >= max_attempts and len(points) < max_tubuli:
         print(
-            f"Warning: Reached max attempts ({max_attempts}) before finding all tubuli. Generated {len(points)} out of {max_tubuli} requested.")
+            f"Warning: Reached max attempts ({max_attempts}) before finding all tubuli. Generated {len(points)} out of {max_tubuli} requested."
+        )
     seeds = []
     for x, y in points:
         slope = np.random.uniform(-1.5, 1.5)
@@ -86,22 +88,24 @@ def get_random_seeds(img_size: tuple[int, int],
 def compute_vignette(cfg: SyntheticDataConfig) -> np.ndarray:
     if cfg.vignetting_strength <= 0.0:
         return 1.0
-    yy, xx = np.mgrid[:cfg.img_size[0], :cfg.img_size[1]]
+    yy, xx = np.mgrid[: cfg.img_size[0], : cfg.img_size[1]]
     norm_x = (xx - cfg.img_size[1] / 2) / (cfg.img_size[1] / 2)
     norm_y = (yy - cfg.img_size[0] / 2) / (cfg.img_size[0] / 2)
-    vignette = 1.0 - cfg.vignetting_strength * (norm_x ** 2 + norm_y ** 2)
+    vignette = 1.0 - cfg.vignetting_strength * (norm_x**2 + norm_y**2)
     return np.clip(vignette, 0.5, 1.0)
 
 
-
-def draw_gaussian_line_on_rgb(frame: np.ndarray,
-                               mask: np.ndarray,
-                               start_pt: np.ndarray,
-                               end_pt: np.ndarray,
-                               sigma_x: float,
-                               sigma_y: float,
-                               color_contrast_rgb: Tuple[float, float, float],
-                               mask_idx: int):
+def draw_gaussian_line_on_rgb(
+    frame: np.ndarray,
+    mask: np.ndarray,
+    start_pt: np.ndarray,
+    end_pt: np.ndarray,
+    sigma_x: float,
+    sigma_y: float,
+    color_contrast_rgb: Tuple[float, float, float],
+    mask_idx: int,
+    additional_mask: np.ndarray | None = None,
+):
     """
     Rasterizes a line by placing small 2D Gaussian spots at regular intervals.
 
@@ -129,7 +133,7 @@ def draw_gaussian_line_on_rgb(frame: np.ndarray,
         dy = yy - py
 
         # Calculate the 2D Gaussian blob
-        gaussian_blob = np.exp(-((dx ** 2) / (2 * sigma_x ** 2) + (dy ** 2) / (2 * sigma_y ** 2)))
+        gaussian_blob = np.exp(-((dx**2) / (2 * sigma_x**2) + (dy**2) / (2 * sigma_y**2)))
 
         # Apply the contrast to each RGB channel and add it to the frame
         for c in range(3):
@@ -138,6 +142,9 @@ def draw_gaussian_line_on_rgb(frame: np.ndarray,
         # Update the instance mask where the Gaussian is strong enough
         if mask is not None:
             mask[gaussian_blob > mask_threshold] = mask_idx
+        if additional_mask is not None:
+            additional_mask[gaussian_blob > mask_threshold] = mask_idx
+
     # --- End of Helper Function ---
 
     # If the line has no length, just draw a single spot at the start point.
@@ -159,7 +166,7 @@ def draw_gaussian_line_on_rgb(frame: np.ndarray,
 
 
 def annotate_frame(frame, cfg, frame_idx):
-    """ Annotates the frame using the color from the config. """
+    """Annotates the frame using the color from the config."""
     annotated = frame.copy()
     # Convert 0-1 float color to 0-255 uint8 BGR tuple for OpenCV.
     color_bgr = tuple(int(c * 255) for c in reversed(cfg.annotation_color_rgb))
@@ -170,8 +177,9 @@ def annotate_frame(frame, cfg, frame_idx):
     if cfg.show_time:
         time_sec = frame_idx / cfg.fps
         time_str = f"{int(time_sec):d}:{int((time_sec % 1) * 100):02d}"
-        cv2.putText(annotated, time_str, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                    1.0, color_bgr, 2, cv2.LINE_AA)
+        cv2.putText(
+            annotated, time_str, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color_bgr, 2, cv2.LINE_AA
+        )
 
     # Scale bar
     if cfg.show_scale:

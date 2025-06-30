@@ -16,12 +16,12 @@ class VideoOutputManager:
     """
 
     def __init__(
-            self,
-            cfg: SyntheticDataConfig,
-            base_output_dir: str,
-            export_video: bool = False,
-            export_gif_preview: bool = True,
-            export_mp4_preview: bool = True,
+        self,
+        cfg: SyntheticDataConfig,
+        base_output_dir: str,
+        export_video: bool = False,
+        export_gif_preview: bool = True,
+        export_mp4_preview: bool = True,
     ):
         """
         Initializes all file paths and writer objects based on the config.
@@ -32,9 +32,10 @@ class VideoOutputManager:
         # --- 1. Define all output paths ---
         base_name = f"series_{cfg.id}"
         video_tiff_path = os.path.join(base_output_dir, f"{base_name}_video.tif")
-        masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_masks.tif")
+        tubuli_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_masks.tif")
+        seed_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_seed_masks.tif")
         video_mp4_path = os.path.join(base_output_dir, f"{base_name}_video_preview.mp4")
-        masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
+        tubuli_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
         gif_path = os.path.join(base_output_dir, f"{base_name}_video_preview.gif")
 
         self.export_video = export_video
@@ -43,7 +44,7 @@ class VideoOutputManager:
 
         # --- 2. Initialize writers ---
         if self.export_video:
-            self.video_tiff_writer = imageio.get_writer(video_tiff_path, format='TIFF')
+            self.video_tiff_writer = imageio.get_writer(video_tiff_path, format="TIFF")
         else:
             self.video_tiff_writer = None
 
@@ -59,14 +60,24 @@ class VideoOutputManager:
         else:
             self.video_mp4_writer = None
 
-        if cfg.generate_mask:
-            self.mask_tiff_writer = imageio.get_writer(masks_tiff_path, format='TIFF')
-            self.mask_mp4_writer = cv2.VideoWriter(masks_mp4_path, fourcc, cfg.fps, (img_w, img_h))
+        if cfg.generate_tubuli_mask:
+            self.tubuli_mask_tiff_writer = imageio.get_writer(tubuli_masks_tiff_path, format="TIFF")
+            self.tubuli_mask_mp4_writer = cv2.VideoWriter(
+                tubuli_masks_mp4_path, fourcc, cfg.fps, (img_w, img_h)
+            )
         else:
-            self.mask_tiff_writer = None
-            self.mask_mp4_writer = None
+            self.tubuli_mask_tiff_writer = None
+            self.tubuli_mask_mp4_writer = None
 
-    def append(self, frame_img_rgb: np.ndarray, mask_img: np.ndarray):
+        if cfg.generate_seed_mask:
+            # Since this is "fixed", it will only be one frame.
+            self.seed_mask_tiff_writer = imageio.get_writer(seed_masks_tiff_path, format="TIFF")
+        else:
+            self.seed_mask_tiff_writer = None
+
+    def append(
+        self, frame_img_rgb: np.ndarray, tubuli_mask_img: np.ndarray, seed_mask_img: np.ndarray
+    ):
         """
         Appends a new frame and its mask to all relevant output files.
         """
@@ -82,27 +93,33 @@ class VideoOutputManager:
         if self.video_mp4_writer:
             self.video_mp4_writer.write(frame_bgr)
 
-        # B. Write the mask frames (if enabled)
-        if self.cfg.generate_mask and mask_img is not None:
-            self.mask_tiff_writer.append_data(mask_img)  # Raw uint16 data
+        # B.1. Write the mask frames (if enabled)
+        if self.cfg.generate_tubuli_mask and tubuli_mask_img is not None:
+            self.tubuli_mask_tiff_writer.append_data(tubuli_mask_img)  # Raw uint16 data
 
             # Create and write the colorized preview for the mask
-            mask_vis_float = label2rgb(mask_img, bg_label=0)
+            mask_vis_float = label2rgb(tubuli_mask_img, bg_label=0)
             mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
             mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
-            self.mask_mp4_writer.write(mask_vis_bgr)
+            self.tubuli_mask_mp4_writer.write(mask_vis_bgr)
+
+        # B.2 Write the seed mask frame (if enabled)
+        if self.cfg.generate_seed_mask and seed_mask_img is not None:
+            self.seed_mask_tiff_writer.append_data(seed_mask_img)
 
     def close(self):
         """Closes all writer objects to finalize files."""
         print("Closing all file writers...")
         if self.video_tiff_writer:
             self.video_tiff_writer.close()
+        if self.video_mp4_writer:
+            self.video_mp4_writer.release()
         if self.gif_writer:
             self.gif_writer.close()
-        if self.mask_tiff_writer:
-            self.video_mp4_writer.release()
-        if self.mask_tiff_writer:
-            self.mask_tiff_writer.close()
-        if self.mask_mp4_writer:
-            self.mask_mp4_writer.release()
+        if self.tubuli_mask_tiff_writer:
+            self.tubuli_mask_tiff_writer.close()
+        if self.tubuli_mask_mp4_writer:
+            self.tubuli_mask_mp4_writer.release()
+        if self.seed_mask_tiff_writer:
+            self.seed_mask_tiff_writer.close()
         print("All files saved successfully.")

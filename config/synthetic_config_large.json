@@ -89,5 +89,6 @@
   "show_scale": false,
   "um_per_pixel": 0.5,
   "scale_bar_um": 2.0,
-  "generate_mask": true
+  "generate_tubuli_mask": true,
+  "generate_seed_mask": true
 }
