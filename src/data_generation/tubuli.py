@@ -251,7 +251,9 @@ class Microtubule:
             color_contrast_rgb = (r_contrast, g_contrast, b_contrast)
 
             # 5. Call the drawing function with the final calculated values.
-            additional_mask = seed_mask if is_seed_wagon else None
+            additional_mask = (
+                seed_mask if is_seed_wagon else None
+            )  # set this to seed_mask permanently if you want to use full first frame as "seed"
             draw_gaussian_line_rgb(
                 frame,
                 tubuli_mask,

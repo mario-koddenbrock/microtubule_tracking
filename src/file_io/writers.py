@@ -36,6 +36,7 @@ class VideoOutputManager:
         seed_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_seed_masks.tif")
         video_mp4_path = os.path.join(base_output_dir, f"{base_name}_video_preview.mp4")
         tubuli_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
+        seed_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_seed_masks_preview.mp4")
         gif_path = os.path.join(base_output_dir, f"{base_name}_video_preview.gif")
 
         self.export_video = export_video
@@ -72,8 +73,13 @@ class VideoOutputManager:
         if cfg.generate_seed_mask:
             # Since this is "fixed", it will only be one frame.
             self.seed_mask_tiff_writer = imageio.get_writer(seed_masks_tiff_path, format="TIFF")
+            # Still, we want to have a colorful vis
+            self.seed_mask_mp4_writer = cv2.VideoWriter(
+                seed_masks_mp4_path, fourcc, cfg.fps, (img_w, img_h)
+            )
         else:
             self.seed_mask_tiff_writer = None
+            self.seed_mask_mp4_writer = None
 
     def append(
         self, frame_img_rgb: np.ndarray, tubuli_mask_img: np.ndarray, seed_mask_img: np.ndarray
@@ -107,6 +113,12 @@ class VideoOutputManager:
         if self.cfg.generate_seed_mask and seed_mask_img is not None:
             self.seed_mask_tiff_writer.append_data(seed_mask_img)
 
+            # Create and write the colorized preview for the mask
+            mask_vis_float = label2rgb(seed_mask_img, bg_label=0)
+            mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
+            mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
+            self.seed_mask_mp4_writer.write(mask_vis_bgr)
+
     def close(self):
         """Closes all writer objects to finalize files."""
         print("Closing all file writers...")
@@ -122,4 +134,6 @@ class VideoOutputManager:
             self.tubuli_mask_mp4_writer.release()
         if self.seed_mask_tiff_writer:
             self.seed_mask_tiff_writer.close()
+        if self.seed_mask_mp4_writer:
+            self.seed_mask_mp4_writer.release()
         print("All files saved successfully.")
