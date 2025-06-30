@@ -122,13 +122,14 @@ def generate_frames(
     # For each frame, step each microtubule and draw it:
     for frame_idx in range(cfg.num_frames):
         frame, gt_data, tubuli_mask, seed_mask = render_frame(
-            cfg,
-            mts,
-            frame_idx,
-            fixed_spot_generator,
-            moving_spot_generator,
-            return_tubuli_mask,
-            return_seed_mask,
+            cfg=cfg,
+            mts=mts,
+            frame_idx=frame_idx,
+            fixed_spot_generator=fixed_spot_generator,
+            moving_spot_generator=moving_spot_generator,
+            aug_pipeline=aug_pipeline,
+            return_tubuli_mask=return_tubuli_mask,
+            return_seed_mask=return_seed_mask,
         )
         yield frame, gt_data, tubuli_mask, seed_mask
 
