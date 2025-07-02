@@ -15,6 +15,7 @@ class CustomJsonEncoder(json.JSONEncoder):
     - Converts numpy integers and floats to standard Python types.
     - Converts numpy arrays to lists.
     """
+
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
@@ -29,7 +30,6 @@ class CustomJsonEncoder(json.JSONEncoder):
 
 
 def extract_frames(video_path, color_mode: str = "grayscale") -> (List[np.ndarray], int):
-
     if not os.path.isfile(video_path):
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
@@ -60,23 +60,29 @@ def extract_frames(video_path, color_mode: str = "grayscale") -> (List[np.ndarra
         fps = 5
 
         # Handle different TIFF structures (e.g., Time x Channel x H x W or Time x H x W x Channel)
-        if data.ndim == 4 and data.shape[1] <= 4: # Likely T x C x H x W
-             channel = 0 # or 1, depending on which channel to use
-             global_max = np.max(data[:, channel])
-             red_max = np.max(data[:, 0]) if data.shape[1] > 0 else 1
-             green_max = np.max(data[:, 1]) if data.shape[1] > 1 else 1
+        if data.ndim == 4 and data.shape[1] <= 4:  # Likely T x C x H x W
+            channel = 1   # or 1, depending on which channel to use
+            global_max = np.max(data[:, channel])
+            red_max = np.max(data[:, 0]) if data.shape[1] > 0 else 1
+            green_max = np.max(data[:, 1]) if data.shape[1] > 1 else 1
 
-             for i in range(data.shape[0]):
-                 red = ((data[i, 0] / red_max) * 255).astype(np.uint8) if data.shape[1] > 0 else np.zeros_like(data[i,0])
-                 green = ((data[i, 1] / green_max) * 255).astype(np.uint8) if data.shape[1] > 1 else np.zeros_like(data[i,0])
-                 blue = np.zeros(data[i, 0].shape, dtype=np.uint8)
+            # # TODO check whether this is correct
+            # red_max = global_max
+            # green_max = global_max
 
-                 if color_mode == "grayscale":
-                     frame = red if channel == 0 else green
-                 else:
-                     frame = cv2.merge((blue, green, red)) # OpenCV uses BGR order
-                 frames.append(frame)
-        elif data.ndim == 3: # Likely T x H x W (grayscale)
+            for i in range(data.shape[0]):
+                red = ((data[i, 0] / red_max) * 255).astype(np.uint8) if data.shape[1] > 0 else np.zeros_like(
+                    data[i, 0])
+                green = ((data[i, 1] / green_max) * 255).astype(np.uint8) if data.shape[1] > 1 else np.zeros_like(
+                    data[i, 0])
+                blue = np.zeros(data[i, 0].shape, dtype=np.uint8)
+
+                if color_mode == "grayscale":
+                    frame = red if channel == 0 else green
+                else:
+                    frame = cv2.merge((blue, green, red))  # OpenCV uses BGR order
+                frames.append(frame)
+        elif data.ndim == 3:  # Likely T x H x W (grayscale)
             for i in range(data.shape[0]):
                 frames.append(data[i])
         else:
