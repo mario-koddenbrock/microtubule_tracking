@@ -24,7 +24,7 @@
       </ENTRIES>
     </EXTENSION>
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/generate_synthetic_data.py" />
-    <option name="PARAMETERS" value="--config config/synthetic_config_large.json --output-dir data/synthetic" />
+    <option name="PARAMETERS" value="--config config/synthetic_config_small.json --output-dir data/synthetic" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />
