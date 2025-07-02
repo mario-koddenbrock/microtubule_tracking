@@ -2,12 +2,13 @@ import numpy as np
 import optuna
 from sklearn.metrics.pairwise import cosine_similarity
 
+from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
 from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 
 
 def evaluate_similarity(
-        synth_cfg,
+        cfg: SyntheticDataConfig,
         ref_embeddings,
         embedding_extractor: ImageEmbeddingExtractor
 ) -> float:
@@ -16,7 +17,7 @@ def evaluate_similarity(
     (This is your old 'run' function, renamed and with an updated signature).
     """
     # Generate embeddings for the current synthetic configuration.
-    synthetic_embeddings = embedding_extractor.extract_from_synthetic_config(synth_cfg)
+    synthetic_embeddings = embedding_extractor.extract_from_synthetic_config(cfg)
 
     # For each new synthetic embedding, find its best match in the reference set.
     frame_scores = [
@@ -42,8 +43,8 @@ def objective(
     """
     # 1. Delegate parameter suggestion to the TuningConfig object.
     #    This is much cleaner and keeps the logic in the right place.
-    synth_cfg_for_trial = tuning_cfg.create_synthetic_config_from_trial(trial)
+    cfg_for_trial: SyntheticDataConfig = tuning_cfg.create_synthetic_config_from_trial(trial)
 
     # 2. Evaluate this new configuration against the reference embeddings.
-    return evaluate_similarity(synth_cfg_for_trial, ref_embs, embedding_extractor)
+    return evaluate_similarity(cfg_for_trial, ref_embs, embedding_extractor)
 
