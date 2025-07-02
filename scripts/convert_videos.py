@@ -24,7 +24,7 @@ def convert_videos(data_path, output_path):
 
         # Request BGR frames directly, as that's what cv2.imwrite and VideoWriter expect.
         # This simplifies the loop later.
-        frames, fps = extract_frames(video_path, color_mode="bgr")
+        frames, fps = extract_frames(video_path, color_mode="rgb")
 
         if not frames:
             print(f"  -> Skipping video, no frames were extracted.")
@@ -72,9 +72,11 @@ if __name__ == "__main__":
     # Define paths relative to the script location
     data_path_A = os.path.join(script_dir, '..', 'data', 'mpi', 'type_A')
     data_path_B = os.path.join(script_dir, '..', 'data', 'mpi', 'type_B')
-    output_path = os.path.join(script_dir, '..', 'data', 'mpi_converted')
-    os.makedirs(output_path, exist_ok=True)
+    output_path_A = os.path.join(script_dir, '..', 'data', 'mpi_converted', 'type_A')
+    output_path_B = os.path.join(script_dir, '..', 'data', 'mpi_converted', 'type_B')
 
-    # Uncomment the one you want to run
-    convert_videos(data_path_A, output_path)
-    # convert_videos(data_path_B, output_path)
+    os.makedirs(output_path_A, exist_ok=True)
+    os.makedirs(output_path_B, exist_ok=True)
+
+    # convert_videos(data_path_A, output_path_A)
+    convert_videos(data_path_B, output_path_B)
