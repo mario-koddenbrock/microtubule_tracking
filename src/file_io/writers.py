@@ -50,7 +50,7 @@ class VideoOutputManager:
             self.video_tiff_writer = None
 
         if self.export_gif_preview:
-            self.gif_writer = imageio.get_writer(gif_path, fps=cfg.fps)
+            self.gif_writer = imageio.get_writer(gif_path, fps=cfg.fps, mode="I", loop=0)
         else:
             self.gif_writer = None
 
