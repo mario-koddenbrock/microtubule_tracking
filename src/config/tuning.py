@@ -24,7 +24,7 @@ class TuningConfig(BaseConfig):
     output_config_id: int | str = "best_synthetic_config"
     output_config_num_frames: int = 50
     direction: str = "maximize"
-    metric: str = "cosine_similarity"
+    metric: str = "mahalanobis"
     num_trials: int = 100
     pca_components: Optional[int] = 64
     load_if_exists: bool = False
