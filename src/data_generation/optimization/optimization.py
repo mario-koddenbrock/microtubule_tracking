@@ -1,9 +1,11 @@
 import os
 from functools import partial
 
+import numpy as np
 import optuna
 
 from data_generation.optimization.embeddings import ImageEmbeddingExtractor
+from data_generation.optimization.metrics import precompute_matric_args
 from data_generation.optimization.objective import objective
 from config.tuning import TuningConfig
 
@@ -17,9 +19,6 @@ def run_optimization(tuning_config_path: str):
     """
     print(f"\n{'=' * 80}\nStarting OPTIMIZATION for: {tuning_config_path}\n{'=' * 80}")
 
-    # =========================================================================
-    # 1. ONE-TIME SETUP
-    # =========================================================================
     print("--- Step 1: Performing model setup and reference embedding extraction ---")
     tuning_cfg = TuningConfig.load(tuning_config_path)
     tuning_cfg.validate()
@@ -32,11 +31,9 @@ def run_optimization(tuning_config_path: str):
     ref_embeddings = embedding_extractor.extract_from_references()
     print(f"Setup complete. Reference embeddings shape: {ref_embeddings.shape}")
 
-    # =========================================================================
-    # 2. OPTIMIZATION
-    # =========================================================================
-    print("\n--- Step 2: Running Optuna optimization ---")
+    precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
 
+    print("\n--- Step 2: Running Optuna optimization ---")
     db_filename = f"{tuning_cfg.output_config_id}.db"
     db_filepath = os.path.join(tuning_cfg.temp_dir, db_filename)
     os.makedirs(tuning_cfg.temp_dir, exist_ok=True)
@@ -51,32 +48,30 @@ def run_optimization(tuning_config_path: str):
         direction=tuning_cfg.direction,
         load_if_exists=tuning_cfg.load_if_exists,
     )
+
     # Use partial to pass the pre-computed objects to the objective function
     objective_fcn = partial(
         objective,
         tuning_cfg=tuning_cfg,
         ref_embeddings=ref_embeddings,
         embedding_extractor=embedding_extractor,
+        **precomputed_kwargs,
     )
 
     study.optimize(objective_fcn, n_trials=tuning_cfg.num_trials)
 
-    # =========================================================================
-    # 3. SAVE BEST CONFIGURATION
-    # =========================================================================
     print("\n--- Step 3: Saving best configuration ---")
-
-    # Ensure the output directory for the config file exists
     os.makedirs(os.path.dirname(tuning_cfg.output_config_file), exist_ok=True)
 
     best_cfg = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
-
     best_cfg.id = tuning_cfg.output_config_id
     best_cfg.num_frames = tuning_cfg.output_config_num_frames
     best_cfg.validate()
     best_cfg.to_json(tuning_cfg.output_config_file)
 
     print(f"Best config saved to: {tuning_cfg.output_config_file}")
+
+
 
 
 

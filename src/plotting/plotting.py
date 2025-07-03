@@ -15,7 +15,7 @@ from tqdm import tqdm
 from analysis.kymographs import generate_kymographs
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
-from data_generation.optimization.metrics import similarity
+from data_generation.optimization.metrics import similarity, precompute_matric_args
 
 
 def visualize_embeddings(cfg:SyntheticDataConfig, tuning_cfg:TuningConfig,
@@ -26,10 +26,14 @@ def visualize_embeddings(cfg:SyntheticDataConfig, tuning_cfg:TuningConfig,
     heatmap_path = f"{output_dir}/heatmap_{cfg.id}.png"
     plot_similarity_matrix(tuning_cfg, ref_embeddings, synthetic_embeddings, save_to=heatmap_path)
 
+    precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
+
     colour = np.array([similarity(
         tuning_cfg=tuning_cfg,
         ref_embeddings=ref_embeddings,
         synthetic_embeddings=synthetic_embeddings[i, :].reshape(1, -1),
+        **precomputed_kwargs,
+
     ) for i in range(synthetic_embeddings.shape[0])])
 
     # ref_2d, synthetic_2d = tsne_projection(ref_embeddings, synthetic_embeddings, similarity_metric=tuning_cfg.similarity_metric, perplexity=30)
@@ -78,12 +82,15 @@ def plot_similarity_matrix(tuning_cfg:TuningConfig, ref_embeddings: np.ndarray, 
     num_vecs = len(all_vecs)
     sim_mat = np.zeros((num_vecs, num_vecs))
 
+    precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
+
     for a in range(sim_mat.shape[0]):
         for b in range(sim_mat.shape[1]):
             sim_mat[a, b] = similarity(
                 tuning_cfg=tuning_cfg,
-                ref_embeddings=all_vecs[a].reshape(1, -1),
-                synthetic_embeddings=all_vecs[b].reshape(1, -1)
+                ref_embeddings=ref_embeddings,
+                synthetic_embeddings=all_vecs[b].reshape(1, -1),
+                **precomputed_kwargs,
             )
 
     labels = ([f"ref {idx}" for idx in range(len(ref_embeddings))] +

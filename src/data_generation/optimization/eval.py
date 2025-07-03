@@ -56,8 +56,8 @@ def eval_config(cfg, tuning_cfg, output_dir):
 
     print("\n--- Generating final video and embeddings ---")
     frames = generate_video(cfg, output_dir)
-    synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
     reference_vecs = embedding_extractor.extract_from_references()
+    synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 
     print("\n--- Creating visualizations ---")
     plot_output_dir = os.path.join(output_dir, "plots")
