@@ -101,7 +101,7 @@ def render_frame(
 
 
 def generate_frames(
-    cfg: SyntheticDataConfig, *, return_tubuli_mask: bool = False, return_seed_mask: bool = False
+    cfg: SyntheticDataConfig, num_frames:int, return_tubuli_mask: bool = False, return_seed_mask: bool = False
 ):
     # Build a list of Microtubule objects
     mts = []
@@ -121,7 +121,7 @@ def generate_frames(
     aug_pipeline = build_albumentations_pipeline(cfg.albumentations)
 
     # For each frame, step each microtubule and draw it:
-    for frame_idx in range(cfg.num_frames):
+    for frame_idx in range(num_frames):
         frame, gt_data, tubuli_mask, seed_mask = render_frame(
             cfg=cfg,
             mts=mts,
@@ -139,42 +139,38 @@ def generate_video(
         cfg: SyntheticDataConfig,
         base_output_dir: str,
         export_gt_data: bool = True,
-):
-    """
-    Generates a synthetic video sequence using a dedicated manager for file I/O.
-    """
-    # Initialize the manager. It handles all file setup.
+) -> List[np.ndarray]:
+
     output_manager = VideoOutputManager(cfg, base_output_dir)
     gt_json_path = os.path.join(base_output_dir, f"series_{cfg.id}_gt.json")
 
+    all_gt_data = []
+    frames = []
+
     try:
-        all_gt_data = []
+
         print(f"Generating and writing {cfg.num_frames} frames for Series {cfg.id}...")
 
         # Process and write each frame one-by-one
         for frame_img_rgb, gt_data_for_frame, tubuli_mask_img, seed_mask_img in tqdm(
             generate_frames(
                 cfg,
+                cfg.num_frames,
                 return_tubuli_mask=cfg.generate_tubuli_mask,
                 return_seed_mask=cfg.generate_seed_mask,
             ),
             total=cfg.num_frames,
         ):
-            # A. Accumulate ground truth data
+            frames.append(frame_img_rgb)
             all_gt_data.extend(gt_data_for_frame)
-
-            # B. Append frame and mask to all outputs via the manager
             output_manager.append(frame_img_rgb, tubuli_mask_img, seed_mask_img)
 
-        # Save the collected ground truth data after the loop
+
         if export_gt_data:
             save_ground_truth(all_gt_data, gt_json_path)
 
-    finally:
-        # Close all writers to finalize the files
-        output_manager.close()
+    except Exception as e:
+        print(f"An error occurred during video generation: {e}")
 
-    # The paths are now internal to the manager, so we reconstruct them for the return statement
-    video_tiff_path = os.path.join(base_output_dir, f"series_{cfg.id}_video.tif")
-    masks_tiff_path = os.path.join(base_output_dir, f"series_{cfg.id}_masks.tif")
-    return video_tiff_path, gt_json_path, masks_tiff_path
+    output_manager.close()
+    return frames
