@@ -5,7 +5,7 @@
     512
   ],
   "fps": 5,
-  "num_frames": 20,
+  "num_frames": 3,
   "color_mode": true,
   "growth_speed": 2.5,
   "shrink_speed": 5.0,

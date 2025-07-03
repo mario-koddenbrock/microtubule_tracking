@@ -7,12 +7,12 @@
   "temp_dir": ".temp/",
   "output_config_file": "config/best_synthetic_config_A.json",
   "output_config_id": "best_A",
-  "output_config_num_frames": 50,
+  "output_config_num_frames": 10,
   "direction": "maximize",
-  "metric": "cosine_similarity",
-  "num_trials": 100,
-  "pca_components": 32,
-  "load_if_exists": false,
+  "similarity_metric": "mahalanobis",
+  "num_trials": 2,
+  "pca_components": null,
+  "load_if_exists": true,
   "img_size": [
     462,
     462
@@ -62,6 +62,10 @@
     0,
     3
   ],
+  "bending_prob_range": [
+    0.001,
+    0.5
+  ],
   "prob_to_flip_bend_range": [
     0.001,
     0.1
@@ -102,8 +106,8 @@
     10,
     30
   ],
-  "tubuli_min_dist_range": [
-    5,
+  "tubuli_seed_min_dist_range": [
+    10,
     50
   ],
   "margin_range": [
