@@ -1,6 +1,6 @@
 import os
 from glob import glob
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import cv2
 import numpy as np
@@ -127,8 +127,7 @@ class ImageEmbeddingExtractor:
             frames, _ = extract_frames(video_path)
             frames = frames[:self.config.num_compare_frames]
 
-            print(
-                f"Reference {video_idx + 1}/{len(video_files)}: {os.path.basename(video_path)} - {len(frames)} frames")
+            print(f"Reference {video_idx + 1}/{len(video_files)}: {os.path.basename(video_path)} - {len(frames)} frames")
 
             for frame in tqdm(frames, desc=f"Processing {os.path.basename(video_path)}"):
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -162,34 +161,38 @@ class ImageEmbeddingExtractor:
             print("PCA model not fitted. Returning raw embeddings.")
             return embeddings
 
-    def extract_from_synthetic_config(self, synthetic_cfg: SyntheticDataConfig) -> np.ndarray:
-        """
-        Generates frames from a SyntheticDataConfig and computes their final embeddings.
-        If a PCA model has been fitted, it will be applied.
-
-        Args:
-            synthetic_cfg (SyntheticDataConfig): Config for generating synthetic frames.
-
-        Returns:
-            np.ndarray: A 2D array of final (possibly PCA-reduced) embeddings.
-        """
+    def extract_from_synthetic_config(self, synthetic_cfg: SyntheticDataConfig, num_compare_frames:int = 1) -> np.ndarray:
         raw_embeddings = []
-        frame_generator = generate_frames(synthetic_cfg)
+        frame_generator = generate_frames(synthetic_cfg, num_compare_frames)
 
         for frame, *_ in tqdm(frame_generator, total=synthetic_cfg.num_frames,
                                     desc="Generating and processing frames"):
-            if frame.ndim == 2:
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-            else:
-                # TODO check if the frame is already in RGB format
-                # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgb_frame = frame
-
+            rgb_frame = self.convert_frame(frame)
             emb = self._compute_embedding(rgb_frame)
             raw_embeddings.append(emb)
 
         raw_embeddings = np.stack(raw_embeddings)
         return self._apply_pca_if_available(raw_embeddings)
+
+    def extract_from_frames(self, frames: List[np.ndarray], num_compare_frames:int = 1) -> np.ndarray:
+        raw_embeddings = []
+
+        for frame in tqdm(frames, desc="Generating embeddings from frames"):
+            rgb_frame = self.convert_frame(frame)
+            emb = self._compute_embedding(rgb_frame)
+            raw_embeddings.append(emb)
+
+        raw_embeddings = np.stack(raw_embeddings)
+        return self._apply_pca_if_available(raw_embeddings)
+
+    def convert_frame(self, frame):
+        if frame.ndim == 2:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+        else:
+            # TODO check if the frame is already in RGB format
+            # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            rgb_frame = frame
+        return rgb_frame
 
     @staticmethod
     def flatten_spatial_dims(embeddings: np.ndarray) -> np.ndarray:
