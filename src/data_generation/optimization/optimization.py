@@ -49,13 +49,13 @@ def run_optimization(tuning_config_path: str):
         study_name=tuning_cfg.output_config_id,
         storage=storage_uri,
         direction=tuning_cfg.direction,
-        load_if_exists=True  # Good for resuming. Remember to delete the .db file after changing parameters!
+        load_if_exists=tuning_cfg.load_if_exists,
     )
     # Use partial to pass the pre-computed objects to the objective function
     objective_fcn = partial(
         objective,
         tuning_cfg=tuning_cfg,
-        ref_embs=ref_embeddings,
+        ref_embeddings=ref_embeddings,
         embedding_extractor=embedding_extractor,
     )
 
