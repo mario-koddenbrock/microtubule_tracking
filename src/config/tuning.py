@@ -24,7 +24,7 @@ class TuningConfig(BaseConfig):
     output_config_id: int | str = "best_synthetic_config"
     output_config_num_frames: int = 50
     direction: str = "maximize"
-    metric: str = "mahalanobis"
+    similarity_metric: str = "mahalanobis"
     num_trials: int = 100
     pca_components: Optional[int] = 64
     load_if_exists: bool = False
@@ -223,6 +223,9 @@ class TuningConfig(BaseConfig):
             show_scale=show_scale,
             um_per_pixel=um_per_pixel,
             scale_bar_um=scale_bar_um,
+            albumentations=None,  # Or AlbumentationsConfig()
+            generate_tubuli_mask=False,
+            generate_seed_mask=False,
         )
 
         synth_cfg.validate()
