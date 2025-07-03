@@ -16,10 +16,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     """
     print(f"\n{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
 
-    # =========================================================================
-    # 1. LOAD CONFIGS AND STUDY RESULTS
-    # =========================================================================
-    print("--- Step 1: Loading configurations and study results ---")
+    print("--- Loading configurations and study results ---")
     tuning_cfg = TuningConfig.load(tuning_config_path)
 
     # Load the best synthetic config found during optimization
@@ -29,53 +26,18 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     # Load the completed Optuna study from its database file
     study_db_path = f"sqlite:///{os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')}"
     try:
-        study = optuna.load_study(
-            study_name=tuning_cfg.output_config_id,
-            storage=study_db_path
-        )
+        study = optuna.load_study(study_name=tuning_cfg.output_config_id, storage=study_db_path)
         print(f"Loaded Optuna study from: {study_db_path}")
     except KeyError:
         print(f"ERROR: Could not find study '{tuning_cfg.output_config_id}' in the database file.")
         print("Please ensure you have run the optimization script first.")
         return
 
-    # =========================================================================
-    # 2. SETUP FOR EMBEDDING GENERATION
-    # =========================================================================
-    print("\n--- Step 2: Setting up model for evaluation ---")
-    # We still need the extractor to generate embeddings for the best config
-    # and the reference set for comparison.
-    embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
-
-    # =========================================================================
-    # 3. GENERATE VIDEO AND EMBEDDINGS
-    # =========================================================================
-    print("\n--- Step 3: Generating final video and embeddings ---")
-    video_path, gt_path_json, gt_path_video = generate_video(best_cfg, output_dir)
-    print("Best video and ground truth saved to:")
-    print(f"  Video: {video_path}")
-
-    # Re-calculate the reference embeddings for the t-SNE plot comparison
-    ref_vecs = embedding_extractor.extract_from_references()
-
-    # Generate embeddings for the final, best video
-    best_vecs = embedding_extractor.extract_from_synthetic_config(best_cfg)
-
-    print(f"Generated embeddings for comparison (Reference: {ref_vecs.shape}, Best: {best_vecs.shape})")
-
-    # =========================================================================
-    # 4. CREATE VISUALIZATIONS
-    # =========================================================================
-    print("\n--- Step 4: Creating visualizations ---")
-    plot_output_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plot_output_dir, exist_ok=True)
-
-    # t-SNE plot
-    visualize_embeddings(best_cfg, ref_vecs, best_vecs, plot_output_dir)
-    print(f"t-SNE plot saved in {plot_output_dir}")
+    eval_config(best_cfg, tuning_cfg, output_dir)
 
     # Optimization history plot
     try:
+        plot_output_dir = os.path.join(output_dir, "plots")
         history_path = os.path.join(plot_output_dir, "optimization_history.html")
         vis.plot_optimization_history(study).write_html(history_path)
         print(f"Optimization history saved to {history_path}")
@@ -85,3 +47,21 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         print(f"Could not generate optimization history plot: {e}")
 
     print("Evaluation complete.")
+
+
+def eval_config(cfg, tuning_cfg, output_dir):
+
+    print("\n--- Setting up model for evaluation ---")
+    embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
+
+    print("\n--- Generating final video and embeddings ---")
+    frames = generate_video(cfg, output_dir)
+    synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
+    reference_vecs = embedding_extractor.extract_from_references()
+
+    print("\n--- Creating visualizations ---")
+    plot_output_dir = os.path.join(output_dir, "plots")
+    os.makedirs(plot_output_dir, exist_ok=True)
+
+    visualize_embeddings(cfg, tuning_cfg, reference_vecs, synthetic_vecs, plot_output_dir)
+    print(f"Embedding plot saved in {plot_output_dir}")
