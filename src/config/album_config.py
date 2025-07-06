@@ -1,6 +1,9 @@
+import logging
 from dataclasses import dataclass
 
 from .base import BaseConfig
+
+logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 
 
 @dataclass(eq=False)
@@ -32,7 +35,38 @@ class AlbumentationsConfig(BaseConfig):
 
     gauss_noise_p: float = 0.3
     gauss_noise_mean_range: tuple[float, float] = (-0.1, 0.1)
-    gauss_noise_std_range: tuple[int, int] = (0.1, 0.5)
+    gauss_noise_std_range: tuple[float, float] = (0.1, 0.5)
+
+    def __post_init__(self):
+        """
+        Called after the dataclass is initialized.
+        Logs the creation and key parameters of the configuration.
+        """
+        logger.info("Albumentations configuration loaded.")
+        logger.debug(f"Master augmentation probability (p) set to: {self.p}")
+        # Log other important high-level settings if desired
+        if self.rotate_limit == 0:
+            logger.debug("Rotation is disabled (rotate_limit=0).")
+        else:
+            logger.debug(f"Rotation limit set to: {self.rotate_limit} degrees.")
 
     def validate(self):
-        assert 0.0 <= self.p <= 1.0, "Master probability 'p' must be between 0 and 1."
+        """
+        Validates the configuration parameters.
+        Raises ValueError on failure.
+        """
+        logger.debug("Validating AlbumentationsConfig...")
+
+        if not (0.0 <= self.p <= 1.0):
+            msg = f"Master probability 'p' must be between 0 and 1, but got {self.p}"
+            logger.error(msg)
+            raise ValueError(msg)
+
+        # You could add more validation checks here for other parameters
+        # For example:
+        # if not (0.0 <= self.horizontal_flip_p <= 1.0):
+        #     msg = f"'horizontal_flip_p' must be between 0 and 1, but got {self.horizontal_flip_p}"
+        #     logger.error(msg)
+        #     raise ValueError(msg)
+
+        logger.info("AlbumentationsConfig validation successful.")

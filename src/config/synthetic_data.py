@@ -1,10 +1,14 @@
 import math
+import logging
 from dataclasses import dataclass, field
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 from .album_config import AlbumentationsConfig
 from .base import BaseConfig
 from .spots import SpotConfig
+
+
+logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 
 
 @dataclass(eq=False)
@@ -105,20 +109,166 @@ class SyntheticDataConfig(BaseConfig):
     generate_tubuli_mask: bool = True
     generate_seed_mask: bool = False
 
-    # ─── validation helper (optional) ─────────────────────
-    def validate(self):
-        assert 0 <= self.background_level <= 1, "background_level must be 0-1"
-        assert 0 <= self.gaussian_noise <= 1, "gaussian_noise must be 0-1"
-        assert self.num_frames > 0 and self.fps > 0, "frames & fps must be >0"
-        assert self.jitter_px >= 0, "jitter_px must be ≥0"
-        assert self.growth_speed > 0 and self.shrink_speed > 0
-        assert 0 <= self.catastrophe_prob <= 1 and 0 <= self.rescue_prob <= 1
+    # ─── post-initialization and validation ─────────────────────
+    def __post_init__(self):
+        super().__post_init__()  # Call the base class's __post_init__
+        logger.info(f"SyntheticDataConfig '{self.id}' initialized. Running initial validation...")
+        try:
+            self.validate()
+        except ValueError as e:
+            logger.critical(f"Initial validation of SyntheticDataConfig '{self.id}' failed: {e}", exc_info=False)
+            raise  # Re-raise the error as it's a critical configuration issue.
 
-        # ─── checks for wagons ───────────────────────────
-        assert self.max_num_wagons >= 1, "max_num_wagons must be ≥1"
-        assert (
-            self.min_wagon_length_min < self.min_wagon_length_max
-        ), "min_wagon_length_min < min_wagon_length_max"
-        assert (
-            self.max_wagon_length_min < self.max_wagon_length_max
-        ), "max_wagon_length_min < max_wagon_length_max"
+    def validate(self):
+        """
+        Validates all configuration parameters, including nested configs.
+        Raises ValueError if any parameter is invalid.
+        """
+        logger.debug(f"Starting validation for SyntheticDataConfig '{self.id}'...")
+        errors = []
+
+        # --- Core Video Info ---
+        if not (isinstance(self.img_size, tuple) and len(self.img_size) == 2 and all(
+                isinstance(x, int) and x > 0 for x in self.img_size)):
+            errors.append(f"img_size must be a tuple of two positive integers, but got {self.img_size}.")
+
+        if not (self.fps > 0):
+            errors.append(f"fps must be greater than 0, but got {self.fps}.")
+
+        if not (self.num_frames > 0):
+            errors.append(f"num_frames must be greater than 0, but got {self.num_frames}.")
+
+        # --- Microtubule Kinematics ---
+        if not (self.growth_speed > 0):
+            errors.append(f"growth_speed must be positive, but got {self.growth_speed}.")
+        if not (self.shrink_speed > 0):
+            errors.append(f"shrink_speed must be positive, but got {self.shrink_speed}.")
+        if not (0 <= self.catastrophe_prob <= 1):
+            errors.append(f"catastrophe_prob must be between 0 and 1, but got {self.catastrophe_prob}.")
+        if not (0 <= self.rescue_prob <= 1):
+            errors.append(f"rescue_prob must be between 0 and 1, but got {self.rescue_prob}.")
+
+        if not (0 < self.min_base_wagon_length <= self.max_base_wagon_length):
+            errors.append(
+                f"min_base_wagon_length ({self.min_base_wagon_length}) must be positive and <= max_base_wagon_length ({self.max_base_wagon_length}).")
+        if not (self.max_num_wagons >= 1):
+            errors.append(f"max_num_wagons must be >= 1, but got {self.max_num_wagons}.")
+        if not (self.max_angle >= 0):
+            errors.append(f"max_angle must be non-negative, but got {self.max_angle}.")
+        if not (0 <= self.bending_prob <= 1):
+            errors.append(f"bending_prob must be between 0 and 1, but got {self.bending_prob}.")
+        if not (self.max_angle_sign_changes >= 0):
+            errors.append(f"max_angle_sign_changes must be non-negative, but got {self.max_angle_sign_changes}.")
+        if not (0 <= self.prob_to_flip_bend <= 1):
+            errors.append(f"prob_to_flip_bend must be between 0 and 1, but got {self.prob_to_flip_bend}.")
+
+        if not (0 < self.min_length_min <= self.min_length_max):
+            errors.append(
+                f"min_length_min ({self.min_length_min}) must be positive and <= min_length_max ({self.min_length_max}).")
+        if not (0 < self.max_length_min <= self.max_length_max):
+            errors.append(
+                f"max_length_min ({self.max_length_min}) must be positive and <= max_length_max ({self.max_length_max}).")
+        if not (self.min_length_max <= self.max_length_min):
+            errors.append(f"min_length_max ({self.min_length_max}) must be <= max_length_min ({self.max_length_min}).")
+
+        if not (0 < self.min_wagon_length_min <= self.min_wagon_length_max):
+            errors.append(
+                f"min_wagon_length_min ({self.min_wagon_length_min}) must be positive and <= min_wagon_length_max ({self.min_wagon_length_max}).")
+        if not (0 < self.max_wagon_length_min <= self.max_wagon_length_max):
+            errors.append(
+                f"max_wagon_length_min ({self.max_wagon_length_min}) must be positive and <= max_wagon_length_max ({self.max_wagon_length_max}).")
+
+        if not (self.pause_on_max_length >= 0):
+            errors.append(f"pause_on_max_length must be non-negative, but got {self.pause_on_max_length}.")
+        if not (self.pause_on_min_length >= 0):
+            errors.append(f"pause_on_min_length must be non-negative, but got {self.pause_on_min_length}.")
+
+        if not (self.num_tubuli >= 0):
+            errors.append(f"num_tubuli must be non-negative, but got {self.num_tubuli}.")
+        if not (self.tubuli_seed_min_dist >= 0):
+            errors.append(f"tubuli_seed_min_dist must be non-negative, but got {self.tubuli_seed_min_dist}.")
+        if not (self.margin >= 0):
+            errors.append(f"margin must be non-negative, but got {self.margin}.")
+        # Check margin and min_dist vs image size
+        if (self.tubuli_seed_min_dist > min(self.img_size) / 2):
+            errors.append(
+                f"tubuli_seed_min_dist ({self.tubuli_seed_min_dist}) is too large relative to image size {self.img_size}.")
+        if (2 * self.margin >= min(self.img_size)):
+            errors.append(f"Margin ({self.margin}) is too large, could cover entire image (2*margin >= min(img_size)).")
+
+        # --- PSF / drawing width ---
+        if not (self.sigma_x >= 0):
+            errors.append(f"sigma_x must be non-negative, but got {self.sigma_x}.")
+        if not (self.sigma_y >= 0):
+            errors.append(f"sigma_y must be non-negative, but got {self.sigma_y}.")
+        if not (self.width_var_std >= 0):
+            errors.append(f"width_var_std must be non-negative, but got {self.width_var_std}.")
+
+        # --- Photophysics / Camera Realism ---
+        if not (0 <= self.background_level <= 1):
+            errors.append(f"background_level must be between 0 and 1, but got {self.background_level}.")
+        # tubulus_contrast can be negative for dark tubules, but might have a reasonable range
+        # if not (-1.0 <= self.tubulus_contrast <= 1.0): # Example range check
+        #     errors.append(f"tubulus_contrast must be between -1.0 and 1.0, but got {self.tubulus_contrast}.")
+        if not (self.seed_red_channel_boost >= 0):
+            errors.append(f"seed_red_channel_boost must be non-negative, but got {self.seed_red_channel_boost}.")
+        if not (all(0.0 <= c <= 1.0 for c in self.annotation_color_rgb) and len(self.annotation_color_rgb) == 3):
+            errors.append(
+                f"annotation_color_rgb must be a tuple of 3 floats between 0.0 and 1.0, but got {self.annotation_color_rgb}.")
+        if not (self.tip_brightness_factor >= 0):
+            errors.append(f"tip_brightness_factor must be non-negative, but got {self.tip_brightness_factor}.")
+        if not (self.quantum_efficiency > 0):
+            errors.append(f"quantum_efficiency must be positive, but got {self.quantum_efficiency}.")
+        if not (0 <= self.gaussian_noise <= 1):
+            errors.append(f"gaussian_noise must be between 0 and 1, but got {self.gaussian_noise}.")
+        if not (self.bleach_tau > 0 or self.bleach_tau == math.inf):
+            errors.append(f"bleach_tau must be positive or math.inf, but got {self.bleach_tau}.")
+        if not (self.jitter_px >= 0):
+            errors.append(f"jitter_px must be non-negative, but got {self.jitter_px}.")
+        if not (0 <= self.vignetting_strength <= 1):
+            errors.append(f"vignetting_strength must be between 0 and 1, but got {self.vignetting_strength}.")
+        if not (self.global_blur_sigma >= 0):
+            errors.append(f"global_blur_sigma must be non-negative, but got {self.global_blur_sigma}.")
+
+        # --- Annotations ---
+        if not (self.um_per_pixel > 0):
+            errors.append(f"um_per_pixel must be positive, but got {self.um_per_pixel}.")
+        if not (self.scale_bar_um > 0):
+            errors.append(f"scale_bar_um must be positive, but got {self.scale_bar_um}.")
+
+        # --- Recursive Validation for Nested Configs ---
+        try:
+            self.fixed_spots.validate()
+        except ValueError as e:
+            errors.append(f"Fixed spots config validation failed: {e}")
+            logger.error(f"Nested fixed_spots config invalid for '{self.id}'.")
+
+        try:
+            self.moving_spots.validate()
+        except ValueError as e:
+            errors.append(f"Moving spots config validation failed: {e}")
+            logger.error(f"Nested moving_spots config invalid for '{self.id}'.")
+
+        try:
+            self.random_spots.validate()
+        except ValueError as e:
+            errors.append(f"Random spots config validation failed: {e}")
+            logger.error(f"Nested random_spots config invalid for '{self.id}'.")
+
+        if self.albumentations:  # Only validate if not None
+            try:
+                self.albumentations.validate()
+            except ValueError as e:
+                errors.append(f"Albumentations config validation failed: {e}")
+                logger.error(f"Nested albumentations config invalid for '{self.id}'.")
+        else:
+            logger.debug(f"Albumentations config is None for '{self.id}', skipping validation.")
+
+        # --- Final Error Check ---
+        if errors:
+            full_msg = f"SyntheticDataConfig '{self.id}' validation failed with {len(errors)} error(s):\n" + "\n".join(
+                errors)
+            logger.error(full_msg)
+            raise ValueError(full_msg)
+
+        logger.info(f"SyntheticDataConfig '{self.id}' validation successful.")
