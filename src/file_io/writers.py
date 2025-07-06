@@ -1,10 +1,15 @@
 import os
 import cv2
-import imageio
+import imageio  # Ensure imageio is installed (pip install imageio)
 import numpy as np
+import logging
 from skimage.color import label2rgb
+from typing import Optional, Tuple  # Add these imports
 
 from config.synthetic_data import SyntheticDataConfig
+
+
+logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 
 
 class VideoOutputManager:
@@ -16,124 +21,211 @@ class VideoOutputManager:
     """
 
     def __init__(
-        self,
-        cfg: SyntheticDataConfig,
-        base_output_dir: str,
-        export_video: bool = True,
-        export_gif_preview: bool = True,
-        export_mp4_preview: bool = True,
+            self,
+            cfg: SyntheticDataConfig,
+            base_output_dir: str,
+            export_video: bool = True,
+            export_gif_preview: bool = True,
+            export_mp4_preview: bool = True,
     ):
         """
         Initializes all file paths and writer objects based on the config.
         """
+        logger.info(f"Initializing VideoOutputManager for series ID: {cfg.id}, output directory: '{base_output_dir}'")
         self.cfg = cfg
-        os.makedirs(base_output_dir, exist_ok=True)
+
+        try:
+            os.makedirs(base_output_dir, exist_ok=True)
+            logger.debug(f"Ensured base output directory exists: {base_output_dir}")
+        except OSError as e:
+            logger.critical(f"Failed to create base output directory '{base_output_dir}': {e}", exc_info=True)
+            raise  # Re-raise, as we cannot proceed without output directory
 
         # --- 1. Define all output paths ---
         base_name = f"series_{cfg.id}"
-        video_tiff_path = os.path.join(base_output_dir, f"{base_name}_video.tif")
-        tubuli_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_masks.tif")
-        seed_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_seed_masks.tif")
-        video_mp4_path = os.path.join(base_output_dir, f"{base_name}_video_preview.mp4")
-        tubuli_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
-        seed_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_seed_masks_preview.mp4")
-        gif_path = os.path.join(base_output_dir, f"{base_name}_video_preview.gif")
+        self.video_tiff_path = os.path.join(base_output_dir, f"{base_name}_video.tif")
+        self.tubuli_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_masks.tif")
+        self.seed_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_seed_masks.tif")
+        self.video_mp4_path = os.path.join(base_output_dir, f"{base_name}_video_preview.mp4")
+        self.tubuli_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
+        self.seed_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_seed_masks_preview.mp4")
+        self.gif_path = os.path.join(base_output_dir, f"{base_name}_video_preview.gif")
+
+        logger.debug(
+            f"Output paths defined: {self.video_tiff_path}, {self.tubuli_masks_tiff_path}, {self.seed_masks_tiff_path}, {self.video_mp4_path}, {self.tubuli_masks_mp4_path}, {self.seed_masks_mp4_path}, {self.gif_path}.")
 
         self.export_video = export_video
         self.export_gif_preview = export_gif_preview
         self.export_mp4_preview = export_mp4_preview
 
         # --- 2. Initialize writers ---
+        img_h, img_w = cfg.img_size
+        mp4_fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        logger.debug(f"MP4 codec FOURCC: '{mp4_fourcc}'. Expected frame size for MP4: ({img_w}, {img_h}).")
+
+        self.video_tiff_writer: Optional[imageio.core.format.Writer] = None
         if self.export_video:
-            self.video_tiff_writer = imageio.get_writer(video_tiff_path, format="TIFF")
-        else:
-            self.video_tiff_writer = None
+            try:
+                self.video_tiff_writer = imageio.get_writer(self.video_tiff_path, format="TIFF")
+                logger.info(f"Initialized TIFF video writer: {self.video_tiff_path}")
+            except Exception as e:
+                logger.error(f"Failed to initialize TIFF video writer {self.video_tiff_path}: {e}", exc_info=True)
 
+        self.gif_writer: Optional[imageio.core.format.Writer] = None
         if self.export_gif_preview:
-            self.gif_writer = imageio.get_writer(gif_path, fps=cfg.fps, mode="I", loop=0)
-        else:
-            self.gif_writer = None
+            try:
+                self.gif_writer = imageio.get_writer(self.gif_path, fps=cfg.fps, mode="I", loop=0)
+                logger.info(f"Initialized GIF preview writer: {self.gif_path}")
+            except Exception as e:
+                logger.error(f"Failed to initialize GIF writer {self.gif_path}: {e}", exc_info=True)
 
+        self.video_mp4_writer: Optional[cv2.VideoWriter] = None
         if self.export_mp4_preview:
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            img_h, img_w = cfg.img_size
-            self.video_mp4_writer = cv2.VideoWriter(video_mp4_path, fourcc, cfg.fps, (img_w, img_h))
-        else:
-            self.video_mp4_writer = None
+            try:
+                self.video_mp4_writer = cv2.VideoWriter(self.video_mp4_path, mp4_fourcc, cfg.fps, (img_w, img_h))
+                if not self.video_mp4_writer.isOpened():
+                    raise IOError("OpenCV VideoWriter failed to open.")
+                logger.info(f"Initialized MP4 video writer: {self.video_mp4_path}")
+            except Exception as e:
+                logger.error(f"Failed to initialize MP4 video writer {self.video_mp4_path}: {e}", exc_info=True)
 
+        self.tubuli_mask_tiff_writer: Optional[imageio.core.format.Writer] = None
+        self.tubuli_mask_mp4_writer: Optional[cv2.VideoWriter] = None
         if cfg.generate_tubuli_mask:
-            self.tubuli_mask_tiff_writer = imageio.get_writer(tubuli_masks_tiff_path, format="TIFF")
-            self.tubuli_mask_mp4_writer = cv2.VideoWriter(
-                tubuli_masks_mp4_path, fourcc, cfg.fps, (img_w, img_h)
-            )
+            try:
+                self.tubuli_mask_tiff_writer = imageio.get_writer(self.tubuli_masks_tiff_path, format="TIFF")
+                logger.info(f"Initialized TIFF tubuli mask writer: {self.tubuli_masks_tiff_path}")
+                self.tubuli_mask_mp4_writer = cv2.VideoWriter(
+                    self.tubuli_masks_mp4_path, mp4_fourcc, cfg.fps, (img_w, img_h)
+                )
+                if not self.tubuli_mask_mp4_writer.isOpened():
+                    raise IOError("OpenCV Tubuli Mask VideoWriter failed to open.")
+                logger.info(f"Initialized MP4 tubuli mask writer: {self.tubuli_masks_mp4_path}")
+            except Exception as e:
+                logger.error(
+                    f"Failed to initialize tubuli mask writers ({self.tubuli_masks_tiff_path}, {self.tubuli_masks_mp4_path}): {e}",
+                    exc_info=True)
         else:
-            self.tubuli_mask_tiff_writer = None
-            self.tubuli_mask_mp4_writer = None
+            logger.debug("Tubuli mask generation disabled. Skipping writer initialization.")
 
+        self.seed_mask_tiff_writer: Optional[imageio.core.format.Writer] = None
+        self.seed_mask_mp4_writer: Optional[cv2.VideoWriter] = None
         if cfg.generate_seed_mask:
-            # Since this is "fixed", it will only be one frame.
-            self.seed_mask_tiff_writer = imageio.get_writer(seed_masks_tiff_path, format="TIFF")
-            # Still, we want to have a colorful vis
-            self.seed_mask_mp4_writer = cv2.VideoWriter(
-                seed_masks_mp4_path, fourcc, cfg.fps, (img_w, img_h)
-            )
+            try:
+                self.seed_mask_tiff_writer = imageio.get_writer(self.seed_masks_tiff_path, format="TIFF")
+                logger.info(f"Initialized TIFF seed mask writer: {self.seed_masks_tiff_path}")
+                self.seed_mask_mp4_writer = cv2.VideoWriter(
+                    self.seed_masks_mp4_path, mp4_fourcc, cfg.fps, (img_w, img_h)
+                )
+                if not self.seed_mask_mp4_writer.isOpened():
+                    raise IOError("OpenCV Seed Mask VideoWriter failed to open.")
+                logger.info(f"Initialized MP4 seed mask writer: {self.seed_masks_mp4_path}")
+            except Exception as e:
+                logger.error(
+                    f"Failed to initialize seed mask writers ({self.seed_masks_tiff_path}, {self.seed_masks_mp4_path}): {e}",
+                    exc_info=True)
         else:
-            self.seed_mask_tiff_writer = None
-            self.seed_mask_mp4_writer = None
+            logger.debug("Seed mask generation disabled. Skipping writer initialization.")
+
+        logger.info("VideoOutputManager initialization complete.")
 
     def append(
-        self, frame_img_rgb: np.ndarray, tubuli_mask_img: np.ndarray, seed_mask_img: np.ndarray
+            self, frame_img_rgb: np.ndarray, tubuli_mask_img: Optional[np.ndarray], seed_mask_img: Optional[np.ndarray]
     ):
         """
         Appends a new frame and its mask to all relevant output files.
         """
+        logger.debug("Appending new frame to output writers...")
+
         # A. Write the main video frames (which are already uint8 RGB)
-        if self.video_tiff_writer:
-            self.video_tiff_writer.append_data(frame_img_rgb)
+        try:
+            if self.video_tiff_writer:
+                self.video_tiff_writer.append_data(frame_img_rgb)
+                logger.debug("Appended frame to TIFF video writer.")
+            if self.gif_writer:
+                self.gif_writer.append_data(frame_img_rgb)
+                logger.debug("Appended frame to GIF writer.")
 
-        if self.gif_writer:
-            self.gif_writer.append_data(frame_img_rgb)
+            if self.video_mp4_writer:
+                # Convert RGB to BGR for OpenCV's VideoWriter
+                frame_bgr = cv2.cvtColor(frame_img_rgb, cv2.COLOR_RGB2BGR)
+                self.video_mp4_writer.write(frame_bgr)
+                logger.debug("Appended frame to MP4 video writer.")
+        except Exception as e:
+            logger.error(f"Error appending main video frame: {e}", exc_info=True)
 
-        # Convert RGB to BGR for OpenCV's VideoWriter
-        frame_bgr = cv2.cvtColor(frame_img_rgb, cv2.COLOR_RGB2BGR)
-        if self.video_mp4_writer:
-            self.video_mp4_writer.write(frame_bgr)
+        # B.1. Write the tubuli mask frames (if enabled)
+        if self.cfg.generate_tubuli_mask:
+            if tubuli_mask_img is not None:
+                try:
+                    if self.tubuli_mask_tiff_writer:
+                        self.tubuli_mask_tiff_writer.append_data(tubuli_mask_img)  # Raw uint16 data
+                        logger.debug("Appended tubuli mask to TIFF writer.")
 
-        # B.1. Write the mask frames (if enabled)
-        if self.cfg.generate_tubuli_mask and tubuli_mask_img is not None:
-            self.tubuli_mask_tiff_writer.append_data(tubuli_mask_img)  # Raw uint16 data
-
-            # Create and write the colorized preview for the mask
-            mask_vis_float = label2rgb(tubuli_mask_img, bg_label=0)
-            mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
-            mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
-            self.tubuli_mask_mp4_writer.write(mask_vis_bgr)
+                    if self.tubuli_mask_mp4_writer:
+                        # Create and write the colorized preview for the mask
+                        mask_vis_float = label2rgb(tubuli_mask_img, bg_label=0)
+                        mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
+                        mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
+                        self.tubuli_mask_mp4_writer.write(mask_vis_bgr)
+                        logger.debug("Appended colorized tubuli mask to MP4 writer.")
+                except Exception as e:
+                    logger.error(f"Error appending tubuli mask frame: {e}", exc_info=True)
+            else:
+                logger.warning("Tubuli mask expected but was None. Skipping tubuli mask writing for this frame.")
+        else:
+            logger.debug("Tubuli mask generation is disabled for this series.")
 
         # B.2 Write the seed mask frame (if enabled)
-        if self.cfg.generate_seed_mask and seed_mask_img is not None:
-            self.seed_mask_tiff_writer.append_data(seed_mask_img)
+        if self.cfg.generate_seed_mask:
+            if seed_mask_img is not None:
+                try:
+                    if self.seed_mask_tiff_writer:
+                        self.seed_mask_tiff_writer.append_data(seed_mask_img)
+                        logger.debug("Appended seed mask to TIFF writer.")
 
-            # Create and write the colorized preview for the mask
-            mask_vis_float = label2rgb(seed_mask_img, bg_label=0)
-            mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
-            mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
-            self.seed_mask_mp4_writer.write(mask_vis_bgr)
+                    if self.seed_mask_mp4_writer:
+                        # Create and write the colorized preview for the mask
+                        mask_vis_float = label2rgb(seed_mask_img, bg_label=0)
+                        mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
+                        mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
+                        self.seed_mask_mp4_writer.write(mask_vis_bgr)
+                        logger.debug("Appended colorized seed mask to MP4 writer.")
+                except Exception as e:
+                    logger.error(f"Error appending seed mask frame: {e}", exc_info=True)
+            else:
+                logger.warning("Seed mask expected but was None. Skipping seed mask writing for this frame.")
+        else:
+            logger.debug("Seed mask generation is disabled for this series.")
+
+        logger.debug("Finished appending frame.")
 
     def close(self):
         """Closes all writer objects to finalize files."""
-        print("Closing all file writers...")
-        if self.video_tiff_writer:
-            self.video_tiff_writer.close()
-        if self.video_mp4_writer:
-            self.video_mp4_writer.release()
-        if self.gif_writer:
-            self.gif_writer.close()
-        if self.tubuli_mask_tiff_writer:
-            self.tubuli_mask_tiff_writer.close()
-        if self.tubuli_mask_mp4_writer:
-            self.tubuli_mask_mp4_writer.release()
-        if self.seed_mask_tiff_writer:
-            self.seed_mask_tiff_writer.close()
-        if self.seed_mask_mp4_writer:
-            self.seed_mask_mp4_writer.release()
-        print("All files saved successfully.")
+        logger.info("Closing all file writers...")
+
+        writers_to_close = [
+            (self.video_tiff_writer, "TIFF video writer"),
+            (self.video_mp4_writer, "MP4 video writer"),
+            (self.gif_writer, "GIF writer"),
+            (self.tubuli_mask_tiff_writer, "TIFF tubuli mask writer"),
+            (self.tubuli_mask_mp4_writer, "MP4 tubuli mask writer"),
+            (self.seed_mask_tiff_writer, "TIFF seed mask writer"),
+            (self.seed_mask_mp4_writer, "MP4 seed mask writer"),
+        ]
+
+        for writer, name in writers_to_close:
+            if writer:
+                try:
+                    if isinstance(writer, cv2.VideoWriter):
+                        writer.release()
+                        logger.debug(f"Released {name}.")
+                    else:  # Assuming imageio writer
+                        writer.close()
+                        logger.debug(f"Closed {name}.")
+                except Exception as e:
+                    logger.error(f"Error closing {name}: {e}", exc_info=True)
+            # else:
+            # logger.debug(f"{name} was not initialized or already closed.")
+
+        logger.info("All relevant file writers have been processed.")

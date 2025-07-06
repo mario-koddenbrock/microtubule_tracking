@@ -1,9 +1,11 @@
-import matplotlib.pyplot as plt
-import numpy as np
+import logging
 
+import numpy as np
 from skimage.measure import label, regionprops
 
 from .base import BaseFilter
+
+logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 
 
 class CornerExclusionFilter(BaseFilter):
@@ -24,11 +26,18 @@ class CornerExclusionFilter(BaseFilter):
             width_fraction (float): The fraction of the total image width to
                                     define the corner exclusion zone.
         """
+        super().__init__()  # Call the base class constructor
+        logger.info(
+            f"Initializing CornerExclusionFilter with height_fraction={height_fraction}, width_fraction={width_fraction}.")
+
         if not (0 <= height_fraction < 0.5 and 0 <= width_fraction < 0.5):
-            raise ValueError("Fractions must be between 0.0 and 0.5.")
+            msg = f"Fractions must be between 0.0 and 0.5. Got height_fraction={height_fraction}, width_fraction={width_fraction}."
+            logger.error(msg)
+            raise ValueError(msg)
 
         self.height_fraction = height_fraction
         self.width_fraction = width_fraction
+        logger.debug("CornerExclusionFilter parameters validated.")
 
     def filter(self, mask: np.ndarray) -> np.ndarray:
         """
@@ -45,7 +54,14 @@ class CornerExclusionFilter(BaseFilter):
             np.ndarray: A new mask containing only the objects that do not
                         touch the corner exclusion zones.
         """
+        # Leverage base class validation and initial logging
+        super().filter(mask)
+
+        num_objects_before = len(np.unique(mask)) - 1  # Count objects before filtering (excluding background 0)
+        logger.info(f"Applying CornerExclusionFilter to mask with {num_objects_before} objects.")
+
         if np.max(mask) == 0:
+            logger.info("Input mask is empty (all zeros). Returning as is.")
             return mask  # Return immediately if the mask is empty
 
         h, w = mask.shape
@@ -53,18 +69,24 @@ class CornerExclusionFilter(BaseFilter):
         # Define the corner boundaries
         corner_h = int(h * self.height_fraction)
         corner_w = int(w * self.width_fraction)
+        logger.debug(f"Image dimensions: H={h}, W={w}. Corner exclusion zone: H={corner_h}px, W={corner_w}px.")
 
         # Create a new mask to populate with only the "good" objects
-        filtered_mask = np.zeros_like(mask)
+        filtered_mask = np.zeros_like(mask, dtype=mask.dtype)  # Preserve original mask dtype
 
         # Use regionprops to get properties of each unique object (instance)
         # `label` ensures the mask has contiguous integers starting from 1.
         labeled_mask = label(mask)
         properties = regionprops(labeled_mask)
 
-        for prop in properties:
-            # Get the bounding box of the current object
+        objects_kept = 0
+        objects_filtered_out = 0
+
+        for prop_idx, prop in enumerate(properties):
+            obj_label = prop.label
             min_r, min_c, max_r, max_c = prop.bbox
+            logger.debug(
+                f"Processing object ID {obj_label} (original index {prop_idx}). Bounding box: ({min_r},{min_c},{max_r},{max_c}).")
 
             # Condition for being in the top-left corner
             in_top_left = (min_c < corner_w) and (min_r < corner_h)
@@ -72,27 +94,22 @@ class CornerExclusionFilter(BaseFilter):
             # Condition for being in the bottom-right corner
             in_bottom_right = (max_c > w - corner_w) and (max_r > h - corner_h)
 
+            logger.debug(
+                f"  Object {obj_label}: In top-left corner: {in_top_left}, In bottom-right corner: {in_bottom_right}.")
+
             # --- If the object is NOT in EITHER corner, we keep it ---
             if not in_top_left and not in_bottom_right:
-                # Add the entire object to our new, clean mask.
-                # We use the original label value from the object's properties.
-                filtered_mask[labeled_mask == prop.label] = prop.label
+                filtered_mask[labeled_mask == obj_label] = obj_label
+                objects_kept += 1
+                logger.debug(f"  Object {obj_label} passed corner exclusion. Kept.")
+            else:
+                objects_filtered_out += 1
+                logger.debug(f"  Object {obj_label} failed corner exclusion. Filtered out.")
 
-                # plt.imshow(filtered_mask)
-                # plt.title("Filtered Mask with Corner Exclusion")
-                # plt.axis('off')
-                # plt.show()
-                # print("Filtered mask with corner exclusion applied.")
+        num_objects_after = len(np.unique(filtered_mask)) - 1
+        logger.info(
+            f"CornerExclusionFilter complete. Objects before: {num_objects_before}, after: {num_objects_after}.")
+        logger.debug(f"Total objects kept: {objects_kept}, total objects filtered out: {objects_filtered_out}.")
 
-        # plt.imshow(labeled_mask)
-        # plt.title("Filtered Mask with Corner Exclusion")
-        # plt.axis('off')
-        # plt.show()
-        #
-        # plt.imshow(filtered_mask)
-        # plt.title("Filtered Mask with Corner Exclusion")
-        # plt.axis('off')
-        # plt.show()
-
-
+        # Removed the commented-out plt.imshow blocks
         return filtered_mask
