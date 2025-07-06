@@ -1,13 +1,12 @@
 import logging
-import numpy as np
-from typing import Optional, Tuple
+from typing import Optional
 
-from cellpose_adapt.config.pipeline_config import PipelineConfig  # Assuming this is correct import
+import numpy as np
+from cellpose_adapt.config.pipeline_config import PipelineConfig
 from cellpose_adapt.core import CellposeRunner, initialize_model
 from cellpose_adapt.utils import get_device
 
 from .base import BaseSegmentationModel
-
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 

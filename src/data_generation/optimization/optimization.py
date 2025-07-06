@@ -1,17 +1,16 @@
 import os
 import logging
 from functools import partial
-from typing import Optional  # Add this import if not already present
+from typing import Optional
 
 import numpy as np
 import optuna
 
-# Assuming these are relative imports within your project structure
 from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.optimization.metrics import precompute_matric_args
 from data_generation.optimization.objective import objective
 from config.tuning import TuningConfig
-from config.synthetic_data import SyntheticDataConfig  # Needed for best_cfg
+from config.synthetic_data import SyntheticDataConfig
 
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")

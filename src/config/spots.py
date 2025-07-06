@@ -1,8 +1,10 @@
 import logging
-from dataclasses import dataclass, field
-from typing import Tuple, Optional, Union
-from .base import BaseConfig
+from dataclasses import dataclass
+from typing import Tuple, Optional
+
 from optuna import Trial
+
+from .base import BaseConfig
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 

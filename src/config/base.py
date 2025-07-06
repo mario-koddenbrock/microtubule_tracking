@@ -220,3 +220,6 @@ class BaseConfig(ABC):
         Optionally implemented by subclasses to validate configuration logic.
         """
         pass
+
+    def __post_init__(self):
+        pass

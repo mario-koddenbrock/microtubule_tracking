@@ -1,4 +1,3 @@
-import math
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, Union
@@ -368,7 +367,7 @@ class TuningConfig(BaseConfig):
             fixed_spots=fixed_spots_cfg,
             moving_spots=moving_spots_cfg,
             random_spots=random_spots_cfg,
-            annotation_color_rgb=(1.0, 1.0, 1.0),  # Fixed for this model
+            annotation_color_rgb=(1.0, 1.0, 1.0),  # Fixed for this model TODO
             albumentations=None,  # Or AlbumentationsConfig() if you want to tune augmentations too
             generate_tubuli_mask=False,  # Fixed for this model
             generate_seed_mask=False,  # Fixed for this model

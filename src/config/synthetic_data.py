@@ -1,12 +1,11 @@
-import math
 import logging
+import math
 from dataclasses import dataclass, field
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional
 
 from .album_config import AlbumentationsConfig
 from .base import BaseConfig
 from .spots import SpotConfig
-
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 

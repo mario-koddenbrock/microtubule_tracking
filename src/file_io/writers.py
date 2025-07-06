@@ -1,13 +1,13 @@
-import os
-import cv2
-import imageio  # Ensure imageio is installed (pip install imageio)
-import numpy as np
 import logging
+import os
+from typing import Optional
+
+import cv2
+import imageio
+import numpy as np
 from skimage.color import label2rgb
-from typing import Optional, Tuple  # Add these imports
 
 from config.synthetic_data import SyntheticDataConfig
-
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 

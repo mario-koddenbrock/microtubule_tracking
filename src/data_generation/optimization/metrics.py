@@ -1,12 +1,12 @@
 import logging
+from typing import Optional, List
+
 import numpy as np
-from scipy.spatial.distance import mahalanobis, jensenshannon
+from scipy.spatial.distance import jensenshannon
 from scipy.stats import chi2_contingency
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import Optional, Tuple, List  # Added List for type hinting
 
 from config.tuning import TuningConfig
-
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 

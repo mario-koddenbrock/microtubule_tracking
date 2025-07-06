@@ -1,24 +1,16 @@
-import os
 import logging
-from glob import glob
-from typing import Optional, Tuple, List
+import os
+from typing import Optional, List
 
-import cv2
 import numpy as np
-import torch
-from sklearn.decomposition import PCA
-from tqdm import tqdm
 import optuna
-import optuna.visualization as vis  # Ensure optuna[visualization] is installed for these plots
+import optuna.visualization as vis
 
-# Assuming these are relative imports within your project structure
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
 from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.video import generate_video
 from plotting.plotting import visualize_embeddings
-from file_io.utils import extract_frames  # Explicitly imported as it's used in ImageEmbeddingExtractor
-
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")
 

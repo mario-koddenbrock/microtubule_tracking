@@ -1,18 +1,18 @@
 import os
 import logging
-from typing import List, Tuple, Optional, Dict, Any  # Added for clarity in return types
+from typing import List, Tuple, Optional, Dict, Any
 
 import albumentations as A
 import numpy as np
 from tqdm import tqdm
 
 from config.synthetic_data import SyntheticDataConfig
+from data_generation import utils
+from data_generation.spots import SpotGenerator
+from data_generation.tubuli import Microtubule
 from file_io.utils import save_ground_truth
 from file_io.writers import VideoOutputManager
-from . import \
-    utils  # Assuming utils contains compute_vignette, apply_global_blur, annotate_frame, build_motion_seeds, build_albumentations_pipeline
-from .spots_gen import SpotGenerator  # Renamed from .spots to .spots_gen for clarity based on your previous file
-from .microtubule import Microtubule  # Renamed from .tubuli to .microtubule for consistency
+
 
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")

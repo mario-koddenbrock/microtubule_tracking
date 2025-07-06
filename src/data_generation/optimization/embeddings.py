@@ -14,8 +14,8 @@ from transformers import (AutoModel, AutoFeatureExtractor, CLIPModel,
 
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
-from data_generation.video import generate_frames  # Assuming this is a local import
-from file_io.utils import extract_frames  # Assuming this is a local import
+from data_generation.video import generate_frames
+from file_io.utils import extract_frames
 
 
 logger = logging.getLogger(f"microtuble_tracking.{__name__}")
