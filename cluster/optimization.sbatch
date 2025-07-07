@@ -3,10 +3,10 @@
 #SBATCH --gres=gpu:0
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=64
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=8G
 #SBATCH --qos=normal
-#SBATCH --time=0-00:07:00
+#SBATCH --time=1-12:00:00
 #SBATCH --output=%j_microtubule_out.log
 #SBATCH --error=%j_microtubule_err.log
 

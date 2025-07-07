@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define how many parallel Optuna workers you want to run
-NUM_WORKERS=4
+NUM_WORKERS=8
 
 # Define the path to your tuning configuration file
 # Make sure this path is correct and accessible from the compute nodes!
