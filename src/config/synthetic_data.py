@@ -254,14 +254,15 @@ class SyntheticDataConfig(BaseConfig):
             errors.append(f"Random spots config validation failed: {e}")
             logger.error(f"Nested random_spots config invalid for '{self.id}'.")
 
-        if self.albumentations:  # Only validate if not None
-            try:
-                self.albumentations.validate()
-            except ValueError as e:
-                errors.append(f"Albumentations config validation failed: {e}")
-                logger.error(f"Nested albumentations config invalid for '{self.id}'.")
-        else:
-            logger.debug(f"Albumentations config is None for '{self.id}', skipping validation.")
+        # TODO implement proper validation for AlbumentationsConfig
+        # if self.albumentations:  # Only validate if not None
+        #     try:
+        #         self.albumentations.validate()
+        #     except ValueError as e:
+        #         errors.append(f"Albumentations config validation failed: {e}")
+        #         logger.error(f"Nested albumentations config invalid for '{self.id}'.")
+        # else:
+        #     logger.debug(f"Albumentations config is None for '{self.id}', skipping validation.")
 
         # --- Final Error Check ---
         if errors:
