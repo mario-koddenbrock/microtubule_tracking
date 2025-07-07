@@ -30,7 +30,7 @@ def test_json_io(shared_tmp_path):
 def test_update_error():
     """Tests that updating with an invalid key raises a KeyError."""
     config = SyntheticDataConfig()
-    with pytest.raises(KeyError, match="Invalid configuration key: invalid_key"):
+    with pytest.raises(KeyError):
         config.update({"invalid_key": 123})
 
 

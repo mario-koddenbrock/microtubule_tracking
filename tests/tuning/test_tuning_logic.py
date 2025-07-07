@@ -9,6 +9,7 @@ from config.synthetic_data import SyntheticDataConfig
 class MockOptunaTrial:
     def __init__(self, params):
         self.params = params
+        self.number = params.get("number", 0)
 
     def suggest_float(self, name, low, high, *, log=False, step=None):
         return self.params.get(name)
@@ -40,6 +41,9 @@ def test_create_config_from_trial():
         "pause_on_min_length": 8,
         "min_length_min": 40, "min_length_max": 90,
         "max_length_min": 100, "max_length_max": 180,
+        "bending_prob": 0.1,
+        "um_per_pixel": 20,
+        "scale_bar_um": 20,
 
         # Geometry & Shape
         "min_base_wagon_length": 15.0, "max_base_wagon_length": 45.0,
