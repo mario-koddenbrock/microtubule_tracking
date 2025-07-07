@@ -26,7 +26,7 @@ def _generate_stochastic_profile(
     """
     Generates a length-over-time profile based on stochastic parameters.
     """
-    logger.info(f"Generating stochastic length profile for {num_frames} frames.")
+    logger.debug(f"Generating stochastic length profile for {num_frames} frames.")
     logger.debug(
         f"Parameters: min_len={min_len:.2f}, max_len={max_len:.2f}, growth_speed={growth_speed:.2f}, shrink_speed={shrink_speed:.2f}, catastrophe_prob={catastrophe_prob:.4f}, rescue_prob={rescue_prob:.4f}, pause_on_min={pause_on_min}, pause_on_max={pause_on_max}.")
 
@@ -83,7 +83,7 @@ def _generate_stochastic_profile(
         profile[i] = np.clip(current_length, min_len, max_len)
         logger.debug(f"Frame {i}: Final length for frame: {profile[i]:.2f}.")
 
-    logger.info(
+    logger.debug(
         f"Length profile generated. First 5 values: {profile[:5].round(2)}, Last 5 values: {profile[-5:].round(2)}.")
     return profile
 
@@ -112,7 +112,7 @@ class Microtubule:
             base_point: np.ndarray,
             instance_id: int = 0,
     ):
-        logger.info(f"Initializing Microtubule instance ID: {instance_id} at base point: {base_point.tolist()}.")
+        logger.debug(f"Initializing Microtubule instance ID: {instance_id} at base point: {base_point.tolist()}.")
         self.cfg = cfg  # Store cfg for easy access to parameters
 
         base_orientation = np.random.uniform(0.0, 2 * np.pi)
@@ -179,7 +179,7 @@ class Microtubule:
                 f"MT {instance_id}: Initial length {self.current_length:.2f} is already at or above profile start {initial_total:.2f}. No initial growth.")
 
         self.current_length = sum(w.length for w in self.wagons)  # Update after initial growth
-        logger.info(f"Microtubule {instance_id} initialized with total length: {self.current_length:.2f}.")
+        logger.debug(f"Microtubule {instance_id} initialized with total length: {self.current_length:.2f}.")
 
     @property
     def total_length(self) -> float:
@@ -318,7 +318,7 @@ class Microtubule:
                     f"MT {self.instance_id}: Still {to_remove:.2f} length to remove after removing all dynamic wagons. This should not happen if base_wagon is fixed.")
 
         self.current_length = self.total_length
-        logger.info(
+        logger.debug(
             f"MT {self.instance_id}: Stepped to length {self.current_length:.2f} for frame {frame_idx}. Total wagons: {len(self.wagons)}.")
 
     def draw(
