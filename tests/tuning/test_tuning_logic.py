@@ -29,6 +29,8 @@ def test_create_config_from_trial():
 
     # Define a complete set of parameters matching the NEW create_synthetic_config_from_trial method.
     trial_params = {
+        "number": 42,  # Example trial number
+
         # Kinematics
         "growth_speed": 2.0,
         "shrink_speed": 4.0,
