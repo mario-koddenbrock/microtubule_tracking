@@ -13,13 +13,14 @@ LOG_LEVEL = logging.INFO
 # --- Setup ---
 def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs")):
     """Configures the application's logging."""
-    
-    print(f"Logging to {log_dir}")
+
     os.makedirs(log_dir, exist_ok=True)
 
     timestamp = datetime.datetime.now().replace(microsecond=0).isoformat()
     log_file = os.path.join(log_dir, f"{logger_name}_{timestamp}.log")
-    
+
+    print(f"Logging to {log_file}")
+
     # 1. Get the logger
     logger = logging.getLogger(logger_name)
     # Set the lowest-level to be captured. DEBUG will capture everything.
