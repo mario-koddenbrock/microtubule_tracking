@@ -9,7 +9,7 @@ from skimage.color import label2rgb
 
 from config.synthetic_data import SyntheticDataConfig
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 class VideoOutputManager:

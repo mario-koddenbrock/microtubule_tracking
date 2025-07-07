@@ -13,7 +13,7 @@ from config.tuning import TuningConfig
 from config.synthetic_data import SyntheticDataConfig
 
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def run_optimization(tuning_config_path: str):

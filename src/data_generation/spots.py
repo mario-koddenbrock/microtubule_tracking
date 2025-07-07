@@ -1,12 +1,12 @@
 import logging
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 import cv2
 import numpy as np
 
 from config.spots import SpotConfig
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 class SpotGenerator:

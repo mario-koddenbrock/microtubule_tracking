@@ -8,7 +8,7 @@ from cellpose_adapt.utils import get_device
 
 from .base import BaseSegmentationModel
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 class CellposePredictor(BaseSegmentationModel):

@@ -9,7 +9,7 @@ from config.tuning import TuningConfig
 from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.optimization.metrics import similarity
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def objective(

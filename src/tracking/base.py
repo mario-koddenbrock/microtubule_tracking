@@ -4,7 +4,7 @@ from typing import List, Dict
 
 import numpy as np
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 class BaseTracker(ABC):

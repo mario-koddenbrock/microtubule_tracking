@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import tifffile
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 # Custom JSON encoder to handle non-serializable types like sets and numpy arrays.

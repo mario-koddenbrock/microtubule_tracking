@@ -9,7 +9,7 @@ from skimage.measure import regionprops
 from skimage.morphology import skeletonize
 from tqdm import tqdm
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def generate_kymographs(

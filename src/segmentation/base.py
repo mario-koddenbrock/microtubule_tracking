@@ -5,7 +5,7 @@ from typing import Optional, Any
 import numpy as np
 
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 class BaseSegmentationModel(ABC):

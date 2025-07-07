@@ -8,7 +8,7 @@ import numpy as np
 from config.synthetic_data import SyntheticDataConfig
 from data_generation.utils import draw_gaussian_line_rgb  
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 # HELPER FUNCTION to generate the length profile

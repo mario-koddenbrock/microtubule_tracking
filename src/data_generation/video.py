@@ -15,7 +15,7 @@ from file_io.writers import VideoOutputManager
 
 
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def render_frame(

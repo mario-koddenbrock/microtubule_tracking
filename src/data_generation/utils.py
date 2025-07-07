@@ -11,7 +11,7 @@ from config.album_config import AlbumentationsConfig
 from config.synthetic_data import SyntheticDataConfig
 
 # Get a logger instance for this module
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def build_motion_seeds(cfg: SyntheticDataConfig) -> List[np.ndarray]:

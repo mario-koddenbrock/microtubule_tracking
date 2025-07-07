@@ -8,7 +8,7 @@ from .base import BaseConfig
 from .spots import SpotTuningConfig, SpotConfig
 from .synthetic_data import SyntheticDataConfig
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 @dataclass(eq=False)
@@ -123,7 +123,7 @@ class TuningConfig(BaseConfig):
         # Helper to validate a range tuple
         def _validate_range(param_name: str, rng: Tuple[Union[int, float], Union[int, float]],
                             allow_zero_min: bool = False, type_str: str = "number"):
-            if not isinstance(rng, tuple) or len(rng) != 2:
+            if not isinstance(rng, list) or len(rng) != 2:
                 errors.append(f"'{param_name}' must be a tuple of two {type_str}s, but got {rng}.")
                 return
             min_val, max_val = rng
@@ -148,7 +148,7 @@ class TuningConfig(BaseConfig):
             errors.append(f"pca_components must be a positive integer or None, but got {self.pca_components}.")
 
         # --- Static Video Properties ---
-        if not (isinstance(self.img_size, tuple) and len(self.img_size) == 2 and all(
+        if not (isinstance(self.img_size, list) and len(self.img_size) == 2 and all(
                 isinstance(x, int) and x > 0 for x in self.img_size)):
             errors.append(f"img_size must be a tuple of two positive integers, but got {self.img_size}.")
         if not (self.fps > 0):

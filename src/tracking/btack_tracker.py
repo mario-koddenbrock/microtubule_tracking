@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from .base import BaseTracker
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 FEATURES = [
     "area",

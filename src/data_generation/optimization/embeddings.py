@@ -18,7 +18,7 @@ from data_generation.video import generate_frames
 from file_io.utils import extract_frames
 
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 class ImageEmbeddingExtractor:

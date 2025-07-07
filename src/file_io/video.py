@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def write_video(frames: Generator[np.ndarray, None, None], output_path: str, fps: int, img_size: Tuple[int, int]):

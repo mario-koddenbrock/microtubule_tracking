@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from config.tuning import TuningConfig
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def similarity(

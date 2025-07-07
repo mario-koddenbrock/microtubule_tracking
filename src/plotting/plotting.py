@@ -18,7 +18,7 @@ from config.tuning import TuningConfig
 from data_generation.optimization.metrics import similarity, precompute_matric_args
 
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,

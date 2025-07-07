@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from .base import BaseTracker
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 # source CSRT https://arxiv.org/abs/1611.08461

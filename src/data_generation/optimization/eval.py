@@ -12,7 +12,7 @@ from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.video import generate_video
 from plotting.plotting import visualize_embeddings
 
-logger = logging.getLogger(f"microtuble_tracking.{__name__}")
+logger = logging.getLogger(f"mt.{__name__}")
 
 
 def evaluate_results(tuning_config_path: str, output_dir: str):
