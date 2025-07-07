@@ -127,7 +127,7 @@ class SyntheticDataConfig(BaseConfig):
         errors = []
 
         # --- Core Video Info ---
-        if not (isinstance(self.img_size, list) and len(self.img_size) == 2 and all(
+        if not (isinstance(self.img_size, (list, tuple)) and len(self.img_size) == 2 and all(
                 isinstance(x, int) and x > 0 for x in self.img_size)):
             errors.append(f"img_size must be a tuple of two positive integers, but got {self.img_size}.")
 
