@@ -26,9 +26,10 @@ def sample_hyperparameters(
         sample_id = start_id + i
         trial = study.ask()  # Ask the sampler for a new trial (parameter set)
 
-        sampled_config = tuning_config.create_synthetic_config_from_trial(trial)
+        sampled_config:SyntheticDataConfig = tuning_config.create_synthetic_config_from_trial(trial)
         sampled_config.id = sample_id
         sampled_config.generate_tubuli_mask = False
+        sampled_config.num_frames = tuning_config.output_config_num_frames
 
         config_filename = output_dir / f"series_{sample_id:04d}_config.json"
         sampled_config.save(config_filename)

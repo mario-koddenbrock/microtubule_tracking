@@ -362,7 +362,7 @@ class TuningConfig(BaseConfig):
             id=f"trial_{trial.number}",  # Use trial ID for better traceability
             img_size=self.img_size,
             fps=self.fps,
-            num_frames=self.output_config_num_frames,  # Use the fixed number of frames for output config
+            num_frames=self.num_compare_frames,
             color_mode=True,  # Fixed for this model
             fixed_spots=fixed_spots_cfg,
             moving_spots=moving_spots_cfg,
