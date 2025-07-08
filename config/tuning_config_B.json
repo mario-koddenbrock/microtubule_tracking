@@ -28,7 +28,7 @@
     0.0,
     10.0
   ],
-  "pause_on_max_length_range": [
+  "pause_on_microtubule_length_range": [
     0,
     10
   ],
@@ -48,19 +48,19 @@
     80,
     120
   ],
-  "max_length_min_range": [
+  "microtubule_length_min_range": [
     80,
     150
   ],
-  "max_length_max_range": [
+  "microtubule_length_max_range": [
     150,
     300
   ],
-  "num_tubuli_range": [
+  "num_microtubule_range": [
     10,
     30
   ],
-  "tubuli_min_dist_range": [
+  "microtubule_min_dist_range": [
     5,
     50
   ],
