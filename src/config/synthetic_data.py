@@ -28,10 +28,10 @@ class SyntheticDataConfig(BaseConfig):
     growth_speed: float = 2.5  # Pixels per frame
     shrink_speed: float = 5.0  # Pixels per frame
     catastrophe_prob: float = 0.01  # Probability per frame to switch from growing to shrinking
-    rescue_prob: float = 0.005  # Probability per frame for a rescue event
+    rescue_prob: float = 0.01  # Probability per frame for a rescue event
 
     # NEW: Max frames a tubule can be paused at its minimum length before a forced rescue.
-    max_pause_at_min_frames: int = 50
+    max_pause_at_min_frames: int = 5
 
     # The "seed" part of the microtubule. Its length is fixed for the entire simulation.
     min_base_wagon_length: float = 10.0
@@ -46,7 +46,7 @@ class SyntheticDataConfig(BaseConfig):
     max_angle: float = 0.1  # Max angle in radians between tail wagons
     bending_prob: float = 0.1  # Probability of the tail being bent at all
     max_angle_sign_changes: int = 1  # 0 for C-shape, 1 for S-shape, etc.
-    prob_to_flip_bend: float = 0.01  # Probability to use an available sign change when adding new visual wagons
+    prob_to_flip_bend: float = 0.1  # Probability to use an available sign change when adding new visual wagons
 
     # Seeding parameters
     num_microtubule: int = 20
