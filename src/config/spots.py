@@ -20,6 +20,7 @@ class SpotTuningConfig(BaseConfig):
     kernel_size_min_range: Tuple[int, int] = (0, 5)
     kernel_size_max_range: Tuple[int, int] = (5, 10)
     sigma_range: Tuple[float, float] = (0.1, 5.0)
+
     # Specific to moving spots
     max_step_range: Optional[Tuple[int, int]] = None
 
@@ -37,6 +38,11 @@ class SpotConfig(BaseConfig):
     kernel_size_min: int = 0
     kernel_size_max: int = 2
     sigma: float = 0.5
+
+    polygon_p: float = 0.0  # Probability of a spot being a polygon instead of a circle
+    polygon_vertex_count_min: int = 3  # Min vertices for a polygon (e.g., triangle)
+    polygon_vertex_count_max: int = 7  # Max vertices for a polygon (e.g., heptagon)
+
     color_mode: str = "dark"
     """Color mode for the spots, either 'dark' or 'bright'."""
 
