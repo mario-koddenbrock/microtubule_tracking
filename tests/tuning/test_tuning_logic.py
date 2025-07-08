@@ -40,7 +40,7 @@ def test_create_config_from_trial():
         "pause_on_max_length": 5,
         "pause_on_min_length": 8,
         "min_length_min": 40, "min_length_max": 90,
-        "max_length_min": 100, "max_length_max": 180,
+        "microtubule_length_min": 100, "microtubule_length_max": 180,
         "bending_prob": 0.1,
         "um_per_pixel": 20,
         "scale_bar_um": 20,
@@ -53,7 +53,7 @@ def test_create_config_from_trial():
         "prob_to_flip_bend": 0.05,
         "min_wagon_length_min": 5, "min_wagon_length_max": 15,
         "max_wagon_length_min": 15, "max_wagon_length_max": 30,
-        "num_tubuli": 25, "tubuli_seed_min_dist": 30, "margin": 10,
+        "num_microtubule": 25, "microtubule_seed_min_dist": 30, "margin": 10,
 
         # Rendering & Realism
         "sigma_x": 0.4, "sigma_y": 0.9,
