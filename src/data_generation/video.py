@@ -9,7 +9,7 @@ from tqdm import tqdm
 from config.synthetic_data import SyntheticDataConfig
 from data_generation import utils
 from data_generation.spots import SpotGenerator
-from data_generation.tubuli import Microtubule
+from data_generation.microtubule import Microtubule
 from file_io.utils import save_ground_truth
 from file_io.writers import VideoOutputManager
 
@@ -25,7 +25,7 @@ def render_frame(
         fixed_spot_generator: SpotGenerator,
         moving_spot_generator: SpotGenerator,
         aug_pipeline: Optional[A.Compose] = None,
-        return_tubuli_mask: bool = False,
+        return_microtubule_mask: bool = False,
         return_seed_mask: bool = False,
 ) -> Tuple[np.ndarray, List[Dict[str, Any]], Optional[np.ndarray], Optional[np.ndarray]]:  # Adjusted return type hints
     """
@@ -36,7 +36,7 @@ def render_frame(
         Tuple[np.ndarray, List[Dict], Optional[np.ndarray], Optional[np.ndarray]]:
             - frame: The rendered image (uint8 RGB).
             - gt_data: List of ground truth dictionaries for this frame.
-            - tubuli_mask: Optional mask for microtubules.
+            - microtubule_mask: Optional mask for microtubules.
             - seed_mask: Optional mask for microtubule seeds (only for frame 0).
     """
     logger.debug(f"Rendering frame {frame_idx} for series ID {cfg.id}...")
@@ -44,7 +44,7 @@ def render_frame(
     # ─── Initialization ──────────────────────────────────────────
     # Initialize background as a float32 array in the range [0, 1]
     frame = np.full((*cfg.img_size, 3), cfg.background_level, dtype=np.float32)
-    tubuli_mask = np.zeros(cfg.img_size, dtype=np.uint16) if return_tubuli_mask else None
+    microtubule_mask = np.zeros(cfg.img_size, dtype=np.uint16) if return_microtubule_mask else None
 
     # seed_mask is only for the first frame and if requested
     seed_mask = None
@@ -70,7 +70,7 @@ def render_frame(
             # Pass seed_mask only if it's the first frame and requested
             gt_info = mt.draw(
                 frame=frame,
-                tubuli_mask=tubuli_mask,
+                microtubule_mask=microtubule_mask,
                 cfg=cfg,
                 seed_mask=(seed_mask if frame_idx == 0 and return_seed_mask else None)
             )
@@ -129,10 +129,10 @@ def render_frame(
             # Albumentations expects uint8 or float, ensure float [0,1]
             # Convert back to original frame type if needed
             # For simplicity, passing float32 as is.
-            augmented = aug_pipeline(image=frame, mask=tubuli_mask if tubuli_mask is not None else None)
+            augmented = aug_pipeline(image=frame, mask=microtubule_mask if microtubule_mask is not None else None)
             frame = augmented['image']
-            if tubuli_mask is not None:
-                tubuli_mask = augmented['mask']
+            if microtubule_mask is not None:
+                microtubule_mask = augmented['mask']
             logger.debug(f"Frame {frame_idx}: Albumentations applied.")
         except Exception as e:
             logger.error(f"Frame {frame_idx}: Error applying Albumentations: {e}", exc_info=True)
@@ -159,15 +159,15 @@ def render_frame(
         entry["frame_index"] = frame_idx
     logger.debug(f"Frame {frame_idx}: Ground truth data updated with frame_index. Total segments: {len(gt_data)}.")
 
-    final_tubuli_mask = tubuli_mask if return_tubuli_mask else None
+    final_microtubule_mask = microtubule_mask if return_microtubule_mask else None
     final_seed_mask = seed_mask if return_seed_mask else None
 
     logger.debug(f"Frame {frame_idx} rendering complete.")
-    return frame_uint8, gt_data, final_tubuli_mask, final_seed_mask
+    return frame_uint8, gt_data, final_microtubule_mask, final_seed_mask
 
 
 def generate_frames(
-        cfg: SyntheticDataConfig, num_frames: int, return_tubuli_mask: bool = False, return_seed_mask: bool = False
+        cfg: SyntheticDataConfig, num_frames: int, return_microtubule_mask: bool = False, return_seed_mask: bool = False
 ):
     """
     Generates a sequence of synthetic video frames and associated data.
@@ -223,18 +223,18 @@ def generate_frames(
     # For each frame, step each microtubule and draw it:
     for frame_idx in range(num_frames):
         try:
-            frame, gt_data, tubuli_mask, seed_mask = render_frame(
+            frame, gt_data, microtubule_mask, seed_mask = render_frame(
                 cfg=cfg,
                 mts=mts,
                 frame_idx=frame_idx,
                 fixed_spot_generator=fixed_spot_generator,
                 moving_spot_generator=moving_spot_generator,
                 aug_pipeline=aug_pipeline,
-                return_tubuli_mask=return_tubuli_mask,
+                return_microtubule_mask=return_microtubule_mask,
                 return_seed_mask=return_seed_mask,
             )
             logger.debug(f"Frame {frame_idx} yielded.")
-            yield frame, gt_data, tubuli_mask, seed_mask
+            yield frame, gt_data, microtubule_mask, seed_mask
         except Exception as e:
             logger.error(f"Error rendering frame {frame_idx}: {e}. Skipping this frame.", exc_info=True)
 
@@ -264,11 +264,11 @@ def generate_video(
 
     try:
         # Process and write each frame one-by-one using the generator
-        for frame_img_rgb, gt_data_for_frame, tubuli_mask_img, seed_mask_img in tqdm(
+        for frame_img_rgb, gt_data_for_frame, microtubule_mask_img, seed_mask_img in tqdm(
                 generate_frames(
                     cfg,
                     cfg.num_frames,
-                    return_tubuli_mask=cfg.generate_tubuli_mask,
+                    return_microtubule_mask=cfg.generate_microtubule_mask,
                     return_seed_mask=cfg.generate_seed_mask,
                 ),
                 total=cfg.num_frames,
@@ -278,7 +278,7 @@ def generate_video(
             all_gt_data.extend(gt_data_for_frame)
             try:
                 if output_manager:
-                    output_manager.append(frame_img_rgb, tubuli_mask_img, seed_mask_img)
+                    output_manager.append(frame_img_rgb, microtubule_mask_img, seed_mask_img)
                     logger.debug(f"Appended frame to output manager.")
                 else:
                     logger.warning("Output manager is None, skipping frame append.")

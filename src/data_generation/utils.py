@@ -23,8 +23,8 @@ def build_motion_seeds(cfg: SyntheticDataConfig) -> List[np.ndarray]:
     tubulus_seeds = get_random_seeds(
         img_size=cfg.img_size,
         margin=cfg.margin,
-        min_dist=cfg.tubuli_seed_min_dist,
-        max_tubuli=cfg.num_tubuli,
+        min_dist=cfg.microtubule_seed_min_dist,
+        max_microtubule=cfg.num_microtubule,
     )
     start_points = [
         np.array(center, dtype=np.float32) for (_slope_intercept, center) in tubulus_seeds
@@ -80,7 +80,7 @@ def get_random_seeds(
         img_size: Tuple[int, int],
         margin: int,
         min_dist: int,
-        max_tubuli: int = 100,
+        max_microtubule: int = 100,
 ) -> List[Tuple[Tuple[float, float], Tuple[float, float]]]:
     """
     Generates random seed points within image boundaries, ensuring minimum distance between them.
@@ -90,7 +90,7 @@ def get_random_seeds(
         ((slope, intercept), (x, y)) for the seed.
     """
     logger.debug(
-        f"Generating random seeds: img_size={img_size}, margin={margin}, min_dist={min_dist}, max_tubuli={max_tubuli}.")
+        f"Generating random seeds: img_size={img_size}, margin={margin}, min_dist={min_dist}, max_microtubule={max_microtubule}.")
 
     usable_min_x = margin
     usable_max_x = img_size[1] - margin
@@ -103,10 +103,10 @@ def get_random_seeds(
         return []
 
     points: List[Tuple[float, float]] = []
-    max_attempts = max_tubuli * 100  # Allow many attempts
+    max_attempts = max_microtubule * 100  # Allow many attempts
     attempts = 0
 
-    while len(points) < max_tubuli and attempts < max_attempts:
+    while len(points) < max_microtubule and attempts < max_attempts:
         candidate_x = np.random.uniform(usable_min_x, usable_max_x)
         candidate_y = np.random.uniform(usable_min_y, usable_max_y)
         candidate_point = (candidate_x, candidate_y)
@@ -123,9 +123,9 @@ def get_random_seeds(
             logger.debug(f"  Accepted candidate point {candidate_point}. Total points: {len(points)}.")
         attempts += 1
 
-    if attempts >= max_attempts and len(points) < max_tubuli:
+    if attempts >= max_attempts and len(points) < max_microtubule:
         logger.warning(
-            f"Reached max attempts ({max_attempts}) before finding all tubuli. Generated {len(points)} out of {max_tubuli} requested."
+            f"Reached max attempts ({max_attempts}) before finding all microtubule. Generated {len(points)} out of {max_microtubule} requested."
         )
     logger.info(f"Found {len(points)} random seeds within specified constraints.")
 

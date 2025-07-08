@@ -44,15 +44,15 @@ class VideoOutputManager:
         # --- 1. Define all output paths ---
         base_name = f"series_{cfg.id}"
         self.video_tiff_path = os.path.join(base_output_dir, f"{base_name}_video.tif")
-        self.tubuli_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_masks.tif")
+        self.microtubule_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_masks.tif")
         self.seed_masks_tiff_path = os.path.join(base_output_dir, f"{base_name}_seed_masks.tif")
         self.video_mp4_path = os.path.join(base_output_dir, f"{base_name}_video_preview.mp4")
-        self.tubuli_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
+        self.microtubule_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_masks_preview.mp4")
         self.seed_masks_mp4_path = os.path.join(base_output_dir, f"{base_name}_seed_masks_preview.mp4")
         self.gif_path = os.path.join(base_output_dir, f"{base_name}_video_preview.gif")
 
         logger.debug(
-            f"Output paths defined: {self.video_tiff_path}, {self.tubuli_masks_tiff_path}, {self.seed_masks_tiff_path}, {self.video_mp4_path}, {self.tubuli_masks_mp4_path}, {self.seed_masks_mp4_path}, {self.gif_path}.")
+            f"Output paths defined: {self.video_tiff_path}, {self.microtubule_masks_tiff_path}, {self.seed_masks_tiff_path}, {self.video_mp4_path}, {self.microtubule_masks_mp4_path}, {self.seed_masks_mp4_path}, {self.gif_path}.")
 
         self.export_video = export_video
         self.export_gif_preview = export_gif_preview
@@ -89,24 +89,24 @@ class VideoOutputManager:
             except Exception as e:
                 logger.error(f"Failed to initialize MP4 video writer {self.video_mp4_path}: {e}", exc_info=True)
 
-        self.tubuli_mask_tiff_writer: Optional[imageio.core.format.Writer] = None
-        self.tubuli_mask_mp4_writer: Optional[cv2.VideoWriter] = None
-        if cfg.generate_tubuli_mask:
+        self.microtubule_mask_tiff_writer: Optional[imageio.core.format.Writer] = None
+        self.microtubule_mask_mp4_writer: Optional[cv2.VideoWriter] = None
+        if cfg.generate_microtubule_mask:
             try:
-                self.tubuli_mask_tiff_writer = imageio.get_writer(self.tubuli_masks_tiff_path, format="TIFF")
-                logger.info(f"Initialized TIFF tubuli mask writer: {self.tubuli_masks_tiff_path}")
-                self.tubuli_mask_mp4_writer = cv2.VideoWriter(
-                    self.tubuli_masks_mp4_path, mp4_fourcc, cfg.fps, (img_w, img_h)
+                self.microtubule_mask_tiff_writer = imageio.get_writer(self.microtubule_masks_tiff_path, format="TIFF")
+                logger.info(f"Initialized TIFF microtubule mask writer: {self.microtubule_masks_tiff_path}")
+                self.microtubule_mask_mp4_writer = cv2.VideoWriter(
+                    self.microtubule_masks_mp4_path, mp4_fourcc, cfg.fps, (img_w, img_h)
                 )
-                if not self.tubuli_mask_mp4_writer.isOpened():
-                    raise IOError("OpenCV Tubuli Mask VideoWriter failed to open.")
-                logger.info(f"Initialized MP4 tubuli mask writer: {self.tubuli_masks_mp4_path}")
+                if not self.microtubule_mask_mp4_writer.isOpened():
+                    raise IOError("OpenCV microtubule Mask VideoWriter failed to open.")
+                logger.info(f"Initialized MP4 microtubule mask writer: {self.microtubule_masks_mp4_path}")
             except Exception as e:
                 logger.error(
-                    f"Failed to initialize tubuli mask writers ({self.tubuli_masks_tiff_path}, {self.tubuli_masks_mp4_path}): {e}",
+                    f"Failed to initialize microtubule mask writers ({self.microtubule_masks_tiff_path}, {self.microtubule_masks_mp4_path}): {e}",
                     exc_info=True)
         else:
-            logger.debug("Tubuli mask generation disabled. Skipping writer initialization.")
+            logger.debug("microtubule mask generation disabled. Skipping writer initialization.")
 
         self.seed_mask_tiff_writer: Optional[imageio.core.format.Writer] = None
         self.seed_mask_mp4_writer: Optional[cv2.VideoWriter] = None
@@ -130,7 +130,7 @@ class VideoOutputManager:
         logger.info("VideoOutputManager initialization complete.")
 
     def append(
-            self, frame_img_rgb: np.ndarray, tubuli_mask_img: Optional[np.ndarray], seed_mask_img: Optional[np.ndarray]
+            self, frame_img_rgb: np.ndarray, microtubule_mask_img: Optional[np.ndarray], seed_mask_img: Optional[np.ndarray]
     ):
         """
         Appends a new frame and its mask to all relevant output files.
@@ -154,27 +154,27 @@ class VideoOutputManager:
         except Exception as e:
             logger.error(f"Error appending main video frame: {e}", exc_info=True)
 
-        # B.1. Write the tubuli mask frames (if enabled)
-        if self.cfg.generate_tubuli_mask:
-            if tubuli_mask_img is not None:
+        # B.1. Write the microtubule mask frames (if enabled)
+        if self.cfg.generate_microtubule_mask:
+            if microtubule_mask_img is not None:
                 try:
-                    if self.tubuli_mask_tiff_writer:
-                        self.tubuli_mask_tiff_writer.append_data(tubuli_mask_img)  # Raw uint16 data
-                        logger.debug("Appended tubuli mask to TIFF writer.")
+                    if self.microtubule_mask_tiff_writer:
+                        self.microtubule_mask_tiff_writer.append_data(microtubule_mask_img)  # Raw uint16 data
+                        logger.debug("Appended microtubule mask to TIFF writer.")
 
-                    if self.tubuli_mask_mp4_writer:
+                    if self.microtubule_mask_mp4_writer:
                         # Create and write the colorized preview for the mask
-                        mask_vis_float = label2rgb(tubuli_mask_img, bg_label=0)
+                        mask_vis_float = label2rgb(microtubule_mask_img, bg_label=0)
                         mask_vis_uint8 = (mask_vis_float * 255).astype(np.uint8)
                         mask_vis_bgr = cv2.cvtColor(mask_vis_uint8, cv2.COLOR_RGB2BGR)
-                        self.tubuli_mask_mp4_writer.write(mask_vis_bgr)
-                        logger.debug("Appended colorized tubuli mask to MP4 writer.")
+                        self.microtubule_mask_mp4_writer.write(mask_vis_bgr)
+                        logger.debug("Appended colorized microtubule mask to MP4 writer.")
                 except Exception as e:
-                    logger.error(f"Error appending tubuli mask frame: {e}", exc_info=True)
+                    logger.error(f"Error appending microtubule mask frame: {e}", exc_info=True)
             else:
-                logger.warning("Tubuli mask expected but was None. Skipping tubuli mask writing for this frame.")
+                logger.warning("microtubule mask expected but was None. Skipping microtubule mask writing for this frame.")
         else:
-            logger.debug("Tubuli mask generation is disabled for this series.")
+            logger.debug("microtubule mask generation is disabled for this series.")
 
         # B.2 Write the seed mask frame (if enabled)
         if self.cfg.generate_seed_mask:
@@ -208,8 +208,8 @@ class VideoOutputManager:
             (self.video_tiff_writer, "TIFF video writer"),
             (self.video_mp4_writer, "MP4 video writer"),
             (self.gif_writer, "GIF writer"),
-            (self.tubuli_mask_tiff_writer, "TIFF tubuli mask writer"),
-            (self.tubuli_mask_mp4_writer, "MP4 tubuli mask writer"),
+            (self.microtubule_mask_tiff_writer, "TIFF microtubule mask writer"),
+            (self.microtubule_mask_mp4_writer, "MP4 microtubule mask writer"),
             (self.seed_mask_tiff_writer, "TIFF seed mask writer"),
             (self.seed_mask_mp4_writer, "MP4 seed mask writer"),
         ]

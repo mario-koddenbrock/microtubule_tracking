@@ -45,7 +45,7 @@ class TuningConfig(BaseConfig):
     shrink_speed_range: Tuple[float, float] = (2.0, 10.0)
     catastrophe_prob_range: Tuple[float, float] = (0.001, 0.05)
     rescue_prob_range: Tuple[float, float] = (0.0005, 0.02)
-    pause_on_max_length_range: Tuple[int, int] = (0, 10)
+    pause_on_microtubule_length_range: Tuple[int, int] = (0, 10)
     pause_on_min_length_range: Tuple[int, int] = (0, 10)
 
     # ─── Wagon & Bending kinematics ranges ────────────────────────
@@ -64,10 +64,10 @@ class TuningConfig(BaseConfig):
     # ─── Tubule geometry & rendering ranges ───────────────────────
     min_length_min_range: Tuple[int, int] = (20, 80)
     min_length_max_range: Tuple[int, int] = (80, 120)
-    max_length_min_range: Tuple[int, int] = (80, 150)
-    max_length_max_range: Tuple[int, int] = (150, 300)
-    num_tubuli_range: Tuple[int, int] = (10, 40)
-    tubuli_seed_min_dist_range: Tuple[int, int] = (10, 50)
+    microtubule_length_min_range: Tuple[int, int] = (80, 150)
+    microtubule_length_max_range: Tuple[int, int] = (150, 300)
+    num_microtubule_range: Tuple[int, int] = (10, 40)
+    microtubule_seed_min_dist_range: Tuple[int, int] = (10, 50)
     margin_range: Tuple[int, int] = (0, 20)
     tubule_width_variation_range: Tuple[float, float] = (0.0, 0.2)
     sigma_x_range: Tuple[float, float] = (0.1, 1.0)
@@ -160,7 +160,7 @@ class TuningConfig(BaseConfig):
             "shrink_speed_range": (self.shrink_speed_range, False, "float"),
             "catastrophe_prob_range": (self.catastrophe_prob_range, False, "float"),
             "rescue_prob_range": (self.rescue_prob_range, False, "float"),
-            "pause_on_max_length_range": (self.pause_on_max_length_range, True, "int"),
+            "pause_on_microtubule_length_range": (self.pause_on_microtubule_length_range, True, "int"),
             "pause_on_min_length_range": (self.pause_on_min_length_range, True, "int"),
             "min_base_wagon_length_range": (self.min_base_wagon_length_range, False, "float"),
             "max_base_wagon_length_range": (self.max_base_wagon_length_range, False, "float"),
@@ -175,10 +175,10 @@ class TuningConfig(BaseConfig):
             "max_wagon_length_max_range": (self.max_wagon_length_max_range, False, "int"),
             "min_length_min_range": (self.min_length_min_range, False, "int"),
             "min_length_max_range": (self.min_length_max_range, False, "int"),
-            "max_length_min_range": (self.max_length_min_range, False, "int"),
-            "max_length_max_range": (self.max_length_max_range, False, "int"),
-            "num_tubuli_range": (self.num_tubuli_range, True, "int"),
-            "tubuli_seed_min_dist_range": (self.tubuli_seed_min_dist_range, True, "int"),
+            "microtubule_length_min_range": (self.microtubule_length_min_range, False, "int"),
+            "microtubule_length_max_range": (self.microtubule_length_max_range, False, "int"),
+            "num_microtubule_range": (self.num_microtubule_range, True, "int"),
+            "microtubule_seed_min_dist_range": (self.microtubule_seed_min_dist_range, True, "int"),
             "margin_range": (self.margin_range, True, "int"),
             "tubule_width_variation_range": (self.tubule_width_variation_range, True, "float"),
             "sigma_x_range": (self.sigma_x_range, True, "float"),
@@ -201,9 +201,9 @@ class TuningConfig(BaseConfig):
             _validate_range(param_name, rng, allow_zero, type_str)
 
         # Check specific logical constraints between ranges
-        if self.min_length_max_range[0] > self.max_length_min_range[1]:
+        if self.min_length_max_range[0] > self.microtubule_length_min_range[1]:
             errors.append(
-                f"The lower bound of min_length_max_range ({self.min_length_max_range[0]}) is greater than the upper bound of max_length_min_range ({self.max_length_min_range[1]}). This could lead to impossible length suggestions.")
+                f"The lower bound of min_length_max_range ({self.min_length_max_range[0]}) is greater than the upper bound of microtubule_length_min_range ({self.microtubule_length_min_range[1]}). This could lead to impossible length suggestions.")
         if self.min_wagon_length_max_range[0] > self.max_wagon_length_min_range[1]:
             errors.append(
                 f"The lower bound of min_wagon_length_max_range ({self.min_wagon_length_max_range[0]}) is greater than the upper bound of max_wagon_length_min_range ({self.max_wagon_length_min_range[1]}). This could lead to impossible length suggestions.")
@@ -260,7 +260,7 @@ class TuningConfig(BaseConfig):
                                                                    log=True)
         suggested_params["rescue_prob"] = trial.suggest_float("rescue_prob", *self.rescue_prob_range, log=True)
         suggested_params["pause_on_max_length"] = trial.suggest_int("pause_on_max_length",
-                                                                    *self.pause_on_max_length_range)
+                                                                    *self.pause_on_microtubule_length_range)
         suggested_params["pause_on_min_length"] = trial.suggest_int("pause_on_min_length",
                                                                     *self.pause_on_min_length_range)
 
@@ -272,16 +272,16 @@ class TuningConfig(BaseConfig):
             # Ensure it's at least min_length_min + 1
             self.min_length_max_range[1]
         )
-        suggested_params["max_length_min"] = trial.suggest_int("max_length_min", *self.max_length_min_range)
-        # Constrain max_length_max to be >= max_length_min
-        suggested_params["max_length_max"] = trial.suggest_int(
-            "max_length_max",
-            max(suggested_params["max_length_min"] + 1, self.max_length_max_range[0]),
-            # Ensure it's at least max_length_min + 1
-            self.max_length_max_range[1]
+        suggested_params["microtubule_length_min"] = trial.suggest_int("microtubule_length_min", *self.microtubule_length_min_range)
+        # Constrain microtubule_length_max to be >= microtubule_length_min
+        suggested_params["microtubule_length_max"] = trial.suggest_int(
+            "microtubule_length_max",
+            max(suggested_params["microtubule_length_min"] + 1, self.microtubule_length_max_range[0]),
+            # Ensure it's at least microtubule_length_min + 1
+            self.microtubule_length_max_range[1]
         )
         logger.debug(
-            f"Suggested kinematics parameters: { {k: suggested_params[k] for k in ['growth_speed', 'shrink_speed', 'catastrophe_prob', 'rescue_prob', 'pause_on_max_length', 'pause_on_min_length', 'min_length_min', 'min_length_max', 'max_length_min', 'max_length_max']} }")
+            f"Suggested kinematics parameters: { {k: suggested_params[k] for k in ['growth_speed', 'shrink_speed', 'catastrophe_prob', 'rescue_prob', 'pause_on_max_length', 'pause_on_min_length', 'min_length_min', 'min_length_max', 'microtubule_length_min', 'microtubule_length_max']} }")
 
         # Geometry & Shape
         suggested_params["min_base_wagon_length"] = trial.suggest_float("min_base_wagon_length",
@@ -311,12 +311,12 @@ class TuningConfig(BaseConfig):
             max(suggested_params["max_wagon_length_min"] + 1, self.max_wagon_length_max_range[0]),
             self.max_wagon_length_max_range[1]
         )
-        suggested_params["num_tubuli"] = trial.suggest_int("num_tubuli", *self.num_tubuli_range)
-        suggested_params["tubuli_seed_min_dist"] = trial.suggest_int("tubuli_seed_min_dist",
-                                                                     *self.tubuli_seed_min_dist_range)
+        suggested_params["num_microtubule"] = trial.suggest_int("num_microtubule", *self.num_microtubule_range)
+        suggested_params["microtubule_seed_min_dist"] = trial.suggest_int("microtubule_seed_min_dist",
+                                                                     *self.microtubule_seed_min_dist_range)
         suggested_params["margin"] = trial.suggest_int("margin", *self.margin_range)
         logger.debug(
-            f"Suggested geometry parameters: { {k: suggested_params[k] for k in ['min_base_wagon_length', 'max_base_wagon_length', 'max_num_wagons', 'max_angle', 'max_angle_sign_changes', 'bending_prob', 'prob_to_flip_bend', 'min_wagon_length_min', 'min_wagon_length_max', 'max_wagon_length_min', 'max_wagon_length_max', 'num_tubuli', 'tubuli_seed_min_dist', 'margin']} }")
+            f"Suggested geometry parameters: { {k: suggested_params[k] for k in ['min_base_wagon_length', 'max_base_wagon_length', 'max_num_wagons', 'max_angle', 'max_angle_sign_changes', 'bending_prob', 'prob_to_flip_bend', 'min_wagon_length_min', 'min_wagon_length_max', 'max_wagon_length_min', 'max_wagon_length_max', 'num_microtubule', 'microtubule_seed_min_dist', 'margin']} }")
 
         # Rendering & Realism
         suggested_params["sigma_x"] = trial.suggest_float("sigma_x", *self.sigma_x_range)
@@ -369,7 +369,7 @@ class TuningConfig(BaseConfig):
             random_spots=random_spots_cfg,
             annotation_color_rgb=(1.0, 1.0, 1.0),  # Fixed for this model TODO
             albumentations=None,  # Or AlbumentationsConfig() if you want to tune augmentations too
-            generate_tubuli_mask=False,  # Fixed for this model
+            generate_microtubule_mask=False,  # Fixed for this model
             generate_seed_mask=False,  # Fixed for this model
             **suggested_params  # Unpack all the dynamically suggested parameters
         )
