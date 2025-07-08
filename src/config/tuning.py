@@ -69,7 +69,7 @@ class TuningConfig(BaseConfig):
     num_tubuli_range: Tuple[int, int] = (10, 40)
     tubuli_seed_min_dist_range: Tuple[int, int] = (10, 50)
     margin_range: Tuple[int, int] = (0, 20)
-    width_var_std_range: Tuple[float, float] = (0.0, 0.2)
+    tubule_width_variation_range: Tuple[float, float] = (0.0, 0.2)
     sigma_x_range: Tuple[float, float] = (0.1, 1.0)
     sigma_y_range: Tuple[float, float] = (0.1, 1.5)
 
@@ -180,7 +180,7 @@ class TuningConfig(BaseConfig):
             "num_tubuli_range": (self.num_tubuli_range, True, "int"),
             "tubuli_seed_min_dist_range": (self.tubuli_seed_min_dist_range, True, "int"),
             "margin_range": (self.margin_range, True, "int"),
-            "width_var_std_range": (self.width_var_std_range, True, "float"),
+            "tubule_width_variation_range": (self.tubule_width_variation_range, True, "float"),
             "sigma_x_range": (self.sigma_x_range, True, "float"),
             "sigma_y_range": (self.sigma_y_range, True, "float"),
             "background_level_range": (self.background_level_range, True, "float"),
@@ -321,7 +321,7 @@ class TuningConfig(BaseConfig):
         # Rendering & Realism
         suggested_params["sigma_x"] = trial.suggest_float("sigma_x", *self.sigma_x_range)
         suggested_params["sigma_y"] = trial.suggest_float("sigma_y", *self.sigma_y_range)
-        suggested_params["width_var_std"] = trial.suggest_float("width_var_std", *self.width_var_std_range)
+        suggested_params["tubule_width_variation"] = trial.suggest_float("tubule_width_variation", *self.tubule_width_variation_range)
         suggested_params["background_level"] = trial.suggest_float("background_level", *self.background_level_range)
         suggested_params["tubulus_contrast"] = trial.suggest_float("tubulus_contrast", *self.tubulus_contrast_range)
         suggested_params["seed_red_channel_boost"] = trial.suggest_float("seed_red_channel_boost",
@@ -337,7 +337,7 @@ class TuningConfig(BaseConfig):
                                                                       *self.vignetting_strength_range)
         suggested_params["global_blur_sigma"] = trial.suggest_float("global_blur_sigma", *self.global_blur_sigma_range)
         logger.debug(
-            f"Suggested rendering/realism parameters: { {k: suggested_params[k] for k in ['sigma_x', 'sigma_y', 'width_var_std', 'background_level', 'tubulus_contrast', 'seed_red_channel_boost', 'tip_brightness_factor', 'quantum_efficiency', 'gaussian_noise', 'bleach_tau', 'jitter_px', 'vignetting_strength', 'global_blur_sigma']} }")
+            f"Suggested rendering/realism parameters: { {k: suggested_params[k] for k in ['sigma_x', 'sigma_y', 'tubule_width_variation', 'background_level', 'tubulus_contrast', 'seed_red_channel_boost', 'tip_brightness_factor', 'quantum_efficiency', 'gaussian_noise', 'bleach_tau', 'jitter_px', 'vignetting_strength', 'global_blur_sigma']} }")
 
         # Spots - delegated to SpotConfig.from_trial
         logger.debug(f"Suggesting fixed_spots config using tuning: {self.fixed_spots_tuning.asdict()}")

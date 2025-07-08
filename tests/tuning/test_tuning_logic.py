@@ -57,7 +57,7 @@ def test_create_config_from_trial():
 
         # Rendering & Realism
         "sigma_x": 0.4, "sigma_y": 0.9,
-        "width_var_std": 0.1,
+        "tubule_width_variation": 0.1,
         "background_level": 0.7,
         "tubulus_contrast": -0.3,
         "seed_red_channel_boost": 0.6,
