@@ -64,8 +64,8 @@ def render_frame(
     logger.debug(f"Frame {frame_idx}: Simulating and drawing {len(mts)} microtubules.")
     for mt_idx, mt in enumerate(mts):
         try:
-            mt.step_to_length(frame_idx)
-            mt.base_point += jitter  # Apply jitter
+            mt.step()
+            mt.base_point += jitter
 
             # Pass seed_mask only if it's the first frame and requested
             gt_info = mt.draw(
@@ -75,11 +75,10 @@ def render_frame(
                 seed_mask=(seed_mask if frame_idx == 0 and return_seed_mask else None)
             )
             gt_data.extend(gt_info)
-            mt.base_point -= jitter  # Remove jitter for next frame's calculation
+            mt.base_point -= jitter
             logger.debug(f"Frame {frame_idx}, MT {mt.instance_id}: Drawn with {len(gt_info)} segments.")
         except Exception as e:
             logger.error(f"Frame {frame_idx}, MT {mt.instance_id}: Error drawing microtubule: {e}", exc_info=True)
-            # Decide if to continue or raise. For frame rendering, probably continue.
 
     # ─── Add Ancillary Objects (Spots) ───────────────────────────
     logger.debug(f"Frame {frame_idx}: Applying spots.")
@@ -238,9 +237,6 @@ def generate_frames(
             yield frame, gt_data, tubuli_mask, seed_mask
         except Exception as e:
             logger.error(f"Error rendering frame {frame_idx}: {e}. Skipping this frame.", exc_info=True)
-            # Decide if you want to yield a blank frame, or simply skip.
-            # For now, we just log and skip this problematic frame.
-
 
 def generate_video(
         cfg: SyntheticDataConfig,
