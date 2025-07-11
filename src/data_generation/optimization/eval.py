@@ -30,9 +30,6 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         return
 
     logger.info("--- Loading configurations and study results ---")
-    tuning_cfg: Optional[TuningConfig] = None
-    best_cfg: Optional[SyntheticDataConfig] = None
-    study: Optional[optuna.study.Study] = None
 
     try:
         tuning_cfg = TuningConfig.load(tuning_config_path)
@@ -44,17 +41,6 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         logger.critical(f"Error loading tuning config from {tuning_config_path}: {e}", exc_info=True)
         return
 
-    try:
-        # Load the best synthetic config found during optimization
-        best_cfg = SyntheticDataConfig.load(tuning_cfg.output_config_file)
-        logger.info(f"Loaded best synthetic configuration from: {tuning_cfg.output_config_file}")
-    except FileNotFoundError:
-        logger.critical(
-            f"Best synthetic config file not found: {tuning_cfg.output_config_file}. Ensure optimization ran successfully.")
-        return
-    except Exception as e:
-        logger.critical(f"Error loading best synthetic config from {tuning_cfg.output_config_file}: {e}", exc_info=True)
-        return
 
     # Load the completed Optuna study from its database file
     study_db_path = os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')
@@ -62,6 +48,9 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     logger.debug(f"Attempting to load Optuna study from: {full_study_db_uri}")
     try:
         study = optuna.load_study(study_name=tuning_cfg.output_config_id, storage=full_study_db_uri)
+        # trials = study.get_trials(deepcopy=False)
+        # scores = [trial.value for trial in trials if trial.value is not None]
+        # max_score_idx = np.argmax(scores) if scores else None
         logger.info(f"Loaded Optuna study '{tuning_cfg.output_config_id}' from: {full_study_db_uri}")
         logger.info(f"Best trial: {study.best_trial.value:.4f} (Trial {study.best_trial.number})")
     except KeyError:
@@ -71,6 +60,19 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         return
     except Exception as e:
         logger.critical(f"Error loading Optuna study from {full_study_db_uri}: {e}", exc_info=True)
+        return
+
+    try:
+        best_cfg_2 = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
+        # # Load the best synthetic config found during optimization
+        # best_cfg = SyntheticDataConfig.load(tuning_cfg.output_config_file)
+        # logger.info(f"Loaded best synthetic configuration from: {tuning_cfg.output_config_file}")
+    except FileNotFoundError:
+        logger.critical(
+            f"Best synthetic config file not found: {tuning_cfg.output_config_file}. Ensure optimization ran successfully.")
+        return
+    except Exception as e:
+        logger.critical(f"Error loading best synthetic config from {tuning_cfg.output_config_file}: {e}", exc_info=True)
         return
 
     # Proceed with evaluation if all critical components loaded
