@@ -175,8 +175,8 @@ def draw_gaussian_line_rgb(
         mask: Optional[np.ndarray],  # Made optional explicitly
         start_pt: np.ndarray,
         end_pt: np.ndarray,
-        sigma_x: float,
-        sigma_y: float,
+        psf_sigma_h: float,
+        psf_sigma_v: float,
         color_contrast_rgb: Tuple[float, float, float],
         mask_idx: int,
         additional_mask: Optional[np.ndarray] = None,  # Made optional explicitly
@@ -186,7 +186,7 @@ def draw_gaussian_line_rgb(
     Modifies `frame` and `mask` in-place.
     """
     logger.debug(
-        f"Drawing Gaussian line from {start_pt.tolist()} to {end_pt.tolist()}. Sigmas: ({sigma_x:.2f}, {sigma_y:.2f}). Contrast: {color_contrast_rgb}.")
+        f"Drawing Gaussian line from {start_pt.tolist()} to {end_pt.tolist()}. Sigmas: ({psf_sigma_h:.2f}, {psf_sigma_v:.2f}). Contrast: {color_contrast_rgb}.")
 
     H, W, C = frame.shape
     if C != 3:
@@ -203,11 +203,11 @@ def draw_gaussian_line_rgb(
     mask_threshold = 0.01  # Pixel intensity threshold for mask update
 
     # Validate sigmas
-    if sigma_x <= 0 or sigma_y <= 0:
+    if psf_sigma_h <= 0 or psf_sigma_v <= 0:
         logger.warning(
-            f"Sigma_x ({sigma_x}) or sigma_y ({sigma_y}) is non-positive. Setting to a small value (1e-6) to prevent division by zero in Gaussian calculation.")
-        sigma_x = max(sigma_x, 1e-6)
-        sigma_y = max(sigma_y, 1e-6)
+            f"psf_sigma_h ({psf_sigma_h}) or psf_sigma_v ({psf_sigma_v}) is non-positive. Setting to a small value (1e-6) to prevent division by zero in Gaussian calculation.")
+        psf_sigma_h = max(psf_sigma_h, 1e-6)
+        psf_sigma_v = max(psf_sigma_v, 1e-6)
 
     # --- Nested Helper Function for Drawing a Single Spot ---
     def draw_spot_at_point(px: float, py: float):
@@ -218,7 +218,7 @@ def draw_gaussian_line_rgb(
             dy = yy - py
 
             # Calculate the 2D Gaussian blob
-            gaussian_blob = np.exp(-((dx ** 2) / (2 * sigma_x ** 2) + (dy ** 2) / (2 * sigma_y ** 2)))
+            gaussian_blob = np.exp(-((dx ** 2) / (2 * psf_sigma_h ** 2) + (dy ** 2) / (2 * psf_sigma_v ** 2)))
 
             # Apply the contrast to each RGB channel and add it to the frame
             for c in range(3):

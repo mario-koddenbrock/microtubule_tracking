@@ -33,7 +33,7 @@ class Microtubule:
         # --- Initialize fixed properties ---
         self.base_point = base_point.copy()
         self.base_orientation = np.random.uniform(0.0, 2 * np.pi)
-        seed_length = np.random.uniform(cfg.min_base_wagon_length, cfg.max_base_wagon_length)
+        seed_length = np.random.uniform(cfg.base_wagon_length_min, cfg.base_wagon_length_max)
         self.max_len = np.random.uniform(cfg.microtubule_length_min, cfg.microtubule_length_max)
 
         # --- Initialize stateful attributes ---
@@ -168,8 +168,8 @@ class Microtubule:
             dy = w.length * np.sin(abs_angle)
             new_pos = abs_pos + np.array([dx, dy], dtype=np.float32)
 
-            sigma_x = max(0.0, cfg.sigma_x * (1 + np.random.normal(0, cfg.tubule_width_variation)))
-            sigma_y = max(0.0, cfg.sigma_y * (1 + np.random.normal(0, cfg.tubule_width_variation)))
+            psf_sigma_h = max(0.0, cfg.psf_sigma_h * (1 + np.random.normal(0, cfg.tubule_width_variation)))
+            psf_sigma_v = max(0.0, cfg.psf_sigma_v * (1 + np.random.normal(0, cfg.tubule_width_variation)))
 
             base_contrast = cfg.tubulus_contrast
             is_tip_wagon = (idx == len(self.wagons) - 1)
@@ -185,7 +185,7 @@ class Microtubule:
             try:
                 draw_gaussian_line_rgb(
                     frame, microtubule_mask, abs_pos, new_pos,
-                    sigma_x=sigma_x, sigma_y=sigma_y,
+                    psf_sigma_h=psf_sigma_h, psf_sigma_v=psf_sigma_v,
                     color_contrast_rgb=(r, g, b),
                     mask_idx=self.instance_id,
                     additional_mask=additional_mask_to_pass,

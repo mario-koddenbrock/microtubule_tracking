@@ -84,11 +84,11 @@
     0.1,
     1.0
   ],
-  "sigma_x_range": [
+  "psf_sigma_h_range": [
     0.1,
     2.0
   ],
-  "sigma_y_range": [
+  "psf_sigma_v_range": [
     0.1,
     2.0
   ],

@@ -42,11 +42,11 @@
     0,
     10
   ],
-  "min_base_wagon_length_range": [
+  "base_wagon_length_min_range": [
     10.0,
     50.0
   ],
-  "max_base_wagon_length_range": [
+  "base_wagon_length_max_range": [
     10.0,
     50.0
   ],
@@ -118,11 +118,11 @@
     0.0,
     0.2
   ],
-  "sigma_x_range": [
+  "psf_sigma_h_range": [
     0.1,
     2.0
   ],
-  "sigma_y_range": [
+  "psf_sigma_v_range": [
     0.1,
     2.0
   ],

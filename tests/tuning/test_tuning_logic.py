@@ -46,7 +46,7 @@ def test_create_config_from_trial():
         "scale_bar_um": 20,
 
         # Geometry & Shape
-        "min_base_wagon_length": 15.0, "max_base_wagon_length": 45.0,
+        "base_wagon_length_min": 15.0, "base_wagon_length_max": 45.0,
         "max_num_wagons": 10,
         "max_angle": 0.2,
         "max_angle_sign_changes": 1,
@@ -56,7 +56,7 @@ def test_create_config_from_trial():
         "num_microtubule": 25, "microtubule_seed_min_dist": 30, "margin": 10,
 
         # Rendering & Realism
-        "sigma_x": 0.4, "sigma_y": 0.9,
+        "psf_sigma_h": 0.4, "psf_sigma_v": 0.9,
         "tubule_width_variation": 0.1,
         "background_level": 0.7,
         "tubulus_contrast": -0.3,

@@ -34,8 +34,8 @@ class SyntheticDataConfig(BaseConfig):
     max_pause_at_min_frames: int = 5
 
     # The "seed" part of the microtubule. Its length is fixed for the entire simulation.
-    min_base_wagon_length: float = 10.0
-    max_base_wagon_length: float = 50.0
+    base_wagon_length_min: float = 10.0
+    base_wagon_length_max: float = 50.0
 
     # The maximum total length a microtubule can reach before it is forced to shrink.
     microtubule_length_min: int = 100
@@ -54,8 +54,8 @@ class SyntheticDataConfig(BaseConfig):
     margin: int = 5
 
     # ─── PSF / drawing width ───────────────────────────────
-    sigma_x: float = 0.3
-    sigma_y: float = 0.8
+    psf_sigma_h: float = 0.3
+    psf_sigma_v: float = 0.8
     tubule_width_variation: float = 0.05
 
     # ─── photophysics / camera realism ─────────────────
@@ -125,13 +125,13 @@ class SyntheticDataConfig(BaseConfig):
         if not (0 <= self.rescue_prob <= 1): errors.append("rescue_prob must be between 0 and 1.")
         if not (self.max_pause_at_min_frames >= 0): errors.append(
             "max_pause_at_min_frames must be a non-negative integer.")
-        if not (0 < self.min_base_wagon_length <= self.max_base_wagon_length):
-            errors.append("min_base_wagon_length must be positive and <= max_base_wagon_length.")
+        if not (0 < self.base_wagon_length_min <= self.base_wagon_length_max):
+            errors.append("base_wagon_length_min must be positive and <= base_wagon_length_max.")
         if not (0 < self.microtubule_length_min <= self.microtubule_length_max):
             errors.append("microtubule_length_min must be positive and <= microtubule_length_max.")
-        if not (self.max_base_wagon_length <= self.microtubule_length_min):
+        if not (self.base_wagon_length_max <= self.microtubule_length_min):
             errors.append(
-                f"max_base_wagon_length ({self.max_base_wagon_length}) must be <= microtubule_length_min ({self.microtubule_length_min}).")
+                f"base_wagon_length_max ({self.base_wagon_length_max}) must be <= microtubule_length_min ({self.microtubule_length_min}).")
         if not (self.tail_wagon_length > 0): errors.append("tail_wagon_length must be positive.")
         if not (self.red_channel_noise_std >= 0): errors.append("red_channel_noise_std must be non-negative.")
 
