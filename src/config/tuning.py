@@ -83,7 +83,10 @@ class TuningConfig(BaseConfig):
     # ─── Spot Tuning Ranges ───────────────────────────────────────
     fixed_spots_tuning: SpotTuningConfig = field(default_factory=lambda: SpotTuningConfig(
         count_range=(0, 100), intensity_min_range=(0.0001, 0.1), intensity_max_range=(0.1, 0.3),
-        polygon_p_range=(0.0, 0.7)
+        polygon_p_range=(0.0, 0.7),
+        polygon_vertex_count_min_range=(3, 5),
+        polygon_vertex_count_max_range=(5, 10),
+        color_mode_options=("dark", "bright")
     ))
     moving_spots_tuning: SpotTuningConfig = field(default_factory=lambda: SpotTuningConfig(
         count_range=(0, 50), intensity_min_range=(0.0001, 0.1), intensity_max_range=(0.1, 0.3), max_step_range=(1, 10)
@@ -91,6 +94,17 @@ class TuningConfig(BaseConfig):
     random_spots_tuning: SpotTuningConfig = field(default_factory=lambda: SpotTuningConfig(
         count_range=(0, 50), intensity_min_range=(0.0001, 0.1), intensity_max_range=(0.0, 0.5)
     ))
+
+    # --- Other fixed parameters that are not tuned ---
+    # These will be passed to the SyntheticDataConfig but not varied by Optuna
+    annotation_color_rgb: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    um_per_pixel: float = 0.1
+    scale_bar_um: float = 5.0
+    show_time: bool = False
+    show_scale: bool = False
+    generate_microtubule_mask: bool = True
+    generate_seed_mask: bool = False
+
 
     def __post_init__(self):
         super().__post_init__()
@@ -180,7 +194,7 @@ class TuningConfig(BaseConfig):
                                                                         self.base_wagon_length_max_range[1])
 
         suggested_params["microtubule_length_min"] = trial.suggest_int("microtubule_length_min",
-                                                                       max(suggested_params["base_wagon_length_max"],
+                                                                       max(int(suggested_params["base_wagon_length_max"]),
                                                                            self.microtubule_length_min_range[0]),
                                                                        self.microtubule_length_min_range[1])
         suggested_params["microtubule_length_max"] = trial.suggest_int("microtubule_length_max",
@@ -237,6 +251,15 @@ class TuningConfig(BaseConfig):
             fixed_spots=fixed_spots_cfg,
             moving_spots=moving_spots_cfg,
             random_spots=random_spots_cfg,
+            # Pass fixed (non-tuned) parameters explicitly
+            annotation_color_rgb=self.annotation_color_rgb,
+            um_per_pixel=self.um_per_pixel,
+            scale_bar_um=self.scale_bar_um,
+            show_time=self.show_time,
+            show_scale=self.show_scale,
+            generate_microtubule_mask=self.generate_microtubule_mask,
+            generate_seed_mask=self.generate_seed_mask,
+            albumentations=None,  # Explicitly not tuning albumentations for now
             **suggested_params
         )
 

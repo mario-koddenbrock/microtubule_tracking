@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple, Optional
 
 from optuna import Trial
@@ -20,6 +20,11 @@ class SpotTuningConfig(BaseConfig):
     kernel_size_min_range: Tuple[int, int] = (0, 5)
     kernel_size_max_range: Tuple[int, int] = (5, 10)
     sigma_range: Tuple[float, float] = (0.1, 5.0)
+
+    polygon_p_range: Optional[Tuple[float, float]] = None
+    polygon_vertex_count_min_range: Optional[Tuple[int, int]] = None
+    polygon_vertex_count_max_range: Optional[Tuple[int, int]] = None
+    color_mode_options: Optional[Tuple[str, ...]] = None
 
     # Specific to moving spots
     max_step_range: Optional[Tuple[int, int]] = None
@@ -88,6 +93,12 @@ class SpotConfig(BaseConfig):
         if not (self.sigma > 0.0):
             errors.append(f"Sigma must be positive, but got {self.sigma}.")
 
+        if not (0.0 <= self.polygon_p <= 1.0):
+            errors.append(f"polygon_p must be between 0.0 and 1.0, but got {self.polygon_p}.")
+        if not (3 <= self.polygon_vertex_count_min <= self.polygon_vertex_count_max):
+            errors.append(
+                f"polygon_vertex_count_min ({self.polygon_vertex_count_min}) must be >= 3 and <= polygon_vertex_count_max ({self.polygon_vertex_count_max}).")
+
         if self.color_mode not in ["dark", "bright"]:
             errors.append(f"Color mode must be 'dark' or 'bright', but got '{self.color_mode}'.")
 
@@ -103,52 +114,45 @@ class SpotConfig(BaseConfig):
         """Creates a SpotConfig instance by suggesting parameters from an Optuna trial."""
         logger.info(f"Suggesting SpotConfig parameters for '{name}' using Optuna trial {trial.number}.")
 
-        # Log the ranges being used for suggestion
-        logger.debug(
-            f"Tuning ranges for '{name}': count={tuning.count_range}, intensity_min={tuning.intensity_min_range}, intensity_max={tuning.intensity_max_range}, radius={tuning.radius_min_range}-{tuning.radius_max_range}, kernel_size={tuning.kernel_size_min_range}-{tuning.kernel_size_max_range}, sigma={tuning.sigma_range}, max_step={tuning.max_step_range}.")
-
+        # --- Standard Parameters ---
         count = trial.suggest_int(f"{name}_count", *tuning.count_range)
-        logger.debug(f"Suggested '{name}_count': {count}")
-
         intensity_min = trial.suggest_float(f"{name}_intensity_min", *tuning.intensity_min_range)
-        logger.debug(f"Suggested '{name}_intensity_min': {intensity_min}")
-
-        # Ensure intensity_max is not less than intensity_min
-        intensity_max = trial.suggest_float(
-            f"{name}_intensity_max",
-            max(intensity_min, tuning.intensity_max_range[0]),
-            tuning.intensity_max_range[1])
-        logger.debug(f"Suggested '{name}_intensity_max' (constrained by min {intensity_min}): {intensity_max}")
-
+        intensity_max = trial.suggest_float(f"{name}_intensity_max", max(intensity_min, tuning.intensity_max_range[0]),
+                                            tuning.intensity_max_range[1])
         radius_min = trial.suggest_int(f"{name}_radius_min", *tuning.radius_min_range)
-        logger.debug(f"Suggested '{name}_radius_min': {radius_min}")
-
-        # Ensure radius_max is not less than radius_min
-        radius_max = trial.suggest_int(
-            f"{name}_radius_max",
-            max(radius_min, tuning.radius_max_range[0]),
-            tuning.radius_max_range[1])
-        logger.debug(f"Suggested '{name}_radius_max' (constrained by min {radius_min}): {radius_max}")
-
+        radius_max = trial.suggest_int(f"{name}_radius_max", max(radius_min, tuning.radius_max_range[0]),
+                                       tuning.radius_max_range[1])
         kernel_size_min = trial.suggest_int(f"{name}_kernel_size_min", *tuning.kernel_size_min_range)
-        logger.debug(f"Suggested '{name}_kernel_size_min': {kernel_size_min}")
-
-        # Ensure kernel_size_max is not less than kernel_size_min
-        kernel_size_max = trial.suggest_int(
-            f"{name}_kernel_size_max",
-            max(kernel_size_min, tuning.kernel_size_max_range[0]),
-            tuning.kernel_size_max_range[1])
-        logger.debug(f"Suggested '{name}_kernel_size_max' (constrained by min {kernel_size_min}): {kernel_size_max}")
-
+        kernel_size_max = trial.suggest_int(f"{name}_kernel_size_max",
+                                            max(kernel_size_min, tuning.kernel_size_max_range[0]),
+                                            tuning.kernel_size_max_range[1])
         sigma = trial.suggest_float(f"{name}_sigma", *tuning.sigma_range)
-        logger.debug(f"Suggested '{name}_sigma': {sigma}")
 
+        # --- Moving Spot Specific ---
         max_step = None
         if tuning.max_step_range is not None:
             max_step = trial.suggest_int(f"{name}_max_step", *tuning.max_step_range)
-            logger.debug(f"Suggested '{name}_max_step': {max_step}")
-        else:
-            logger.debug(f"'{name}_max_step' range is not defined in tuning config, skipping suggestion.")
+
+        # --- Polygon and Color Parameters ---
+        polygon_p = 0.0
+        if tuning.polygon_p_range:
+            polygon_p = trial.suggest_float(f"{name}_polygon_p", *tuning.polygon_p_range)
+
+        polygon_vertex_count_min = 3
+        if tuning.polygon_vertex_count_min_range:
+            polygon_vertex_count_min = trial.suggest_int(f"{name}_polygon_vertex_count_min",
+                                                         *tuning.polygon_vertex_count_min_range)
+
+        polygon_vertex_count_max = 7
+        if tuning.polygon_vertex_count_max_range:
+            polygon_vertex_count_max = trial.suggest_int(f"{name}_polygon_vertex_count_max",
+                                                         max(polygon_vertex_count_min,
+                                                             tuning.polygon_vertex_count_max_range[0]),
+                                                         tuning.polygon_vertex_count_max_range[1])
+
+        color_mode = "dark"  # Default if not specified
+        if tuning.color_mode_options:
+            color_mode = trial.suggest_categorical(f"{name}_color_mode", tuning.color_mode_options)
 
         config = SpotConfig(
             count=count,
@@ -160,6 +164,11 @@ class SpotConfig(BaseConfig):
             kernel_size_max=kernel_size_max,
             sigma=sigma,
             max_step=max_step,
+            polygon_p=polygon_p,
+            polygon_vertex_count_min=polygon_vertex_count_min,
+            polygon_vertex_count_max=polygon_vertex_count_max,
+            color_mode=color_mode,
         )
         logger.info(f"Successfully created SpotConfig for '{name}' via Optuna trial. Final config: {config.asdict()}")
         return config
+
