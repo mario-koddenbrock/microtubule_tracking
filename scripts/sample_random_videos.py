@@ -20,6 +20,8 @@ def sample_hyperparameters(
     generated_config_paths = []
     num_samples = tuning_config.num_trials
     start_id = tuning_config.output_config_id
+    if not isinstance(start_id, int):
+        start_id = 1000
 
     print(f"\nGenerating {num_samples} random parameter configurations...")
     for i in range(num_samples):
