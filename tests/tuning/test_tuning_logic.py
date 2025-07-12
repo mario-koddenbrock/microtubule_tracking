@@ -64,7 +64,6 @@ def test_create_config_from_trial():
         "tip_brightness_factor": 1.2,
         "quantum_efficiency": 60.0,
         "gaussian_noise": 0.05,
-        "bleach_tau": 500.0,
         "jitter_px": 0.4,
         "vignetting_strength": 0.1,
         "global_blur_sigma": 0.8,
