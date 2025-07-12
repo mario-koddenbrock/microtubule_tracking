@@ -78,6 +78,14 @@ def test_create_config_from_trial():
         "random_spots_count": 5, "random_spots_intensity_min": 0.05, "random_spots_intensity_max": 0.1,
         "random_spots_radius_min": 1, "random_spots_radius_max": 2, "random_spots_kernel_size_min": 1,
         "random_spots_kernel_size_max": 2, "random_spots_sigma": 0.5,
+
+        "fixed_spots_polygon_p": 0.3, "fixed_spots_polygon_vertex_count_min": 3, "fixed_spots_polygon_vertex_count_max": 7,
+        "moving_spots_polygon_p": 0.3, "moving_spots_polygon_vertex_count_min": 3, "moving_spots_polygon_vertex_count_max": 7,
+        "random_spots_polygon_p": 0.3, "random_spots_polygon_vertex_count_min": 3, "random_spots_polygon_vertex_count_max": 7,
+
+        "max_pause_at_min_frames": 5,
+        "tail_wagon_length": 10.0,
+        "red_channel_noise_std": 0.01,
     }
     mock_trial = MockOptunaTrial(trial_params)
 

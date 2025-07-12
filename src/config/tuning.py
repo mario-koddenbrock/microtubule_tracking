@@ -85,7 +85,6 @@ class TuningConfig(BaseConfig):
         polygon_p_range=(0.0, 0.7),
         polygon_vertex_count_min_range=(3, 5),
         polygon_vertex_count_max_range=(5, 10),
-        color_mode_options=("dark", "bright")
     ))
     moving_spots_tuning: SpotTuningConfig = field(default_factory=lambda: SpotTuningConfig(
         count_range=(0, 50), intensity_min_range=(0.0001, 0.1), intensity_max_range=(0.1, 0.3), max_step_range=(1, 10)

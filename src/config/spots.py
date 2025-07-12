@@ -47,9 +47,8 @@ class SpotConfig(BaseConfig):
     polygon_vertex_count_min: int = 3  # Min vertices for a polygon (e.g., triangle)
     polygon_vertex_count_max: int = 7  # Max vertices for a polygon (e.g., heptagon)
 
-
     # Specific to moving spots
-    max_step: Optional[int] = None
+    max_step: Optional[int] = 0
 
     def __post_init__(self):
         super().__post_init__()
