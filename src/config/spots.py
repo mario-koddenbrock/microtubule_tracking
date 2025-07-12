@@ -21,10 +21,9 @@ class SpotTuningConfig(BaseConfig):
     kernel_size_max_range: Tuple[int, int] = (5, 10)
     sigma_range: Tuple[float, float] = (0.1, 5.0)
 
-    polygon_p_range: Optional[Tuple[float, float]] = None
-    polygon_vertex_count_min_range: Optional[Tuple[int, int]] = None
-    polygon_vertex_count_max_range: Optional[Tuple[int, int]] = None
-    color_mode_options: Optional[Tuple[str, ...]] = None
+    polygon_p_range: Optional[Tuple[float, float]] = (0.0, 1.0)
+    polygon_vertex_count_min_range: Optional[Tuple[int, int]] = (3, 10)  # Min vertices for a polygon (e.g., triangle)
+    polygon_vertex_count_max_range: Optional[Tuple[int, int]] = (3, 10)  # Max vertices for a polygon (e.g., heptagon)
 
     # Specific to moving spots
     max_step_range: Optional[Tuple[int, int]] = None
@@ -48,15 +47,13 @@ class SpotConfig(BaseConfig):
     polygon_vertex_count_min: int = 3  # Min vertices for a polygon (e.g., triangle)
     polygon_vertex_count_max: int = 7  # Max vertices for a polygon (e.g., heptagon)
 
-    color_mode: str = "dark"
-    """Color mode for the spots, either 'dark' or 'bright'."""
 
     # Specific to moving spots
     max_step: Optional[int] = None
 
     def __post_init__(self):
         super().__post_init__()
-        logger.debug(f"SpotConfig initialized with count={self.count}, color_mode='{self.color_mode}'.")
+        logger.debug(f"SpotConfig initialized with count={self.count}.")
 
 
     def validate(self):
@@ -66,9 +63,9 @@ class SpotConfig(BaseConfig):
         if not (self.count >= 0):
             errors.append(f"Count must be non-negative, but got {self.count}.")
 
-        if not (0.0 <= self.intensity_min <= 1.0):
+        if not (-1.0 <= self.intensity_min <= 1.0):
             errors.append(f"Intensity min must be between 0.0 and 1.0, but got {self.intensity_min}.")
-        if not (0.0 <= self.intensity_max <= 1.0):
+        if not (-1.0 <= self.intensity_max <= 1.0):
             errors.append(f"Intensity max must be between 0.0 and 1.0, but got {self.intensity_max}.")
         if not (self.intensity_min <= self.intensity_max):
             errors.append(
@@ -98,9 +95,6 @@ class SpotConfig(BaseConfig):
         if not (3 <= self.polygon_vertex_count_min <= self.polygon_vertex_count_max):
             errors.append(
                 f"polygon_vertex_count_min ({self.polygon_vertex_count_min}) must be >= 3 and <= polygon_vertex_count_max ({self.polygon_vertex_count_max}).")
-
-        if self.color_mode not in ["dark", "bright"]:
-            errors.append(f"Color mode must be 'dark' or 'bright', but got '{self.color_mode}'.")
 
         if errors:
             full_msg = f"SpotConfig validation failed with {len(errors)} error(s):\n" + "\n".join(errors)
@@ -150,10 +144,6 @@ class SpotConfig(BaseConfig):
                                                              tuning.polygon_vertex_count_max_range[0]),
                                                          tuning.polygon_vertex_count_max_range[1])
 
-        color_mode = "dark"  # Default if not specified
-        if tuning.color_mode_options:
-            color_mode = trial.suggest_categorical(f"{name}_color_mode", tuning.color_mode_options)
-
         config = SpotConfig(
             count=count,
             intensity_min=intensity_min,
@@ -167,7 +157,6 @@ class SpotConfig(BaseConfig):
             polygon_p=polygon_p,
             polygon_vertex_count_min=polygon_vertex_count_min,
             polygon_vertex_count_max=polygon_vertex_count_max,
-            color_mode=color_mode,
         )
         logger.info(f"Successfully created SpotConfig for '{name}' via Optuna trial. Final config: {config.asdict()}")
         return config

@@ -73,11 +73,10 @@ class TuningConfig(BaseConfig):
     seed_red_channel_boost_range: Tuple[float, float] = (0.0, 0.3)
     tip_brightness_factor_range: Tuple[float, float] = (1.0, 1.2)
     red_channel_noise_std_range: Tuple[float, float] = (0.0, 0.05)
-    quantum_efficiency_range: Tuple[float, float] = (30.0, 70.0)
+    quantum_efficiency_range: Tuple[float, float] = (80.0, 120.0)
     gaussian_noise_range: Tuple[float, float] = (0.01, 0.1)
-    bleach_tau_range: Tuple[float, float] = (100.0, 1000.0)
     jitter_px_range: Tuple[float, float] = (0.0, 1.0)
-    vignetting_strength_range: Tuple[float, float] = (0.0, 0.2)
+    vignetting_strength_range: Tuple[float, float] = (0.0, 0.1)
     global_blur_sigma_range: Tuple[float, float] = (0.3, 1.5)
 
     # ─── Spot Tuning Ranges ───────────────────────────────────────
@@ -158,7 +157,6 @@ class TuningConfig(BaseConfig):
             ("red_channel_noise_std_range", self.red_channel_noise_std_range, True),
             ("quantum_efficiency_range", self.quantum_efficiency_range, False),
             ("gaussian_noise_range", self.gaussian_noise_range, True),
-            ("bleach_tau_range", self.bleach_tau_range, False),
             ("jitter_px_range", self.jitter_px_range, True),
             ("vignetting_strength_range", self.vignetting_strength_range, True),
             ("global_blur_sigma_range", self.global_blur_sigma_range, True),
@@ -231,7 +229,6 @@ class TuningConfig(BaseConfig):
         suggested_params["quantum_efficiency"] = trial.suggest_float("quantum_efficiency",
                                                                      *self.quantum_efficiency_range)
         suggested_params["gaussian_noise"] = trial.suggest_float("gaussian_noise", *self.gaussian_noise_range)
-        suggested_params["bleach_tau"] = trial.suggest_float("bleach_tau", *self.bleach_tau_range, log=True)
         suggested_params["jitter_px"] = trial.suggest_float("jitter_px", *self.jitter_px_range)
         suggested_params["vignetting_strength"] = trial.suggest_float("vignetting_strength",
                                                                       *self.vignetting_strength_range)

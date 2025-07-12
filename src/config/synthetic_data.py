@@ -68,7 +68,6 @@ class SyntheticDataConfig(BaseConfig):
 
     quantum_efficiency: float = 50.0
     gaussian_noise: float = 0.09
-    bleach_tau: float = math.inf
     jitter_px: float = 0.5
     vignetting_strength: float = 0.05
     global_blur_sigma: float = 0.9

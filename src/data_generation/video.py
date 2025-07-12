@@ -98,11 +98,8 @@ def render_frame(
     logger.debug(f"Frame {frame_idx}: Applying photophysics and camera effects.")
     try:
         vignette = utils.compute_vignette(cfg)
-        decay = np.exp(-frame_idx / cfg.bleach_tau) if np.isfinite(cfg.bleach_tau) else 1.0
-
-        frame *= decay
         frame *= vignette[..., np.newaxis]
-        logger.debug(f"Frame {frame_idx}: Applied bleach decay ({decay:.4f}) and vignetting.")
+        logger.debug(f"Frame {frame_idx}: Applied vignetting.")
 
         if cfg.quantum_efficiency > 0:
             frame[frame < 0] = 0  # Clamp negative values before Poisson noise
@@ -193,8 +190,6 @@ def generate_frames(
         # If MTs cannot be initialized, we cannot generate frames. Raise or return empty.
         raise
 
-    fixed_spot_generator: Optional[SpotGenerator] = None
-    moving_spot_generator: Optional[SpotGenerator] = None
     try:
         fixed_spot_generator = SpotGenerator(cfg.fixed_spots, cfg.img_size,
                                              color_mode=cfg.fixed_spots.color_mode)  # Pass color_mode from spot_cfg
@@ -248,7 +243,6 @@ def generate_video(
     """
     logger.info(f"Generating and writing {cfg.num_frames} frames for Series {cfg.id} into '{base_output_dir}'...")
 
-    output_manager: Optional[VideoOutputManager] = None
     try:
         output_manager = VideoOutputManager(cfg, base_output_dir)
         logger.info(f"VideoOutputManager initialized for output directory: {base_output_dir}")

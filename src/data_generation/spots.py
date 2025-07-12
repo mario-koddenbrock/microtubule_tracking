@@ -9,20 +9,55 @@ from config.spots import SpotConfig
 logger = logging.getLogger(f"mt.{__name__}")
 
 
+import numpy as np
+
 def _generate_polygon_vertices(center_y: int, center_x: int, avg_radius: int, min_verts: int, max_verts: int) -> np.ndarray:
-    """Helper to generate vertices for a random polygon."""
+    """
+    Helper to generate vertices for a random, irregular, convex-like polygon.
+
+    This method creates irregularity in two ways:
+    1.  The radius of each vertex is randomized.
+    2.  The angle of each vertex is randomized.
+
+    By sorting the random angles, we ensure the vertices are ordered
+    sequentially around the center, which creates a simple (non-self-intersecting)
+    polygon.
+
+    Args:
+        center_y: The y-coordinate of the polygon's center.
+        center_x: The x-coordinate of the polygon's center.
+        avg_radius: The average radius for the vertices.
+        min_verts: The minimum number of vertices.
+        max_verts: The maximum number of vertices.
+
+    Returns:
+        A NumPy array of [x, y] vertex coordinates, with dtype=np.int32.
+    """
+    # 1. Determine the number of vertices for this polygon.
     num_vertices = np.random.randint(min_verts, max_verts + 1)
-    angles = np.linspace(0, 2 * np.pi, num_vertices, endpoint=False)
-    # Add randomness to angles and radii to create irregular shapes
-    angles += np.random.uniform(-0.5, 0.5, num_vertices) * (2 * np.pi / num_vertices)
-    radii = np.random.uniform(avg_radius * 0.7, avg_radius * 1.3, num_vertices)
 
-    points = []
-    for angle, radius in zip(angles, radii):
-        x = center_x + radius * np.cos(angle)
-        y = center_y + radius * np.sin(angle)
-        points.append([x, y])
+    # 2. Generate random angles and sort them. This is the key to creating a
+    #    simple, non-self-intersecting polygon. It ensures vertices are
+    #    arranged "in order" around the center point.
+    angles = np.sort(np.random.uniform(0, 2 * np.pi, num_vertices))
 
+    # 3. Generate a random radius for each vertex to create irregularity.
+    #    The radius is varied around the average radius provided.
+    #    We also ensure the radius is at least 1 pixel.
+    min_r = max(1, avg_radius * 0.7)
+    max_r = avg_radius * 1.3
+    radii = np.random.uniform(min_r, max_r, num_vertices)
+
+    # 4. Convert from polar coordinates (angle, radius) to Cartesian (x, y).
+    #    This is done in a vectorized way for performance.
+    points_x = center_x + radii * np.cos(angles)
+    points_y = center_y + radii * np.sin(angles)
+
+    # 5. Combine the x and y coordinates into a single (N, 2) array of vertices.
+    #    np.vstack creates a (2, N) array, so we transpose it with .T
+    points = np.vstack((points_x, points_y)).T
+
+    # 6. Convert to the integer format required by OpenCV's drawing functions.
     return np.array(points, dtype=np.int32)
 
 
@@ -32,25 +67,19 @@ class SpotGenerator:
     Now supports circular and polygonal shapes for fixed/moving spots.
     """
 
-    def __init__(self, spot_cfg: SpotConfig, img_shape: Tuple[int, int], color_mode: str = "dark"):
+    def __init__(self, spot_cfg: SpotConfig, img_shape: Tuple[int, int]):
         """
         Initializes the generator and all its spot properties.
 
         Args:
             spot_cfg (SpotConfig): Configuration for the spots.
             img_shape (Tuple[int, int]): The (height, width) of the image.
-            color_mode (str): The color mode ('dark' or 'bright') for spots relative to background.
         """
         logger.info(
-            f"Initializing SpotGenerator with {spot_cfg.count} spots, image shape {img_shape}, color mode '{color_mode}'.")
+            f"Initializing SpotGenerator with {spot_cfg.count} spots, image shape {img_shape}.")
         self.cfg = spot_cfg
         self.img_shape = img_shape
         self.n_spots = self.cfg.count
-        self.color_mode = color_mode
-
-        if self.cfg.color_mode != self.color_mode:
-            logger.warning(
-                f"SpotConfig color_mode '{self.cfg.color_mode}' differs from generator's color_mode '{self.color_mode}'. Using generator's mode for drawing.")
 
         self._initialize_properties()
         logger.debug(f"SpotGenerator initialized. Total spots: {self.n_spots}.")
@@ -165,15 +194,10 @@ class SpotGenerator:
 
                 # Add/subtract the mask to the image.
                 if is_rgb:
-                    if self.color_mode == "dark":
-                        img -= mask[..., np.newaxis]
-                    else:  # "bright"
-                        img += mask[..., np.newaxis]
+                    img -= mask[..., np.newaxis]
                 else:
-                    if self.color_mode == "dark":
-                        img -= mask
-                    else:  # "bright"
-                        img += mask
+                    img -= mask
+
             except Exception as e:
                 logger.error(f"Error drawing spot {idx} at ({self.coords[idx]}): {e}", exc_info=True)
 
@@ -182,12 +206,12 @@ class SpotGenerator:
 
     @staticmethod
     def draw_spots(img: np.ndarray, spot_coords: List[Tuple[int, int]], intensity: Union[float, List[float]],
-                   radii: List[int], kernel_sizes: List[int], sigma: float, color_mode: str = "dark") -> np.ndarray:
+                   radii: List[int], kernel_sizes: List[int], sigma: float) -> np.ndarray:
         """
         Draws circular spots onto an image. Can handle grayscale or RGB images.
         This is kept for stateless random spots which are always circles.
         """
-        logger.debug(f"Drawing {len(spot_coords)} spots on image (shape: {img.shape}, color mode: '{color_mode}').")
+        logger.debug(f"Drawing {len(spot_coords)} spots on image (shape: {img.shape}).")
 
         if len(spot_coords) == 0:
             logger.debug("No spot coordinates provided for drawing. Returning original image.")
@@ -229,15 +253,10 @@ class SpotGenerator:
                     logger.debug(f"Spot {idx}: Skipping Gaussian blur (sigma={sigma:.2f}, kernel={kernel}).")
 
                 if is_rgb:
-                    if color_mode == "dark":
-                        img -= mask[..., np.newaxis]
-                    else:  # "bright"
-                        img += mask[..., np.newaxis]
+                    img -= mask[..., np.newaxis]
                 else:
-                    if color_mode == "dark":
-                        img -= mask
-                    else:  # "bright"
-                        img += mask
+                    img -= mask
+
             except Exception as e:
                 logger.error(f"Error drawing spot {idx} at ({y},{x}): {e}", exc_info=True)
 
@@ -278,5 +297,4 @@ class SpotGenerator:
             radii,
             kernel_sizes,
             spot_cfg.sigma,
-            color_mode=spot_cfg.color_mode,
         )

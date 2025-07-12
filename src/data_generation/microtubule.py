@@ -179,6 +179,8 @@ class Microtubule:
             r, g, b = base_contrast, base_contrast, base_contrast
             if w.is_seed:
                 r += cfg.seed_red_channel_boost
+                g -= cfg.seed_red_channel_boost
+                b -= cfg.seed_red_channel_boost
 
             additional_mask_to_pass = (seed_mask if w.is_seed else None)
 
