@@ -64,6 +64,7 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
         logger.error(f"Error during pre-computation of metric args for 2D projection: {e}", exc_info=True)
         # Continue without precomputed, similarity function will recompute on-the-fly.
 
+
     colour = np.array([similarity(
         tuning_cfg=tuning_cfg,
         ref_embeddings=ref_embeddings,
@@ -73,16 +74,13 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
     logger.debug(
         f"Per-frame similarity 'colour' array shape: {colour.shape}, Min={colour.min():.4f}, Max={colour.max():.4f}.")
 
+    colour[np.isinf(colour)] = 0
+
     # 3. Perform dimensionality reduction and plot 2D projection
     projection_path = os.path.join(output_dir, f"projection_{cfg.id}.png")  # Changed from tsne_ to generic projection_
     projection_method_name = "PCA"  # Default method name
 
-    ref_2d: Optional[np.ndarray] = None
-    synthetic_2d: Optional[np.ndarray] = None
-
     try:
-        # You had both tsne_projection and pca_projection. Let's default to PCA as it's typically faster.
-        # If you want TSNE, you'd need to adjust perplexity and metric appropriately.
         logger.info(f"Performing {projection_method_name} projection for 2D plot.")
         ref_2d, synthetic_2d = pca_projection(ref_embeddings, synthetic_embeddings)
         logger.debug(f"Projection complete. Ref 2D shape: {ref_2d.shape}, Synthetic 2D shape: {synthetic_2d.shape}.")
