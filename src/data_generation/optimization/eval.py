@@ -43,6 +43,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
 
 
     # Load the completed Optuna study from its database file
+    os.makedirs(tuning_cfg.temp_dir, exist_ok=True)
     study_db_path = os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')
     full_study_db_uri = f"sqlite:///{study_db_path}"
     logger.debug(f"Attempting to load Optuna study from: {full_study_db_uri}")
@@ -63,7 +64,11 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         return
 
     try:
-        best_cfg_2 = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
+        best_cfg = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
+        best_cfg.num_frames = tuning_cfg.output_config_num_frames
+        best_cfg.id = tuning_cfg.output_config_id
+        best_cfg.generate_microtubule_mask = False
+
         # # Load the best synthetic config found during optimization
         # best_cfg = SyntheticDataConfig.load(tuning_cfg.output_config_file)
         # logger.info(f"Loaded best synthetic configuration from: {tuning_cfg.output_config_file}")
@@ -75,7 +80,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         logger.critical(f"Error loading best synthetic config from {tuning_cfg.output_config_file}: {e}", exc_info=True)
         return
 
-    # Proceed with evaluation if all critical components loaded
+    # Proceed with evaluation if all critical elements loaded
     if tuning_cfg and best_cfg and study:
         try:
             eval_config(best_cfg, tuning_cfg, output_dir)
