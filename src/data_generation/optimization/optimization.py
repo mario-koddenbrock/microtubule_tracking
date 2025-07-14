@@ -1,17 +1,14 @@
-import os
 import logging
+import os
 from functools import partial
-from typing import Optional
 
-import numpy as np
 import optuna
 
+from config.synthetic_data import SyntheticDataConfig
+from config.tuning import TuningConfig
 from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.optimization.metrics import precompute_matric_args
 from data_generation.optimization.objective import objective
-from config.tuning import TuningConfig
-from config.synthetic_data import SyntheticDataConfig
-
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -25,14 +22,10 @@ def run_optimization(tuning_config_path: str):
     """
     logger.info(f"\n{'=' * 80}\nStarting OPTIMIZATION for: {tuning_config_path}\n{'=' * 80}")
 
-    tuning_cfg: Optional[TuningConfig] = None
-    embedding_extractor: Optional[ImageEmbeddingExtractor] = None
-    ref_embeddings: Optional[np.ndarray] = None
-    precomputed_kwargs = {}
-
     try:
         logger.info("--- Step 1: Loading tuning configuration ---")
         tuning_cfg = TuningConfig.load(tuning_config_path)
+        # tuning_cfg = TuningConfig()
         logger.info(f"Tuning configuration loaded from: {tuning_config_path}")
 
         logger.debug("Validating tuning configuration...")
@@ -79,9 +72,9 @@ def run_optimization(tuning_config_path: str):
 
     except Exception as e:
         logger.critical(f"Critical error during model setup or reference embedding extraction: {e}", exc_info=True)
-        return  # Cannot proceed without extractor and reference embeddings
+        return  # Cannot proceed without an extractor and reference embeddings
 
-    # Ensure essential components are available before proceeding to optimization
+    # Ensure essential elements are available before proceeding to optimization
     if embedding_extractor is None or ref_embeddings is None:
         logger.critical(
             "Essential components (embedding extractor or reference embeddings) are missing. Exiting optimization.")
@@ -133,7 +126,7 @@ def run_optimization(tuning_config_path: str):
     except Exception as e:
         logger.critical(f"An unexpected error occurred during Optuna optimization: {e}", exc_info=True)
         # Depending on the error, you might still want to proceed to save the best result so far
-        # For now, we allow it to proceed to saving if a study object exists.
+        # For now; we allow it to proceed to save if a study object exists.
 
     logger.info("--- Step 4: Saving best configuration ---")
 
@@ -144,13 +137,13 @@ def run_optimization(tuning_config_path: str):
     try:
         # Ensure the directory for the output config file exists
         output_config_dir = os.path.dirname(tuning_cfg.output_config_file)
-        if output_config_dir:  # Only make dir if path is not just a filename in current dir
+        if output_config_dir:  # Only make dir if a path is not just a filename in current dir
             os.makedirs(output_config_dir, exist_ok=True)
             logger.debug(f"Ensured output config directory exists: {output_config_dir}")
 
         best_cfg: SyntheticDataConfig = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
         best_cfg.id = tuning_cfg.output_config_id
-        best_cfg.num_frames = tuning_cfg.output_config_num_frames  # Apply desired number of frames for the final saved config
+        best_cfg.num_frames = tuning_cfg.output_config_num_frames  # Apply the desired number of frames for the final saved config
         logger.debug(
             f"Generated best SyntheticDataConfig for saving (ID: {best_cfg.id}, Num Frames: {best_cfg.num_frames}).")
 
