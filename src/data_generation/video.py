@@ -101,6 +101,15 @@ def render_frame(
         frame *= vignette[..., np.newaxis]
         logger.debug(f"Frame {frame_idx}: Applied vignetting.")
 
+        # Apply red channel noise if specified
+        if cfg.red_channel_noise_std > 0.0:
+            red_noise = np.random.normal(0, cfg.red_channel_noise_std, frame.shape[:2]).astype(np.float32)
+            frame[..., 0] += red_noise
+            frame[..., 0] = np.clip(frame[..., 0], 0, 1)  # Ensure red channel stays in [0, 1]
+            logger.debug(f"Frame {frame_idx}: Applied red channel noise (std={cfg.red_channel_noise_std:.4f}).")
+        else:
+            logger.debug(f"Frame {frame_idx}: Skipping red channel noise (std={cfg.red_channel_noise_std:.4f}).")
+
         if cfg.quantum_efficiency > 0:
             frame[frame < 0] = 0  # Clamp negative values before Poisson noise
             frame = np.random.poisson(frame * cfg.quantum_efficiency) / cfg.quantum_efficiency
@@ -191,11 +200,9 @@ def generate_frames(
         raise
 
     try:
-        fixed_spot_generator = SpotGenerator(cfg.fixed_spots, cfg.img_size,
-                                             color_mode=cfg.fixed_spots.color_mode)  # Pass color_mode from spot_cfg
+        fixed_spot_generator = SpotGenerator(cfg.fixed_spots, cfg.img_size)
         logger.info(f"Initialized fixed spot generator with {cfg.fixed_spots.count} spots.")
-        moving_spot_generator = SpotGenerator(cfg.moving_spots, cfg.img_size,
-                                              color_mode=cfg.moving_spots.color_mode)  # Pass color_mode from spot_cfg
+        moving_spot_generator = SpotGenerator(cfg.moving_spots, cfg.img_size)
         logger.info(f"Initialized moving spot generator with {cfg.moving_spots.count} spots.")
     except Exception as e:
         logger.critical(f"Failed to initialize spot generators: {e}", exc_info=True)
