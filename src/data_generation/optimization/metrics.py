@@ -2,10 +2,10 @@ import logging
 from typing import Optional, List
 
 import numpy as np
-from scipy.spatial.distance import jensenshannon
+from scipy.linalg import sqrtm
+from scipy.spatial.distance import jensenshannon, mahalanobis
 from scipy.stats import chi2_contingency
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy.linalg import sqrtm
 
 from config.tuning import TuningConfig
 
@@ -51,12 +51,9 @@ def similarity(
     try:
         # On-the-fly computation for one-off calls (or if pre-computed values are not passed)
         if similarity_metric == "mahalanobis":
-            if ref_mean is None:
-                logger.debug("[METRIC INFO] Computing ref_mean on the fly.")
-                ref_mean = np.mean(ref_embeddings, axis=0)
             if ref_inv_cov is None:
                 logger.debug("[METRIC INFO] Computing ref_inv_cov on the fly.")
-                # Add a small regularization for stable inverse if needed
+                # Add a small regularization for stable inverse if necessary
                 # cov_matrix = np.cov(ref_embeddings, rowvar=False) + np.eye(ref_embeddings.shape[1]) * 1e-6
                 try:
                     ref_inv_cov = np.linalg.pinv(np.cov(ref_embeddings, rowvar=False))
@@ -64,7 +61,8 @@ def similarity(
                     logger.error(f"Singular matrix encountered when computing inverse covariance for Mahalanobis. {e}",
                                  exc_info=True)
                     return -float('inf')  # Indicate a very bad score
-            score = compute_mahalanobis_score(synthetic_embeddings, ref_mean, ref_inv_cov)
+            score = compute_mahalanobis_score(synthetic_embeddings, ref_embeddings, ref_inv_cov)
+
 
         elif similarity_metric == "cosine":
             score = compute_cosine_score(synthetic_embeddings, ref_embeddings)
@@ -146,28 +144,35 @@ def compute_cosine_score(synthetic_embeddings: np.ndarray, ref_embeddings: np.nd
         return -float('inf')  # Return a bad score
 
 
-def compute_mahalanobis_score(synthetic_embeddings: np.ndarray, ref_mean: np.ndarray, ref_inv_cov: np.ndarray) -> float:
+def compute_mahalanobis_score(synthetic_embeddings: np.ndarray, ref_embeddings: np.ndarray, ref_inv_cov: np.ndarray) -> float:
     logger.debug("[MAHALANOBIS] Computing distances...")
-    distances = []
-    for i, emb in enumerate(synthetic_embeddings):
-        try:
-            delta = emb.squeeze() - ref_mean
-            d_squared = np.dot(np.dot(delta, ref_inv_cov), delta.T)
-            dist = np.sqrt(np.maximum(0, d_squared))
-            distances.append(dist)
-        except Exception as e:
-            logger.error(f"Error computing Mahalanobis distance for embedding {i}: {e}", exc_info=True)
-            distances.append(float('nan'))  # Append NaN to indicate failure for this embedding
+    distances = -np.inf * np.ones((synthetic_embeddings.shape[0], ref_embeddings.shape[0]))
 
-    if not distances or all(np.isnan(distances)):
-        logger.error("All Mahalanobis distances are NaN. Returning negative infinity.")
+    try:
+        # TODO: Consider using a robust covariance estimator if the data is noisy
+        # robust_cov = MinCovDet().fit(ref_embeddings)
+
+        for idx_s, synth_emb in enumerate(synthetic_embeddings):
+            for idx_r, ref_emb in enumerate(ref_embeddings):
+                distances[idx_s, idx_r] = mahalanobis(synth_emb, ref_emb, ref_inv_cov)
+
+        # TODO: How to handle all the distances into a single score?
+
+        if np.isnan(distances).all():
+            logger.warning("[MAHALANOBIS] All distances are NaN. Returning -inf.")
+            return -float('inf')
+
+        # mean_distance = np.nanmean(distances)
+        agg_distance = np.nanmin(distances)
+        final_score = -float(agg_distance)
+        logger.debug(f"[MAHALANOBIS] Final negated score: {final_score:.6f}")
+        return final_score
+
+    except Exception as e:
+        logger.error(f"Error in Mahalanobis distance computation: {e}", exc_info=True)
         return -float('inf')
 
-    mean_distance = np.nanmean(distances)  # Use nanmean to ignore failed calculations
-    final_score = -float(mean_distance)  # Mahalanobis is a distance, so we negate for maximization
-    logger.debug(f"[MAHALANOBIS] Mean distance (excluding NaNs): {mean_distance:.6f}")
-    logger.debug(f"[MAHALANOBIS] Final negated score: {final_score:.6f}")
-    return final_score
+
 
 
 def compute_frechet_distance(synthetic_embeddings: np.ndarray, ref_mean: np.ndarray, ref_cov: np.ndarray) -> float:
@@ -331,11 +336,10 @@ def precompute_matric_args(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray)
 
     try:
         if metric == 'mahalanobis':
-            precomputed_args['ref_mean'] = np.mean(ref_embeddings, axis=0)
             # Add a small regularization for stability if covariance is ill-conditioned
             cov_matrix = np.cov(ref_embeddings, rowvar=False)
-            precomputed_args['ref_inv_cov'] = np.linalg.pinv(cov_matrix)
-            logger.info("Pre-computed mean and inverse covariance matrix for Mahalanobis.")
+            precomputed_args['ref_inv_cov'] = np.linalg.pinv(cov_matrix) + np.eye(ref_embeddings.shape[1]) * 1e-6
+            logger.info("Pre-computed inverse covariance matrix for Mahalanobis.")
 
         elif metric == 'fid':
             precomputed_args['ref_mean'] = np.mean(ref_embeddings, axis=0)

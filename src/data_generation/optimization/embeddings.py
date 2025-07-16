@@ -10,7 +10,7 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 from transformers import (AutoModel, AutoFeatureExtractor, CLIPModel,
                           CLIPImageProcessor, PreTrainedModel,
-                          FeatureExtractionMixin)
+                          FeatureExtractionMixin, AutoImageProcessor)
 
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
@@ -84,12 +84,12 @@ class ImageEmbeddingExtractor:
         try:
             if "clip" in model_name.lower():
                 model = CLIPModel.from_pretrained(model_name, cache_dir=cache_dir)
-                processor = CLIPImageProcessor.from_pretrained(model_name, cache_dir=cache_dir)
+                processor = CLIPImageProcessor.from_pretrained(model_name, cache_dir=cache_dir, use_fast=True)
                 logger.debug(f"Loaded CLIP model and processor: {model_name}.")
             else:
                 model = AutoModel.from_pretrained(model_name, cache_dir=cache_dir)
-                processor = AutoFeatureExtractor.from_pretrained(model_name, cache_dir=cache_dir)
-                logger.debug(f"Loaded AutoModel and AutoFeatureExtractor: {model_name}.")
+                processor = AutoImageProcessor.from_pretrained(model_name, cache_dir=cache_dir, use_fast=True)
+                logger.debug(f"Loaded AutoModel and AutoImageProcessor: {model_name}.")
             return model, processor
         except Exception as e:
             logger.error(f"Failed to load model or processor '{model_name}': {e}", exc_info=True)
@@ -181,9 +181,7 @@ class ImageEmbeddingExtractor:
                         f"No frames extracted from {os.path.basename(video_path)} or num_compare_frames is 0. Skipping.")
                     continue
 
-                for frame_idx, frame in enumerate(
-                        tqdm(frames, desc=f"Processing frames from {os.path.basename(video_path)}")):
-                    # Ensure frame is RGB for the model
+                for frame_idx, frame in enumerate(tqdm(frames, desc=f"Processing frames from {os.path.basename(video_path)}")):
                     frame_rgb = self.convert_frame(frame)
                     emb = self._compute_embedding(frame_rgb)
                     embeddings.append(emb)
