@@ -4,9 +4,9 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=8G
+#SBATCH --mem=24G
 #SBATCH --qos=normal
-#SBATCH --time=1-12:00:00
+#SBATCH --time=3-12:00:00
 #SBATCH --output=%j_microtubule_out.log
 #SBATCH --error=%j_microtubule_err.log
 
