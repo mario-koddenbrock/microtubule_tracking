@@ -92,11 +92,13 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         # Optimization history plot
         plot_output_dir = os.path.join(output_dir, "plots")
         try:
-            os.makedirs(plot_output_dir, exist_ok=True)
-            history_path = os.path.join(plot_output_dir, "optimization_history.html")
-            fig = vis.plot_optimization_history(study)
-            fig.write_html(history_path)
-            logger.info(f"Optimization history plot saved to {history_path}")
+            try:
+                vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
+                vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
+                vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
+                logging.info("Analysis plots saved successfully.")
+            except (ValueError, ImportError) as e:
+                logging.warning(f"Could not generate plots: {e}")
         except ImportError:
             logger.warning(
                 "Optuna visualization dependencies not installed ('pip install 'optuna[visualization]'). Skipping history plot.")
@@ -122,7 +124,6 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
         raise  # Critical for evaluation, re-raise
 
     logger.info("\n--- Generating final video and embeddings ---")
-    frames: List[np.ndarray] = []
     try:
         # Pass the full num_frames from the original best_cfg, not just num_compare_frames
         logger.debug(f"Generating video frames for final evaluation with {cfg.num_frames} frames into {output_dir}.")
@@ -131,9 +132,6 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
     except Exception as e:
         logger.error(f"Error generating video for config ID {cfg.id}: {e}", exc_info=True)
         raise  # Critical for evaluation, re-raise
-
-    reference_vecs: Optional[np.ndarray] = None
-    synthetic_vecs: Optional[np.ndarray] = None
 
     if embedding_extractor:
         try:
