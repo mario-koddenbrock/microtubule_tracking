@@ -356,7 +356,7 @@ def precompute_matric_args(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray)
                 logger.warning("Cannot pre-compute KID term, not enough reference samples.")
 
         elif metric in ['ndb', 'jsd']:
-            num_bins = tuning_cfg.num_hist_bins
+            num_bins = getattr(tuning_cfg, 'num_hist_bins', 10) # TODO: Make this configurable
             hist, bins = np.histogramdd(ref_embeddings, bins=num_bins)
             precomputed_args['ref_hist_bins'] = bins
             logger.info(f"Pre-computed histogram bins for '{metric}'.")
