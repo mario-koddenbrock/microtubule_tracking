@@ -3,9 +3,6 @@ import logging
 import logging.handlers
 import os
 
-# Rotate logs when the file reaches 2MB, keep 5 backup files.
-MAX_BYTES = 2 * 1024 * 1024
-BACKUP_COUNT = 5
 
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 LOG_LEVEL = logging.INFO
@@ -41,11 +38,8 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs")):
 
     # 4. Create and configure the rotating file handler (for production/history)
     # This handler writes logs to a file, with automatic rotation.
-    file_handler = logging.handlers.RotatingFileHandler(
-        log_file,
-        maxBytes=MAX_BYTES,
-        backupCount=BACKUP_COUNT
-    )
+    file_handler = logging.FileHandler(log_file)
+
     # The file handler should typically log everything (DEBUG and up).
     file_handler.setLevel(LOG_LEVEL)
     file_handler.setFormatter(formatter)
