@@ -1,14 +1,16 @@
-import os
 import logging
+import os
 from glob import glob
 from typing import Optional, Tuple, List
 
 import cv2
 import numpy as np
 import torch
+from cellpose import transforms
+from cellpose.models import CellposeModel, normalize_default
 from sklearn.decomposition import PCA
 from tqdm import tqdm
-from transformers import (AutoModel, AutoFeatureExtractor, CLIPModel,
+from transformers import (AutoModel, CLIPModel,
                           CLIPImageProcessor, PreTrainedModel,
                           FeatureExtractionMixin, AutoImageProcessor)
 
@@ -16,7 +18,6 @@ from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
 from data_generation.video import generate_frames
 from file_io.utils import extract_frames
-
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -53,8 +54,7 @@ class ImageEmbeddingExtractor:
 
         try:
             self.model, self.processor = self._load_model_and_processor()
-            self.model.to(self.device)
-            self.model.eval()  # Set model to evaluation mode
+
             logger.info(f"Model '{self.config.model_name}' loaded and set to evaluation mode on {self.device}.")
         except Exception as e:
             logger.critical(f"Failed to load or initialize model '{self.config.model_name}': {e}", exc_info=True)
@@ -82,14 +82,28 @@ class ImageEmbeddingExtractor:
 
         logger.info(f"Loading model and processor for '{model_name}' from Hugging Face...")
         try:
+
             if "clip" in model_name.lower():
                 model = CLIPModel.from_pretrained(model_name, cache_dir=cache_dir)
                 processor = CLIPImageProcessor.from_pretrained(model_name, cache_dir=cache_dir, use_fast=True)
                 logger.debug(f"Loaded CLIP model and processor: {model_name}.")
+
+            elif "cellpose" in model_name.lower():
+                model = CellposeModel(model_type='cellpose_sam', gpu=torch.cuda.is_available(), device=self.device)
+                logger.debug(f"Loaded Cellpose model: {model_name}.")
+
+                encoder = model.net.encoder
+                encoder.eval()
+
+                return model, encoder
             else:
                 model = AutoModel.from_pretrained(model_name, cache_dir=cache_dir)
                 processor = AutoImageProcessor.from_pretrained(model_name, cache_dir=cache_dir, use_fast=True)
                 logger.debug(f"Loaded AutoModel and AutoImageProcessor: {model_name}.")
+
+            self.model.to(self.device)
+            self.model.eval()  # Set model to evaluation mode
+
             return model, processor
         except Exception as e:
             logger.error(f"Failed to load model or processor '{model_name}': {e}", exc_info=True)
@@ -109,26 +123,48 @@ class ImageEmbeddingExtractor:
         logger.debug(f"Computing embedding for image of shape {image.shape} (RGB).")
 
         try:
-            inputs = self.processor(images=image, return_tensors="pt").to(self.device)
 
-            with torch.no_grad():
-                if isinstance(self.model, CLIPModel):
-                    embedding = self.model.get_image_features(**inputs)
-                    logger.debug("Using CLIP model's image features.")
-                else:
-                    outputs = self.model(**inputs)
-                    if hasattr(outputs, "last_hidden_state"):
-                        embedding = outputs.last_hidden_state.mean(dim=1)
-                        logger.debug("Using last_hidden_state mean for embedding.")
-                    elif hasattr(outputs, "pooler_output"):
-                        embedding = outputs.pooler_output
-                        logger.debug("Using pooler_output for embedding.")
+            if "cellpose" in self.config.model_name.lower():
+
+                x = cv2.resize(image, (256, 256), interpolation=cv2.INTER_LINEAR)
+                x = transforms.convert_image(x, channel_axis=None, z_axis=None)
+                x = x[np.newaxis, ...]
+
+                normalize_params = normalize_default
+                normalize_params["normalize"] = True
+                normalize_params["invert"] = False
+
+                x = transforms.normalize_img(x, **normalize_params)
+                X = torch.from_numpy(x.transpose(0, 3, 1, 2)).to(self.model.device, dtype=self.model.net.dtype)
+
+                with torch.no_grad():
+                    out = self.processor(X)
+
+                return out.detach().squeeze().cpu().to(torch.float32).numpy().flatten()
+
+            else:
+
+                inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+
+                with torch.no_grad():
+                    if isinstance(self.model, CLIPModel):
+                        embedding = self.model.get_image_features(**inputs)
+                        logger.debug("Using CLIP model's image features.")
                     else:
-                        msg = "Model output does not contain a usable embedding (last_hidden_state or pooler_output)."
-                        logger.error(msg)
-                        raise ValueError(msg)
+                        outputs = self.model(**inputs)
+                        if hasattr(outputs, "last_hidden_state"):
+                            embedding = outputs.last_hidden_state.mean(dim=1)
+                            logger.debug("Using last_hidden_state mean for embedding.")
+                        elif hasattr(outputs, "pooler_output"):
+                            embedding = outputs.pooler_output
+                            logger.debug("Using pooler_output for embedding.")
+                        else:
+                            msg = "Model output does not contain a usable embedding (last_hidden_state or pooler_output)."
+                            logger.error(msg)
+                            raise ValueError(msg)
 
-            return embedding.squeeze().cpu().numpy()
+                return embedding.squeeze().cpu().numpy()
+
         except Exception as e:
             logger.error(f"Error computing embedding for image of shape {image.shape}: {e}", exc_info=True)
             raise
