@@ -96,8 +96,11 @@ def run_optimization(tuning_config_path: str):
     storage_uri = f"sqlite:///{db_filepath}"
     logger.info(f"Using Optuna storage URI: {storage_uri}")
 
+    sampler = optuna.samplers.RandomSampler()
+
     try:
         study = optuna.create_study(
+            sampler=sampler,
             study_name=tuning_cfg.output_config_id,
             storage=storage_uri,
             direction=tuning_cfg.direction,
