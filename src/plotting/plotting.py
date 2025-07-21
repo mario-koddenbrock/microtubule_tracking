@@ -214,7 +214,7 @@ def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.
         else:
             logger.debug("2D projection plot not saved (save_to is None).")
 
-        plt.show()  # Keep for interactive display
+        plt.show(block=False)  # Show plot without blocking execution
     except Exception as e:
         logger.error(f"Error generating 2D projection plot: {e}", exc_info=True)
 
@@ -332,7 +332,7 @@ def plot_heatmap(matrix: np.ndarray, labels: List[str], step: int, *,
         else:
             logger.debug("Heatmap not saved (save_to is None).")
 
-        plt.show()
+        plt.show(block=False)
     except Exception as e:
         logger.error(f"Error generating heatmap: {e}", exc_info=True)
 
@@ -398,7 +398,7 @@ def show_frame(frame: np.ndarray, title: str = "") -> None:
         plt.title(title)
         plt.axis('off')  # Hide axes
         plt.tight_layout()  # Adjust layout
-        plt.show()
+        plt.show(block=False)
         logger.info(f"Frame '{title}' displayed successfully.")
     except Exception as e:
         logger.error(f"Error displaying frame '{title}': {e}", exc_info=True)
