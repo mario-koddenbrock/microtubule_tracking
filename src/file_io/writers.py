@@ -31,7 +31,7 @@ class VideoOutputManager:
         write_masks_mp4: bool = True,
         write_video_gif: bool = False,
         write_masks_gif: bool = False,
-        write_video_pngs: bool = False,
+        write_video_pngs: bool = True,
         write_masks_pngs: bool = False,
     ):
         """
