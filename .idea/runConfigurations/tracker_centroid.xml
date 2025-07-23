@@ -23,7 +23,7 @@
         <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
       </ENTRIES>
     </EXTENSION>
-    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/run_video_tracker.py" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/tracking/run_video_tracker.py" />
     <option name="PARAMETERS" value="--video &quot;data/mpi/type_A/video_1.avi&quot; --config src/segmentation/cellpose_config.JSON --output results/mpi/ --tracker centroid --max-distance 75" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />

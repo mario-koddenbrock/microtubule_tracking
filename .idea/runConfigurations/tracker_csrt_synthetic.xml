@@ -23,7 +23,7 @@
         <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
       </ENTRIES>
     </EXTENSION>
-    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/run_video_tracker.py" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/tracking/run_video_tracker.py" />
     <option name="PARAMETERS" value="--video &quot;data/old/series_309_video_preview.mp4&quot; --config src/segmentation/cellpose_config.JSON --output results/mpi/ --tracker csrt" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
