@@ -1,10 +1,9 @@
 import os
 
-import optuna
-
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
 from data_generation.optimization.eval import eval_config
+
 
 def main(cfg_path: str, tuning_config_path: str, output_dir: str):
     print(f"\n{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
