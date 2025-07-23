@@ -1,6 +1,7 @@
 import os
 from glob import glob
 from pathlib import Path
+from random import shuffle
 
 import cv2
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from tqdm import tqdm
 from file_io.utils import extract_frames
 
 
-def convert_videos(data_path, output_path):
+def process_all(data_path, output_path):
     """
     Converts all .avi and .tif videos in a directory to .mp4 format,
     and also exports each frame as a PNG image into a dedicated subfolder.
@@ -23,61 +24,74 @@ def convert_videos(data_path, output_path):
     for video_path in video_files:
         print(f"\nProcessing: {video_path}")
 
-        # Request BGR frames directly, as that's what cv2.imwrite and VideoWriter expect.
-        # This simplifies the loop later.
-        frames_list, fps = extract_frames(video_path, color_mode="rgb")
+        split_and_convert(output_path, video_path)
 
-        if not frames_list:
+
+def split_and_convert(output_path, video_path, num_splits=3, num_frames=10):
+
+    frames_list, fps = extract_frames(video_path, color_mode="rgb", num_splits=num_splits, crop_size=(500, 500))
+    if not frames_list:
+        print(f"  -> Skipping video, no frames were extracted.")
+        return
+
+    base_name = Path(video_path).stem
+    for frames_idx, frames in enumerate(frames_list):
+        if not frames:
             print(f"  -> Skipping video, no frames were extracted.")
-            continue
+            return
 
-        base_name = Path(video_path).stem
+        # --- 1. Set up MP4 Video Output (existing logic) ---
+        video_output_path = os.path.join(output_path, f"{base_name}_crop_{frames_idx}.mp4")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        # Ensure fps is at least 1 to avoid errors with static tiff images
+        writer_fps = max(1, fps)
+        writer = cv2.VideoWriter(video_output_path, fourcc, writer_fps, (frames[0].shape[1], frames[0].shape[0]))
 
-        for frames_idx, frames in enumerate(frames_list):
-            if not frames:
-                print(f"  -> Skipping video, no frames were extracted.")
-                continue
+        # --- 2. Set up PNG Frame Export Directory (new logic) ---
+        frame_output_dir = os.path.join(output_path, base_name)
+        os.makedirs(frame_output_dir, exist_ok=True)
+        print(f"  -> Exporting {len(frames)} frames to: {frame_output_dir}")
 
-            # --- 1. Set up MP4 Video Output (existing logic) ---
-            video_output_path = os.path.join(output_path, f"{base_name}_crop_{frames_idx}.mp4")
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            # Ensure fps is at least 1 to avoid errors with static tiff images
-            writer_fps = max(1, fps)
-            writer = cv2.VideoWriter(video_output_path, fourcc, writer_fps, (frames[0].shape[1], frames[0].shape[0]))
+        # --- 3. Loop Through Frames to Write Both Video and PNGs ---
+        # Use enumerate to get a frame index for naming the PNG files.
+        for i, frame in enumerate(frames):
+            if len(frame.shape) == 2:
+                frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
-            # --- 2. Set up PNG Frame Export Directory (new logic) ---
-            frame_output_dir = os.path.join(output_path, base_name)
-            os.makedirs(frame_output_dir, exist_ok=True)
-            print(f"  -> Exporting {len(frames)} frames to: {frame_output_dir}")
+            # Convert frame to uint8 if necessary
+            if frame.dtype != 'uint8':
+                frame_uint8 = (255 * frame).astype('uint8')
+            else:
+                frame_uint8 = frame
 
-            # --- 3. Loop Through Frames to Write Both Video and PNGs ---
-            # Use enumerate to get a frame index for naming the PNG files.
-            for i, frame in enumerate(tqdm(frames, desc="  Exporting")):
+            frame_uint8 = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
+            writer.write(frame_uint8)
 
-                # This check ensures that even if extract_frames returns grayscale,
-                # it will be correctly converted before writing.
-                if len(frame.shape) == 2:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+        writer.release()
+        print(f"  -> MP4 video saved to: {video_output_path}")
 
-                # Convert frame to uint8 if necessary
-                if frame.dtype != 'uint8':
-                    frame_uint8 = (255 * frame).astype('uint8')
-                else:
-                    frame_uint8 = frame
 
-                frame_uint8 = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
+        # shuffle the frames to create a random video
+        shuffle(frames)
+        random_frames = frames[:num_frames]
+        for i, frame in enumerate(random_frames):
 
-                writer.write(frame_uint8)
+            # Convert frame to uint8 if necessary
+            if frame.dtype != 'uint8':
+                frame_uint8 = (255 * frame).astype('uint8')
+            else:
+                frame_uint8 = frame
 
-                # Action B: Write the frame as a PNG image (new logic)
-                # Use zfill or f-string formatting to pad filenames with zeros (e.g., 00001.png)
-                # for correct sorting in file explorers.
-                frame_filename = f"{i:05d}.png"
-                frame_output_path = os.path.join(frame_output_dir, frame_filename)
-                cv2.imwrite(frame_output_path, frame)
+            frame_uint8 = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
 
-            writer.release()
-            print(f"  -> MP4 video saved to: {video_output_path}")
+            # Write the frame as a PNG image
+            frame_filename = f"{i:05d}.png"
+            frame_output_path = os.path.join(frame_output_dir, frame_filename)
+            if i < num_frames:
+                cv2.imwrite(frame_output_path, frame_uint8)
+
+
+
 
 
 if __name__ == "__main__":
@@ -91,5 +105,5 @@ if __name__ == "__main__":
     os.makedirs(output_path_A, exist_ok=True)
     os.makedirs(output_path_B, exist_ok=True)
 
-    # convert_videos(data_path_A, output_path_A)
-    convert_videos(data_path_B, output_path_B)
+    # process_all(data_path_A, output_path_A)
+    process_all(data_path_B, output_path_B)

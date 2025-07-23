@@ -226,30 +226,15 @@ def process_tiff_video(
     return all_cropped_videos
 
 
-def extract_frames(video_path: str, color_mode: str = "grayscale") -> Tuple[List[np.ndarray], int]:
-    """
-    Extracts frames from video files (.avi, .mp4, .mov, .mkv, .tif/.tiff).
+def extract_frames(video_path: str, color_mode: str = "grayscale", num_splits:int = 0, crop_size=(500, 500)) -> Tuple[List[List[np.ndarray]], int]:
 
-    Args:
-        video_path (str): Path to the video file.
-        color_mode (str): Desired color mode for output frames ('grayscale', 'rgb', 'bgr').
-
-    Returns:
-        Tuple[List[np.ndarray], int]: A tuple containing a list of frames as numpy arrays
-                                       and the frames per second (FPS).
-
-    Raises:
-        FileNotFoundError: If the video file does not exist.
-        ValueError: If the video format is unsupported or TIFF shape is unexpected.
-        Exception: For other errors during video reading.
-    """
     logger.info(f"Extracting frames from: {video_path} (desired color_mode: '{color_mode}').")
 
     if not os.path.isfile(video_path):
         logger.error(f"Video file not found: {video_path}")
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
-    fps: int = 5
+    fps: int = 10
 
     try:
         if video_path.lower().endswith((".avi", ".mp4", ".mov", ".mkv")):
@@ -259,8 +244,8 @@ def extract_frames(video_path: str, color_mode: str = "grayscale") -> Tuple[List
         elif video_path.lower().endswith((".tif", ".tiff")):
             frames = process_tiff_video(
                 video_path=video_path,
-                num_crops=5,
-                crop_size=(500, 500),
+                num_crops=num_splits,
+                crop_size=crop_size,
                 norm_bounds=[(0.1, 100), (0.1, 95)]
             )
             ndim = frames[0][0].ndim
