@@ -6,6 +6,8 @@ from typing import List, Tuple, Any
 import cv2
 import numpy as np
 import tifffile
+import matplotlib.pyplot as plt
+from skimage import exposure
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -40,6 +42,190 @@ class CustomJsonEncoder(json.JSONEncoder):
             raise  # Re-raise to prevent partial/corrupted JSON output
 
 
+def normalize_contrast_stretch(
+        data: np.ndarray,
+        min_val: float,
+        max_val: float,
+        bounds: Tuple[float, float] = (0.0, 0.75)
+) -> np.ndarray:
+    """
+    Normalizes data based on the contrast stretching method from the paper.
+
+    This function implements the piecewise normalization:
+    - Values below a lower threshold are set to 0.
+    - Values above an upper threshold are set to 1.
+    - Values in between are linearly scaled to fit the [0, 1] range.
+
+    Args:
+        data (np.ndarray): The input image data (a single channel).
+        min_val (float): The global minimum intensity for this channel.
+        max_val (float): The global maximum intensity for this channel.
+        bounds (Tuple[float, float]): The (t1, t2) parameters, representing the
+                                      fractional bounds of the intensity range to stretch.
+                                      Defaults to (0.0, 0.75) as per the paper.
+
+    Returns:
+        np.ndarray: The normalized data in float format, with values in [0, 1].
+    """
+    t1, t2 = bounds
+    delta_i = max_val - min_val
+
+    t1 = 0.1
+    t2 = 95
+    p1, p2 = np.percentile(data, (t1, t2))  # Calculate percentiles for rescaling
+    img_rescale = exposure.rescale_intensity(data.copy(), in_range=(p1, p2), out_range=(0, 1))
+
+    # # Avoid division by zero for flat images or invalid bounds
+    # if delta_i == 0 or t1 >= t2:
+    #     return np.zeros_like(data, dtype=np.float32)
+    #
+    # # Define the lower and upper intensity thresholds
+    # lower_bound = min_val + t1 * delta_i
+    # upper_bound = min_val + t2 * delta_i
+    #
+    # # Start with a copy of the data to avoid modifying the original
+    # normalized_data = data.astype(np.float32)
+    #
+    # # Apply the piecewise function using efficient NumPy masking
+    #
+    # # Condition 1: I <= lower_bound (maps to 0)
+    # # Condition 2: I >= upper_bound (maps to 1)
+    # # We can use np.clip to handle both of these conditions at once.
+    # # It sets all values below `lower_bound` to `lower_bound` and all
+    # # values above `upper_bound` to `upper_bound`.
+    # clipped_data = np.clip(normalized_data, lower_bound, upper_bound)
+    #
+    # # Condition 3 (Otherwise): Linearly scale the "in-between" values
+    # # The formula is: (I - lower_bound) / (upper_bound - lower_bound)
+    # # This works because anything that was clipped to `lower_bound` will become 0,
+    # # and anything clipped to `upper_bound` will become 1.
+    # img_rescale = (clipped_data - lower_bound) / (upper_bound - lower_bound)
+
+    return img_rescale
+
+def process_tiff_video(
+        video_path: str,
+        num_crops: int = 3,
+        crop_size: Tuple[int, int] = (500, 500),
+        norm_bounds: List[Tuple[float, float]] = [(0.0, 0.75), (0.0, 0.75)]
+) -> List[List[np.ndarray]]:
+    """
+    Reads a TIFF video, performs repeated random cropping, applies contrast-stretching
+    normalization as described in the paper, and returns processed videos.
+
+    Args:
+        video_path (str): The file path to the TIFF video.
+        num_crops (int): The number of different random video crops to generate.
+        crop_size (Tuple[int, int]): The (height, width) for the random crops.
+        norm_bounds (Tuple[float, float]): The (t1, t2) normalization bounds.
+                                           Defaults to (0.0, 0.75) from the paper.
+
+    Returns:
+        List[List[np.ndarray]]: List of videos (list of frames). Each frame is a
+                                NumPy array (crop_h, crop_w, 3) with float values in [0, 1].
+    """
+    # --- Step 1: Reading and Validation (same as before) ---
+    try:
+        data = tifffile.imread(video_path)
+    except Exception as e:
+        logger.error(f"Failed to read TIFF file {video_path}: {e}")
+        return []
+
+    logger.info(f"Loaded TIFF stack of shape {data.shape}.")
+    if data.ndim not in [3, 4]:
+        logger.error(f"Unsupported TIFF dimension: {data.ndim}.")
+        return []
+
+    num_frames = data.shape[0]
+    orig_h, orig_w = data.shape[-2:]
+    crop_h, crop_w = crop_size
+    if orig_h < crop_h or orig_w < crop_w:
+        logger.error(f"Crop size {crop_size} is larger than frame size {(orig_h, orig_w)}.")
+        return []
+
+    # --- Step 2: Pre-calculate global min/max for consistent normalization ---
+    min_vals, max_vals = [], []
+    if data.ndim == 4:  # T x C x H x W
+        for c in range(data.shape[1]):
+            min_vals.append(np.min(data[:, c, :, :]))
+            max_vals.append(np.max(data[:, c, :, :]))
+    else:  # 3D data: T x H x W (Grayscale)
+        min_vals.append(np.min(data))
+        max_vals.append(np.max(data))
+
+    all_cropped_videos = []
+
+    # --- Step 3: Cropping Loop (same as before) ---
+    for i in range(num_crops):
+        top = np.random.randint(0, orig_h - crop_h + 1)
+        left = np.random.randint(0, orig_w - crop_w + 1)
+        logger.info(f"Generating crop #{i + 1}/{num_crops} at (top={top}, left={left})")
+
+        current_cropped_frames = []
+        for t in range(num_frames):
+            if data.ndim == 4:
+                channels_to_process = [data[t, c, :, :] for c in range(min(3, data.shape[1]))]
+            else:
+                channels_to_process = [data[t, :, :]]
+
+            # Crop each channel
+            cropped_channels = [chan[top:top + crop_h, left:left + crop_w] for chan in channels_to_process]
+
+            # --- Step 4: Normalization (UPDATED) ---
+            # Apply the paper's contrast stretching method to each channel
+            normalized_channels = [
+                normalize_contrast_stretch(chan, min_vals[c_idx], max_vals[c_idx], norm_bounds[c_idx])
+                for c_idx, chan in enumerate(cropped_channels)
+            ]
+
+            # --- Step 5: Combine to RGB ---
+            num_chans = len(normalized_channels)
+
+            if num_chans >= 3:
+                # Standard case: We have R, G, and B. Take the first three.
+                rgb_frame = np.stack(normalized_channels[:3], axis=-1)
+
+            elif num_chans == 2:
+
+                # Case 1: At least 2 channels (assume R and G are the first two)
+                # This handles 2-channel, 3-channel (RGB), 4-channel, etc.
+                r_chan_in = normalized_channels[0]
+                g_chan_in = normalized_channels[1]
+
+                # The Green channel is the base intensity
+                final_g = g_chan_in
+
+                # The Red channel is an overlay. Use np.maximum to merge without clipping.
+                # A pixel is red if it was bright in *either* the original red or green.
+                final_r = np.maximum(r_chan_in, g_chan_in)
+
+                # The Blue channel is black.
+                final_b = final_g
+
+                rgb_frame = np.stack([final_r, final_g, final_b], axis=-1)
+                # plt.imshow(rgb_frame, cmap='viridis', vmin=0, vmax=1)
+                # plt.axis('off')
+                # plt.title(f"Crop #{i + 1} Frame {t + 1} (R+G Overlay)")
+                # plt.show()
+
+
+            elif num_chans == 1:
+                # Grayscale case: Duplicate the single channel into R, G, and B.
+                gray_chan = normalized_channels[0]
+                rgb_frame = np.stack([gray_chan, gray_chan, gray_chan], axis=-1)
+
+            else:  # num_chans == 0 (empty)
+                # This is an edge case, create an empty black frame.
+                rgb_frame = np.zeros((crop_h, crop_w, 3), dtype=np.float32)
+
+            current_cropped_frames.append(rgb_frame)
+
+        all_cropped_videos.append(current_cropped_frames)
+
+    logger.info("Processing complete.")
+    return all_cropped_videos
+
+
 def extract_frames(video_path: str, color_mode: str = "grayscale") -> Tuple[List[np.ndarray], int]:
     """
     Extracts frames from video files (.avi, .mp4, .mov, .mkv, .tif/.tiff).
@@ -63,104 +249,26 @@ def extract_frames(video_path: str, color_mode: str = "grayscale") -> Tuple[List
         logger.error(f"Video file not found: {video_path}")
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
-    frames: List[np.ndarray] = []
-    fps: int = 0
+    fps: int = 5
 
     try:
         if video_path.lower().endswith((".avi", ".mp4", ".mov", ".mkv")):
-            cap = cv2.VideoCapture(video_path)
-            if not cap.isOpened():
-                logger.error(f"Failed to open video file with OpenCV: {video_path}")
-                raise IOError(f"Could not open video file: {video_path}")
-
-            fps = int(cap.get(cv2.CAP_PROP_FPS))
-            logger.debug(f"Opened video with OpenCV. FPS: {fps}.")
-
-            frame_count = 0
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frames.append(frame)
-                frame_count += 1
-            cap.release()
-            logger.info(f"Successfully extracted {frame_count} frames from OpenCV video file.")
+            frames, fps = process_avi_video(fps, video_path)
+            ndim = frames[0].ndim
 
         elif video_path.lower().endswith((".tif", ".tiff")):
-            logger.debug(f"Attempting to read TIFF stack with tifffile: {video_path}")
-            data = tifffile.imread(video_path)
-            # Assuming a default FPS for TIFF stacks, as it's not stored in the file.
-            fps = 5
-            logger.info(f"Loaded TIFF stack of shape {data.shape}. Defaulting FPS to {fps}.")
+            frames = process_tiff_video(
+                video_path=video_path,
+                num_crops=5,
+                crop_size=(500, 500),
+                norm_bounds=[(0.1, 100), (0.1, 95)]
+            )
+            ndim = frames[0][0].ndim
 
-            # Handle different TIFF structures (e.g., Time x Channel x H x W or Time x H x W x Channel)
-            if data.ndim == 4:
-                # Assuming T x C x H x W (common for multi-channel microscopy)
-                if data.shape[1] <= 4:  # Max 4 channels (e.g., RGBA)
-                    logger.debug(f"TIFF: Detected 4D data (T x C x H x W), Channels: {data.shape[1]}.")
-                    # Dynamically determine max values for scaling per channel
-                    red_max = np.max(data[:, 0]) if data.shape[1] > 0 else 1
-                    green_max = np.max(data[:, 1]) if data.shape[1] > 1 else 1
-                    blue_max = np.max(data[:, 2]) if data.shape[1] > 2 else 1  # Add blue channel if present
-
-                    # Consider global max for consistent scaling, or channel-specific
-                    # For simplicity, scaling independently for now.
-
-                    for i in range(data.shape[0]):  # Iterate through time (frames)
-                        # Scale channels to 0-255 range and convert to uint8
-                        red = ((data[i, 0].astype(np.float32) / red_max) * 255).astype(np.uint8) if data.shape[
-                                                                                                        1] > 0 else np.zeros_like(
-                            data[i, 0], dtype=np.uint8)
-                        green = ((data[i, 1].astype(np.float32) / green_max) * 255).astype(np.uint8) if data.shape[
-                                                                                                            1] > 1 else np.zeros_like(
-                            data[i, 1], dtype=np.uint8)
-                        blue = ((data[i, 2].astype(np.float32) / blue_max) * 255).astype(np.uint8) if data.shape[
-                                                                                                          1] > 2 else np.zeros_like(
-                            data[i, 0], dtype=np.uint8)  # Check blue channel
-
-                        # Assuming 3-channel output or grayscale conversion from a primary channel
-                        if color_mode == "grayscale":
-                            # Default to green channel if available, else red, else first
-                            if data.shape[1] > 1:
-                                frame = green  # Common for GFP in microscopy
-                            elif data.shape[1] > 0:
-                                frame = red
-                            else:
-                                frame = np.zeros_like(data[i, 0], dtype=np.uint8)
-                            logger.debug(
-                                f"TIFF frame {i}: Converted to grayscale from channel {1 if data.shape[1] > 1 else 0}.")
-                        else:  # RGB or BGR output
-                            frame = cv2.merge((blue, green, red))  # OpenCV uses BGR order
-                            logger.debug(f"TIFF frame {i}: Merged to BGR from channels 0,1,2.")
-                        frames.append(frame)
-                else:  # e.g., T x H x W x C
-                    if data.shape[3] == 3:  # Assuming RGB/BGR
-                        for i in range(data.shape[0]):
-                            # tifffile reads as RGB, OpenCV expects BGR. So, convert if needed.
-                            if color_mode in ("bgr", "grayscale"):  # If target is BGR or grayscale, convert from RGB
-                                frames.append(cv2.cvtColor(data[i], cv2.COLOR_RGB2BGR))
-                                logger.debug(f"TIFF frame {i}: Converted from RGB to BGR.")
-                            else:  # If target is RGB, keep as is
-                                frames.append(data[i])
-                                logger.debug(f"TIFF frame {i}: Retained as RGB.")
-                    elif data.shape[3] == 1:  # Grayscale
-                        for i in range(data.shape[0]):
-                            frames.append(data[i].squeeze())  # Remove channel dimension (H, W, 1) -> (H, W)
-                            logger.debug(f"TIFF frame {i}: Squeezed 1-channel grayscale.")
-                    else:
-                        msg = f"Unsupported 4D TIFF shape (T x H x W x C) with C={data.shape[3]}. Expected C=1 or C=3."
-                        logger.error(msg)
-                        raise ValueError(msg)
-
-            elif data.ndim == 3:  # Likely T x H x W (grayscale)
-                for i in range(data.shape[0]):
-                    frames.append(data[i])
-                logger.debug(f"TIFF: Detected 3D data (T x H x W), loaded {len(frames)} grayscale frames.")
-            else:
-                msg = f"Unsupported TIFF shape: {data.shape}. Expected 3D (T x H x W) or 4D (T x C x H x W / T x H x W x C)."
-                logger.error(msg)
-                raise ValueError(msg)
-            logger.info(f"Successfully extracted {len(frames)} frames from TIFF file.")
+            # plt.imshow(frames[0][0])
+            # plt.axis('off')
+            # plt.title(f"First frame from {os.path.basename(video_path)}")
+            # plt.show()
 
         else:
             msg = f"Unsupported video format '{os.path.splitext(video_path)[1]}'. Only AVI, MP4, MOV, MKV and TIFF/TIF files are supported."
@@ -169,47 +277,38 @@ def extract_frames(video_path: str, color_mode: str = "grayscale") -> Tuple[List
 
     except Exception as e:
         logger.error(f"An error occurred while extracting frames from {video_path}: {e}", exc_info=True)
-        # Clear frames to indicate failure
-        frames = []
-        fps = 0
-        raise  # Re-raise the exception after logging
+        raise e
 
-    # Final color mode conversion to ensure requested output format
-    if frames and frames[0] is not None:
-        first_frame_ndim = frames[0].ndim
-        logger.debug(
-            f"Performing final color mode conversion. First frame ndim: {first_frame_ndim}, desired: '{color_mode}'.")
 
-        # If output color mode is grayscale but frames are 3-channel
-        if color_mode == "grayscale" and first_frame_ndim == 3:
-            frames = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in
-                      frames]  # Assuming initial 3-channel is BGR from OpenCV
-            logger.debug(f"Converted all frames to grayscale.")
-        # If output color mode is color but frames are grayscale
-        elif color_mode in ("rgb", "bgr") and first_frame_ndim == 2:
-            color_conversion = cv2.COLOR_GRAY2RGB if color_mode == "rgb" else cv2.COLOR_GRAY2BGR
-            frames = [cv2.cvtColor(f, color_conversion) for f in frames]
-            logger.debug(f"Converted all frames from grayscale to {color_mode.upper()}.")
-        elif (color_mode == "rgb" and first_frame_ndim == 3 and frames[0].shape[2] == 3
-              and not (video_path.lower().endswith((".tif",
-                                                    ".tiff")) and "rgb2bgr_done" in video_path.lower())):  # A crude way to avoid re-converting TIFFs that were already BGR converted
-            # If target is RGB but frames might be BGR (from OpenCV read)
-            frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames]
-            logger.debug(f"Converted all frames from BGR to RGB.")
-        elif (color_mode == "bgr" and first_frame_ndim == 3 and frames[0].shape[2] == 3
-              and not (video_path.lower().endswith((".tif", ".tiff")) and "rgb2bgr_done" in video_path.lower())):
-            # If target is BGR and frames are already BGR (from OpenCV), do nothing.
-            # If from tifffile, might need RGB2BGR. Assume tifffile RGB, so convert to BGR.
-            if video_path.lower().endswith((".tif", ".tiff")):
-                frames = [cv2.cvtColor(f, cv2.COLOR_RGB2BGR) for f in frames]
-                logger.debug(f"Converted all frames from TIFF (RGB assumed) to BGR.")
-            else:
-                logger.debug(f"Frames are already in target BGR format (from OpenCV).")
-        else:
-            logger.debug(
-                f"No specific color conversion needed for target '{color_mode}' and source frame dim {first_frame_ndim}.")
+    logger.debug(f"Performing final color mode conversion. First frame ndim: {ndim}, desired: '{color_mode}'.")
+
+    # If output color mode is grayscale but frames are 3-channel
+    if color_mode == "grayscale" and ndim == 3:
+        frames = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in
+                  frames]  # Assuming initial 3-channel is BGR from OpenCV
+        logger.debug(f"Converted all frames to grayscale.")
 
     logger.info(f"Finished extracting {len(frames)} frames with FPS {fps}.")
+    return frames, fps
+
+
+def process_avi_video(fps, video_path):
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        logger.error(f"Failed to open video file with OpenCV: {video_path}")
+        raise IOError(f"Could not open video file: {video_path}")
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    logger.debug(f"Opened video with OpenCV. FPS: {fps}.")
+    frames = []
+    frame_count = 0
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frames.append(frame)
+        frame_count += 1
+    cap.release()
+    logger.info(f"Successfully extracted {frame_count} frames from OpenCV video file.")
     return frames, fps
 
 

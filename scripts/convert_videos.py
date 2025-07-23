@@ -3,6 +3,7 @@ from glob import glob
 from pathlib import Path
 
 import cv2
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 from file_io.utils import extract_frames
@@ -24,47 +25,59 @@ def convert_videos(data_path, output_path):
 
         # Request BGR frames directly, as that's what cv2.imwrite and VideoWriter expect.
         # This simplifies the loop later.
-        frames, fps = extract_frames(video_path, color_mode="rgb")
+        frames_list, fps = extract_frames(video_path, color_mode="rgb")
 
-        if not frames:
+        if not frames_list:
             print(f"  -> Skipping video, no frames were extracted.")
             continue
 
         base_name = Path(video_path).stem
 
-        # --- 1. Set up MP4 Video Output (existing logic) ---
-        video_output_path = os.path.join(output_path, f"{base_name}.mp4")
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        # Ensure fps is at least 1 to avoid errors with static tiff images
-        writer_fps = max(1, fps)
-        writer = cv2.VideoWriter(video_output_path, fourcc, writer_fps, (frames[0].shape[1], frames[0].shape[0]))
+        for frames_idx, frames in enumerate(frames_list):
+            if not frames:
+                print(f"  -> Skipping video, no frames were extracted.")
+                continue
 
-        # --- 2. Set up PNG Frame Export Directory (new logic) ---
-        frame_output_dir = os.path.join(output_path, base_name)
-        os.makedirs(frame_output_dir, exist_ok=True)
-        print(f"  -> Exporting {len(frames)} frames to: {frame_output_dir}")
+            # --- 1. Set up MP4 Video Output (existing logic) ---
+            video_output_path = os.path.join(output_path, f"{base_name}_crop_{frames_idx}.mp4")
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            # Ensure fps is at least 1 to avoid errors with static tiff images
+            writer_fps = max(1, fps)
+            writer = cv2.VideoWriter(video_output_path, fourcc, writer_fps, (frames[0].shape[1], frames[0].shape[0]))
 
-        # --- 3. Loop Through Frames to Write Both Video and PNGs ---
-        # Use enumerate to get a frame index for naming the PNG files.
-        for i, frame in enumerate(tqdm(frames, desc="  Exporting")):
+            # --- 2. Set up PNG Frame Export Directory (new logic) ---
+            frame_output_dir = os.path.join(output_path, base_name)
+            os.makedirs(frame_output_dir, exist_ok=True)
+            print(f"  -> Exporting {len(frames)} frames to: {frame_output_dir}")
 
-            # This check ensures that even if extract_frames returns grayscale,
-            # it will be correctly converted before writing.
-            if len(frame.shape) == 2:
-                frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+            # --- 3. Loop Through Frames to Write Both Video and PNGs ---
+            # Use enumerate to get a frame index for naming the PNG files.
+            for i, frame in enumerate(tqdm(frames, desc="  Exporting")):
 
-            # Action A: Write the frame to the MP4 video
-            writer.write(frame)
+                # This check ensures that even if extract_frames returns grayscale,
+                # it will be correctly converted before writing.
+                if len(frame.shape) == 2:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
-            # Action B: Write the frame as a PNG image (new logic)
-            # Use zfill or f-string formatting to pad filenames with zeros (e.g., 00001.png)
-            # for correct sorting in file explorers.
-            frame_filename = f"{i:05d}.png"
-            frame_output_path = os.path.join(frame_output_dir, frame_filename)
-            cv2.imwrite(frame_output_path, frame)
+                # Convert frame to uint8 if necessary
+                if frame.dtype != 'uint8':
+                    frame_uint8 = (255 * frame).astype('uint8')
+                else:
+                    frame_uint8 = frame
 
-        writer.release()
-        print(f"  -> MP4 video saved to: {video_output_path}")
+                frame_uint8 = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
+
+                writer.write(frame_uint8)
+
+                # Action B: Write the frame as a PNG image (new logic)
+                # Use zfill or f-string formatting to pad filenames with zeros (e.g., 00001.png)
+                # for correct sorting in file explorers.
+                frame_filename = f"{i:05d}.png"
+                frame_output_path = os.path.join(frame_output_dir, frame_filename)
+                cv2.imwrite(frame_output_path, frame)
+
+            writer.release()
+            print(f"  -> MP4 video saved to: {video_output_path}")
 
 
 if __name__ == "__main__":
