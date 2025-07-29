@@ -12,8 +12,8 @@
   "metric": "cosine_similarity",
   "num_trials": 100,
   "img_size": [
-    462,
-    462
+    500,
+    500
   ],
   "fps": 5,
   "grow_frames_range": [

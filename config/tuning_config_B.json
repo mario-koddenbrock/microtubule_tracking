@@ -1,187 +1,284 @@
 {
-  "model_name": "openai/clip-vit-base-patch32",
+  "model_name": "facebook/dinov2-large",
   "hf_cache_dir": null,
-  "reference_series_dir": "data/mpi/type_B",
-  "num_compare_series": 3,
-  "num_compare_frames": 1,
-  "temp_dir": ".temp/",
-  "output_config_file": "config/best_synthetic_config_B.json",
-  "output_config_id": "best_B",
+  "reference_series_dir": "data/mpi_converted/type_B/250123_GLO19_R02_6um HEK PHK10_DMSO _002_cropped_flatfield_registered_BGsubt",
+  "num_compare_series": 5,
+  "num_compare_frames": 5,
+  "temp_dir": ".temp",
+  "output_config_file": "best_250123_GLO19_R02.json",
+  "output_config_id": "best_250123_GLO19_R02",
   "output_config_num_frames": 50,
   "direction": "maximize",
-  "metric": "cosine_similarity",
-  "num_trials": 1000,
+  "similarity_metric": "cosine",
+  "num_trials": 20000,
+  "pca_components": 0,
+  "load_if_exists": true,
   "img_size": [
-    462,
-    462
+    500,
+    500
   ],
-  "fps": 5,
-  "grow_frames_range": [
-    10,
-    30
+  "fps": 0.5,
+  "growth_speed": 2.5,
+  "shrink_speed": 5.0,
+  "catastrophe_prob": 0.05,
+  "rescue_prob": 0.05,
+  "max_pause_at_min_frames": 50,
+  "base_wagon_length_min_range": [
+    5.0,
+    15.0
   ],
-  "shrink_frames_range": [
-    5,
-    20
-  ],
-  "profile_noise_range": [
-    0.0,
-    10.0
-  ],
-  "pause_on_microtubule_length_range": [
-    0,
-    10
-  ],
-  "pause_on_min_length_range": [
-    0,
-    10
-  ],
-  "motion_range": [
-    0.5,
-    5.0
-  ],
-  "min_length_min_range": [
-    20,
-    80
-  ],
-  "min_length_max_range": [
-    80,
-    120
+  "base_wagon_length_max_range": [
+    30.0,
+    60.0
   ],
   "microtubule_length_min_range": [
-    80,
-    150
+    20,
+    120
   ],
   "microtubule_length_max_range": [
-    150,
-    300
+    120,
+    200
+  ],
+  "tail_wagon_length_range": [
+    5.0,
+    15.0
+  ],
+  "max_angle_range": [
+    0.05,
+    0.2
+  ],
+  "bending_prob_range": [
+    0.05,
+    0.5
+  ],
+  "max_angle_sign_changes_range": [
+    0,
+    10
+  ],
+  "prob_to_flip_bend_range": [
+    0.01,
+    0.9
   ],
   "num_microtubule_range": [
-    10,
-    30
-  ],
-  "microtubule_min_dist_range": [
     5,
-    50
-  ],
-  "margin_range": [
-    0,
     20
   ],
-  "width_var_std_range": [
-    0.0,
-    0.2
+  "microtubule_seed_min_dist_range": [
+    0,
+    50
   ],
-  "bend_amplitude_range": [
-    0.0,
-    10.0
-  ],
-  "bend_prob_range": [
-    0.0,
-    0.5
-  ],
-  "bend_straight_fraction_range": [
-    0.1,
-    1.0
-  ],
+  "margin": 5,
   "psf_sigma_h_range": [
-    0.1,
-    2.0
+    0.3,
+    0.5
   ],
   "psf_sigma_v_range": [
-    0.1,
-    2.0
+    0.4,
+    0.8
+  ],
+  "tubule_width_variation_range": [
+    0.05,
+    0.2
   ],
   "background_level_range": [
-    0.5,
-    1.0
+    0.4,
+    0.9
   ],
   "tubulus_contrast_range": [
-    0.0,
-    0.5
+    -0.6,
+    -0.3
   ],
-  "gaussian_noise_range": [
-    0.0,
-    0.2
-  ],
-  "bleach_tau_range": [
-    10.0,
-    1000.0
-  ],
-  "jitter_px_range": [
-    0.0,
-    2.0
-  ],
-  "vignetting_strength_range": [
-    0.0,
-    0.2
-  ],
-  "invert_contrast_options": [
-    true,
-    false
-  ],
-  "global_blur_sigma_range": [
-    0.0,
-    3.0
-  ],
-  "fixed_spot_count_range": [
-    0,
-    100
-  ],
-  "fixed_spot_intensity_range": [
-    0.0,
+  "seed_red_channel_boost_range": [
+    0.1,
     0.3
   ],
-  "fixed_spot_radius_range": [
-    1,
-    10
+  "tip_brightness_factor_range": [
+    1.0,
+    1.5
   ],
-  "fixed_spot_kernel_size_range": [
-    0,
-    10
+  "brightness_range": [
+    -0.01,
+    0.01
   ],
-  "fixed_spot_sigma_range": [
-    0.1,
-    5.0
+  "contrast_range": [
+    49.9,
+    50.1
   ],
-  "moving_spot_count_range": [
-    0,
-    50
-  ],
-  "moving_spot_intensity_range": [
-    0.0,
+  "red_channel_noise_std_range": [
+    0.03,
     0.1
   ],
-  "moving_spot_radius_range": [
-    1,
-    20
+  "quantum_efficiency_range": [
+    90.0,
+    110.0
   ],
-  "moving_spot_kernel_size_range": [
-    0,
-    10
-  ],
-  "moving_spot_sigma_range": [
+  "gaussian_noise_range": [
     0.1,
-    5.0
+    0.4
   ],
-  "show_time_options": [
-    true,
-    false
+  "jitter_px": 0.5,
+  "vignetting_strength_range": [
+    0.00,
+    0.05
   ],
-  "show_scale_options": [
-    true,
-    false
+  "global_blur_sigma_range": [
+    0.3,
+    0.7
   ],
-  "um_per_pixel_range": [
-    0.01,
+  "fixed_spots_tuning": {
+    "count_range": [
+      500,
+      1500
+    ],
+    "intensity_min_range": [
+      -0.4,
+      -0.2
+    ],
+    "intensity_max_range": [
+      0.09,
+      0.11
+    ],
+    "radius_min_range": [
+      0,
+      2
+    ],
+    "radius_max_range": [
+      1,
+      3
+    ],
+    "kernel_size_min_range": [
+      -1,
+      1
+    ],
+    "kernel_size_max_range": [
+      0,
+      2
+    ],
+    "sigma_range": [
+      0.09,
+      0.11
+    ],
+    "polygon_p_range": [
+      0.09,
+      0.11
+    ],
+    "polygon_vertex_count_min_range": [
+      2,
+      4
+    ],
+    "polygon_vertex_count_max_range": [
+      6,
+      8
+    ],
+    "max_step_range": null
+  },
+  "moving_spots_tuning": {
+    "count_range": [
+      50,
+      200
+    ],
+    "intensity_min_range": [
+      -0.3,
+      -0.1
+    ],
+    "intensity_max_range": [
+      0.09,
+      0.11
+    ],
+    "radius_min_range": [
+      2,
+      4
+    ],
+    "radius_max_range": [
+      7,
+      9
+    ],
+    "kernel_size_min_range": [
+      -1,
+      1
+    ],
+    "kernel_size_max_range": [
+      1,
+      3
+    ],
+    "sigma_range": [
+      0.29,
+      0.31
+    ],
+    "polygon_p_range": [
+      0.1,
+      1.0
+    ],
+    "polygon_vertex_count_min_range": [
+      6,
+      8
+    ],
+    "polygon_vertex_count_max_range": [
+      11,
+      13
+    ],
+    "max_step_range": [
+      4,
+      6
+    ]
+  },
+  "random_spots_tuning": {
+    "count_range": [
+      500,
+      2000
+    ],
+    "intensity_min_range": [
+      -0.3,
+      -0.2
+    ],
+    "intensity_max_range": [
+      0.09,
+      0.11
+    ],
+    "radius_min_range": [
+      0,
+      2
+    ],
+    "radius_max_range": [
+      1,
+      3
+    ],
+    "kernel_size_min_range": [
+      -1,
+      1
+    ],
+    "kernel_size_max_range": [
+      0,
+      2
+    ],
+    "sigma_range": [
+      0.09,
+      0.11
+    ],
+    "polygon_p_range": [
+      0.01,
+      0.9
+    ],
+    "polygon_vertex_count_min_range": [
+      2,
+      4
+    ],
+    "polygon_vertex_count_max_range": [
+      6,
+      8
+    ],
+    "max_step_range": null
+  },
+  "color_mode": true,
+  "annotation_color_rgb": [
+    1.0,
+    1.0,
     1.0
   ],
-  "scale_bar_um_range": [
-    1.0,
-    20.0
-  ],
-  "color_mode_options": [
-    true,
-    false
-  ]
+  "um_per_pixel": 0.1,
+  "scale_bar_um": 5.0,
+  "show_time": false,
+  "show_scale": false,
+  "generate_microtubule_mask": true,
+  "generate_seed_mask": false
 }

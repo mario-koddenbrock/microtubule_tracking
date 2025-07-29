@@ -1,8 +1,8 @@
 {
   "id": "best_B",
   "img_size": [
-    462,
-    462
+    500,
+    500
   ],
   "fps": 5,
   "num_frames": 50,
