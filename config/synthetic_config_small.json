@@ -1,11 +1,11 @@
 {
-  "id": 410,
+  "id": 1,
   "img_size": [
-    462,
-    462
+    500,
+    500
   ],
   "fps": 5,
-  "num_frames": 3,
+  "num_frames": 1,
   "color_mode": true,
   "growth_speed": 2.5,
   "shrink_speed": 5.0,
@@ -34,7 +34,6 @@
   "red_channel_noise_std": 0.01,
   "quantum_efficiency": 100.0,
   "gaussian_noise": 0.09,
-  "bleach_tau": Infinity,
   "jitter_px": 0.5,
   "vignetting_strength": 0.05,
   "global_blur_sigma": 0.9,
@@ -50,7 +49,6 @@
     "polygon_p": 0.1,
     "polygon_vertex_count_min": 3,
     "polygon_vertex_count_max": 7,
-    "color_mode": "dark",
     "max_step": null
   },
   "moving_spots": {
@@ -65,7 +63,6 @@
     "polygon_p": 0.0,
     "polygon_vertex_count_min": 3,
     "polygon_vertex_count_max": 7,
-    "color_mode": "dark",
     "max_step": 5
   },
   "random_spots": {
@@ -80,7 +77,6 @@
     "polygon_p": 0.0,
     "polygon_vertex_count_min": 5,
     "polygon_vertex_count_max": 7,
-    "color_mode": "dark",
     "max_step": null
   },
   "albumentations": null,
