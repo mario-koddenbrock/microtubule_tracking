@@ -97,10 +97,10 @@ def split_and_convert(output_path, video_path, num_splits=3, num_frames=10):
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.realpath(__file__))
     # Define paths relative to the script location
-    data_path_A = os.path.join(script_dir, '..', 'data', 'mpi', 'type_A')
-    data_path_B = os.path.join(script_dir, '..', 'data', 'mpi', 'type_B')
-    output_path_A = os.path.join(script_dir, '..', 'data', 'mpi_converted', 'type_A')
-    output_path_B = os.path.join(script_dir, '..', 'data', 'mpi_converted', 'type_B')
+    data_path_A = os.path.join('data', 'mpi', 'type_A')
+    data_path_B = os.path.join('data', 'mpi', 'type_B')
+    output_path_A = os.path.join('data', 'mpi_converted', 'type_A')
+    output_path_B = os.path.join('data', 'mpi_converted', 'type_B')
 
     os.makedirs(output_path_A, exist_ok=True)
     os.makedirs(output_path_B, exist_ok=True)
