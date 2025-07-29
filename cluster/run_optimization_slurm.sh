@@ -22,7 +22,7 @@ if [ ! -f "$SBATCH_SCRIPT" ]; then
 fi
 
 # Find and loop through all tuning configuration files for type A
-for config_file in "$CONFIG_DIR"/tuning_config_B_*.json; do
+for config_file in "$CONFIG_DIR"/tuning_config_B*.json; do
     # Check if the file exists to handle cases where the glob finds nothing
     if [ -e "$config_file" ]; then
         echo "Found config: '$config_file'"
