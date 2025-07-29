@@ -105,5 +105,5 @@ if __name__ == "__main__":
     os.makedirs(output_path_A, exist_ok=True)
     os.makedirs(output_path_B, exist_ok=True)
 
-    # process_all(data_path_A, output_path_A)
+    process_all(data_path_A, output_path_A)
     process_all(data_path_B, output_path_B)
