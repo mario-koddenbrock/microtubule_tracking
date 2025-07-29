@@ -33,7 +33,7 @@ class VideoOutputManager:
         write_masks_gif: bool = False,
         write_video_pngs: bool = True,
         write_masks_pngs: bool = False,
-        write_config: bool = True,
+        write_config: bool = False,
     ):
         """
         Initializes all file paths and writer objects based on the config.
@@ -167,7 +167,10 @@ class VideoOutputManager:
         if self.writers.get('video_gif'): self.writers['video_gif'].append_data(frame_img_rgb)
         if self.write_video_pngs:
             base_name = f"series_{self.cfg.id}"
-            path = os.path.join(self.paths['video_png_dir'], f"{base_name}_frame_{self.frame_count:04d}.png")
+            if self.cfg.num_frames > 1:
+                path = os.path.join(self.paths['video_png_dir'], f"{base_name}_frame_{self.frame_count:04d}.png")
+            else:
+                path = os.path.join(self.paths['video_png_dir'], f"{base_name}.png")
             cv2.imwrite(path, frame_bgr)
 
         # B. Write microtubule mask frame
