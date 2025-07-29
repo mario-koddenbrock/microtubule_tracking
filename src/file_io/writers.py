@@ -27,12 +27,13 @@ class VideoOutputManager:
         base_output_dir: str,
         write_video_tiff: bool = False,
         write_masks_tiff: bool = False,
-        write_video_mp4: bool = True,
-        write_masks_mp4: bool = True,
+        write_video_mp4: bool = False,
+        write_masks_mp4: bool = False,
         write_video_gif: bool = False,
         write_masks_gif: bool = False,
         write_video_pngs: bool = True,
         write_masks_pngs: bool = False,
+        write_config: bool = True,
     ):
         """
         Initializes all file paths and writer objects based on the config.
@@ -51,6 +52,7 @@ class VideoOutputManager:
         self.write_masks_gif = write_masks_gif
         self.write_video_pngs = write_video_pngs
         self.write_masks_pngs = write_masks_pngs
+        self.write_config = write_config
 
         try:
             os.makedirs(base_output_dir, exist_ok=True)
@@ -90,7 +92,8 @@ class VideoOutputManager:
 
         # Per-frame directory paths
         if self.write_video_pngs:
-            self.paths['video_png_dir'] = os.path.join(self.base_output_dir, f"{base_name}_video_frames")
+            # self.paths['video_png_dir'] = os.path.join(self.base_output_dir, f"{base_name}_video_frames")
+            self.paths['video_png_dir'] = self.base_output_dir
             os.makedirs(self.paths['video_png_dir'], exist_ok=True)
         if self.write_masks_pngs and self.cfg.generate_microtubule_mask:
             self.paths['microtubule_mask_png_dir'] = os.path.join(self.base_output_dir, f"{base_name}_mask_frames")
@@ -98,7 +101,13 @@ class VideoOutputManager:
         if self.write_masks_pngs and self.cfg.generate_seed_mask:
             self.paths['seed_mask_png_dir'] = os.path.join(self.base_output_dir, f"{base_name}_seed_mask_frames")
             os.makedirs(self.paths['seed_mask_png_dir'], exist_ok=True)
-
+        if self.write_config:
+            self.paths['config_file'] = os.path.join(self.base_output_dir, f"{base_name}_config.json")
+            try:
+                self.cfg.save(self.paths['config_file'])
+                logger.debug(f"Configuration saved to {self.paths['config_file']}")
+            except Exception as e:
+                logger.error(f"Failed to save configuration file: {e}", exc_info=True)
         logger.debug(f"Output paths defined: {self.paths}")
 
     def _initialize_writers(self):
@@ -157,7 +166,8 @@ class VideoOutputManager:
         if self.writers.get('video_mp4'): self.writers['video_mp4'].write(frame_bgr)
         if self.writers.get('video_gif'): self.writers['video_gif'].append_data(frame_img_rgb)
         if self.write_video_pngs:
-            path = os.path.join(self.paths['video_png_dir'], f"frame_{self.frame_count:04d}.png")
+            base_name = f"series_{self.cfg.id}"
+            path = os.path.join(self.paths['video_png_dir'], f"{base_name}_frame_{self.frame_count:04d}.png")
             cv2.imwrite(path, frame_bgr)
 
         # B. Write microtubule mask frame
