@@ -133,9 +133,8 @@ def plot_lengths(microtubule_tracks, output_path):
 # --- Run everything ---
 if __name__ == "__main__":
 
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    data_path = os.path.join(script_dir, '..', 'data', 'mpi')
-    output_path = os.path.join(script_dir, '..', 'results', 'mpi')
+    data_path = os.path.join('data', 'mpi')
+    output_path = os.path.join('results', 'mpi')
 
     os.makedirs(output_path, exist_ok=True)
 
