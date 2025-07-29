@@ -13,29 +13,32 @@ class AlbumentationsConfig(BaseConfig):
     # --- Geometric Transforms ---
     p: float = 0.0  # The "master" probability that any augmentation is applied to a frame.
 
-    rotate_limit: int = 15  # Max rotation in degrees. Set to 0 to disable.
-    shift_scale_rotate_p: float = 0.5
+    rotate_limit: int = 0  # Max rotation in degrees. Set to 0 to disable.
+    affine_p: float = 0.0  # Probability of applying affine transformations.
+    shift_scale_rotate_p: float = 0.0
 
-    horizontal_flip_p: float = 0.5
-    vertical_flip_p: float = 0.5
+    horizontal_flip_p: float = 0.0
+    vertical_flip_p: float = 0.0
 
     # Simulates tissue stretching. Crucial for microscopy.
-    elastic_p: float = 0.3
+    elastic_p: float = 0.0
     elastic_alpha: int = 1
     elastic_sigma: int = 20
     elastic_alpha_affine: int = 20
 
     # Simulates lens distortion.
-    grid_distortion_p: float = 0.2
+    grid_distortion_p: float = 0.0
 
     # --- Pixel-level & Noise Transforms ---
-    brightness_contrast_p: float = 0.5
+    brightness_contrast_p: float = 0.0
     brightness_limit: float = 0.1
     contrast_limit: float = 0.1
 
-    gauss_noise_p: float = 0.3
+    gauss_noise_p: float = 0.0
     gauss_noise_mean_range: tuple[float, float] = (-0.1, 0.1)
     gauss_noise_std_range: tuple[float, float] = (0.1, 0.5)
+
+
 
     def __post_init__(self):
         """
