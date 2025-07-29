@@ -126,7 +126,7 @@ def render_frame(
         frame = utils.apply_global_blur(frame, cfg)
         logger.debug(f"Frame {frame_idx}: Applied global blur (sigma={cfg.global_blur_sigma:.2f}).")
 
-        show_frame(frame, title="Before Albumentations")
+        # show_frame(frame, title="Before Albumentations")
 
         if cfg.contrast > 0.0:
             frame = utils.apply_contrast(frame, cfg.contrast)
@@ -136,7 +136,7 @@ def render_frame(
             frame = utils.apply_brightness(frame, cfg.brightness)
             logger.debug(f"Frame {frame_idx}: Applied brightness adjustment (factor={cfg.brightness:.2f}).")
 
-        show_frame(frame, title="After Albumentations")
+        # show_frame(frame, title="After Albumentations")
 
     except Exception as e:
         logger.error(f"Frame {frame_idx}: Error applying photophysics/camera effects: {e}", exc_info=True)
