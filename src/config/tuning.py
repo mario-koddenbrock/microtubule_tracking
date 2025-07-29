@@ -36,7 +36,7 @@ class TuningConfig(BaseConfig):
     load_if_exists: bool = True
 
     # ─── Static Video Properties (not tuned) ────────────────────────
-    img_size: Tuple[int, int] = (462, 462)
+    img_size: Tuple[int, int] = (500, 500)
     fps: int = 5
 
     # =========================================================================
@@ -55,8 +55,8 @@ class TuningConfig(BaseConfig):
 
     # ─── Seeding & rendering ranges ───────────────────────
     num_microtubule_range: Tuple[int, int] = (5, 50)
-    microtubule_seed_min_dist_range: Tuple[int, int] = (0, 50)
-    margin_range: Tuple[int, int] = (0, 20)
+    microtubule_seed_min_dist: int = 10
+    margin: int = 5
     psf_sigma_h_range: Tuple[float, float] = (0.2, 0.4)
     psf_sigma_v_range: Tuple[float, float] = (0.6, 0.9)
     tubule_width_variation_range: Tuple[float, float] = (0.0, 0.2)
@@ -142,8 +142,6 @@ class TuningConfig(BaseConfig):
             ("bending_prob_range", self.bending_prob_range, True),
             ("max_angle_sign_changes_range", self.max_angle_sign_changes_range, True),
             ("num_microtubule_range", self.num_microtubule_range, True),
-            ("microtubule_seed_min_dist_range", self.microtubule_seed_min_dist_range, True),
-            ("margin_range", self.margin_range, True),
             ("psf_sigma_h_range", self.psf_sigma_h_range, True),
             ("psf_sigma_v_range", self.psf_sigma_v_range, True),
             ("tubule_width_variation_range", self.tubule_width_variation_range, True),
@@ -197,9 +195,6 @@ class TuningConfig(BaseConfig):
 
         # --- Seeding & Rendering ---
         suggested_params["num_microtubule"] = trial.suggest_int("num_microtubule", *self.num_microtubule_range)
-        suggested_params["microtubule_seed_min_dist"] = trial.suggest_int("microtubule_seed_min_dist",
-                                                                          *self.microtubule_seed_min_dist_range)
-        suggested_params["margin"] = trial.suggest_int("margin", *self.margin_range)
         suggested_params["psf_sigma_h"] = trial.suggest_float("psf_sigma_h", *self.psf_sigma_h_range)
         suggested_params["psf_sigma_v"] = trial.suggest_float("psf_sigma_v", *self.psf_sigma_v_range)
         suggested_params["tubule_width_variation"] = trial.suggest_float("tubule_width_variation",
@@ -254,6 +249,8 @@ class TuningConfig(BaseConfig):
             generate_microtubule_mask=self.generate_microtubule_mask,
             generate_seed_mask=self.generate_seed_mask,
             albumentations=None,
+            margin=self.margin,
+            microtubule_seed_min_dist=self.microtubule_seed_min_dist,
             **suggested_params
         )
 
