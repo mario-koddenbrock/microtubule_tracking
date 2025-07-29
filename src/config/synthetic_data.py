@@ -64,6 +64,9 @@ class SyntheticDataConfig(BaseConfig):
     seed_red_channel_boost: float = 0.5
     tip_brightness_factor: float = 1.2  # Growing tips are brighter
 
+    brightness: float = 0.0  # Default brightness adjustment
+    contrast: float = 0.0  # Default contrast adjustment
+
     red_channel_noise_std: float = 0.01  # Std dev for red-only noise
 
     quantum_efficiency: float = 50.0
@@ -103,6 +106,17 @@ class SyntheticDataConfig(BaseConfig):
 
     def __post_init__(self):
         super().__post_init__()
+
+        # Convert nested dicts from JSON/dict loading into dataclass instances
+        if self.albumentations and isinstance(self.albumentations, dict):
+            self.albumentations = AlbumentationsConfig(**self.albumentations)
+        if isinstance(self.fixed_spots, dict):
+            self.fixed_spots = SpotConfig(**self.fixed_spots)
+        if isinstance(self.moving_spots, dict):
+            self.moving_spots = SpotConfig(**self.moving_spots)
+        if isinstance(self.random_spots, dict):
+            self.random_spots = SpotConfig(**self.random_spots)
+
         logger.info(f"SyntheticDataConfig '{self.id}' initialized. Running initial validation...")
         try:
             self.validate()
