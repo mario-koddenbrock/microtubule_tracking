@@ -37,8 +37,7 @@ def main(data_path: str, output_path: str, num_frames: int = 10):
         for frame_idx, frame in enumerate(frames):
 
             frame_output_path = os.path.join(output_path, f"{base_name}_frame_{frame_idx:02d}.png")
-            frame_uint8 = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(frame_output_path, frame_uint8)
+            cv2.imwrite(frame_output_path, frame)
 
 
 
