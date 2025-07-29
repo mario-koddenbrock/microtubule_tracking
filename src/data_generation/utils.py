@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from typing import Tuple, List, Union, Optional
 
 import albumentations as A
@@ -6,6 +7,7 @@ import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import distance
+from skimage.exposure import exposure
 
 from config.album_config import AlbumentationsConfig
 from config.synthetic_data import SyntheticDataConfig
@@ -410,3 +412,23 @@ def build_albumentations_pipeline(cfg: Optional[Union[AlbumentationsConfig, dict
     except Exception as e:
         logger.error(f"Error building Albumentations pipeline: {e}. Returning None pipeline.", exc_info=True)
         return None
+
+
+def apply_contrast(frame: np.ndarray, contrast: float) -> np.ndarray:
+    """
+    Adjusts the contrast of the input frame.
+    contrast > 1.0 increases contrast, contrast < 1.0 decreases contrast.
+    """
+
+    frame = np.clip(frame, 0, 1)
+    frame = exposure.adjust_log(frame, 1)
+
+    return np.clip(frame, 0.0, 1.0).astype(frame.dtype)
+
+
+def apply_brightness(frame: np.ndarray, brightness: float) -> np.ndarray:
+    """
+    Adjusts the brightness of the input frame.
+    brightness > 0 increases brightness, brightness < 0 decreases brightness.
+    """
+    return np.clip(frame + brightness, 0, 1 if frame.dtype == np.float32 else 255).astype(frame.dtype)

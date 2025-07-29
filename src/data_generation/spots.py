@@ -2,14 +2,15 @@ import logging
 from typing import Tuple, List, Union
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 
 from config.spots import SpotConfig
 
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-import numpy as np
 
 def _generate_polygon_vertices(center_y: int, center_x: int, avg_radius: int, min_verts: int, max_verts: int) -> np.ndarray:
     """
@@ -52,6 +53,13 @@ def _generate_polygon_vertices(center_y: int, center_x: int, avg_radius: int, mi
     #    This is done in a vectorized way for performance.
     points_x = center_x + radii * np.cos(angles)
     points_y = center_y + radii * np.sin(angles)
+
+    pos_noise_factor = 0.5
+    x_pos_noise = np.random.uniform(-avg_radius * pos_noise_factor, avg_radius * pos_noise_factor, num_vertices)
+    y_pos_noise = np.random.uniform(-avg_radius * pos_noise_factor, avg_radius * pos_noise_factor, num_vertices)
+    points_x += x_pos_noise
+    points_y += y_pos_noise
+
 
     # 5. Combine the x and y coordinates into a single (N, 2) array of vertices.
     #    np.vstack creates a (2, N) array, so we transpose it with .T
@@ -158,63 +166,27 @@ class SpotGenerator:
             logger.debug("No persistent spots to draw. Returning original image.")
             return img
 
-        if img.ndim == 3:
-            h, w, _ = img.shape
-            is_rgb = True
-        else:
-            h, w = img.shape
-            is_rgb = False
-
-        for idx in range(self.n_spots):
-            try:
-                # Create a 2D (grayscale) mask for each spot.
-                mask = np.zeros((h, w), dtype=np.float32)
-                intensity = self.intensities[idx]
-                (y, x) = self.coords[idx]
-
-                # Draw the shape onto the mask
-                if self.spot_shapes[idx] == 'polygon':
-                    verts = self.polygon_vertices[idx]
-                    cv2.fillPoly(mask, [verts], intensity)
-                else:  # 'circle'
-                    radius = self.radii[idx]
-                    cv2.circle(mask, (int(x), int(y)), radius, intensity, -1)
-
-                kernel_size = self.kernel_sizes[idx]
-                kernel = 2 * kernel_size + 1
-                if kernel <= 0:
-                    logger.warning(f"Kernel size for spot {idx} is non-positive ({kernel_size}). Forcing to 1.")
-                    kernel = 1
-                elif kernel % 2 == 0:
-                    kernel += 1
-
-                # Blur the 2D mask
-                if self.cfg.sigma > 0 and kernel > 1:
-                    mask = cv2.GaussianBlur(mask, (kernel, kernel), self.cfg.sigma)
-
-                # Add/subtract the mask to the image.
-                if is_rgb:
-                    img -= mask[..., np.newaxis]
-                else:
-                    img -= mask
-
-            except Exception as e:
-                logger.error(f"Error drawing spot {idx} at ({self.coords[idx]}): {e}", exc_info=True)
-
-        logger.debug(f"Finished drawing {self.n_spots} persistent spots.")
-        return img
+        return SpotGenerator._draw_spots(
+            img=img,
+            spot_coords=self.coords,
+            intensities=self.intensities,
+            radii=self.radii,
+            kernel_sizes=self.kernel_sizes,
+            sigma=self.cfg.sigma,
+            shapes=self.spot_shapes,
+            polygon_vertices=self.polygon_vertices,
+        )
 
     @staticmethod
-    def draw_spots(img: np.ndarray, spot_coords: List[Tuple[int, int]], intensity: Union[float, List[float]],
-                   radii: List[int], kernel_sizes: List[int], sigma: float) -> np.ndarray:
+    def _draw_spots(img: np.ndarray, spot_coords: List[Tuple[int, int]],
+                    intensities: Union[float, List[float]],
+                    radii: List[int], kernel_sizes: List[int], sigma: float,
+                    shapes: List[str], polygon_vertices: dict) -> np.ndarray:
         """
-        Draws circular spots onto an image. Can handle grayscale or RGB images.
-        This is kept for stateless random spots which are always circles.
+        Draws spots onto an image. Can handle grayscale or RGB, circles or polygons,
+        and can add or subtract the spots from the image.
         """
-        logger.debug(f"Drawing {len(spot_coords)} spots on image (shape: {img.shape}).")
-
-        if len(spot_coords) == 0:
-            logger.debug("No spot coordinates provided for drawing. Returning original image.")
+        if not spot_coords:
             return img
 
         if img.ndim == 3:
@@ -223,45 +195,61 @@ class SpotGenerator:
         else:
             h, w = img.shape
             is_rgb = False
-        logger.debug(f"Image dimensions: H={h}, W={w}. Is RGB: {is_rgb}.")
 
-        if isinstance(intensity, list):
-            if len(intensity) != len(spot_coords):
-                msg = f"Intensity list length ({len(intensity)}) must match the length of spot coordinates ({len(spot_coords)})."
-                logger.error(msg)
-                raise ValueError(msg)
-        else:
-            intensity = [intensity] * len(spot_coords)
+        if isinstance(intensities, float):
+            intensities = [intensities] * len(spot_coords)
 
-        for idx, (y, x) in enumerate(spot_coords):
+        for idx, (y, x) in enumerate(tqdm(spot_coords, desc=f"Drawing spots", unit="spots")):
+
             try:
                 mask = np.zeros((h, w), dtype=np.float32)
-                cv2.circle(mask, (int(x), int(y)), radii[idx], intensity[idx], -1)
+                intensity = intensities[idx]
+                shape = shapes[idx]
 
-                kernel = 2 * kernel_sizes[idx] + 1
+                if shape == 'polygon':
+                    verts = polygon_vertices[idx]
+                    cv2.fillPoly(mask, [verts], intensity)
+                else:  # 'circle'
+                    radius = radii[idx]
+                    cv2.circle(mask, (int(x), int(y)), radius, intensity, -1)
+
+                # plt.imshow(mask, cmap='viridis')
+                # plt.axis('off')
+                # plt.title(f"Initial mask for spot {idx} at ({y},{x}) with shape {shape}")
+                # plt.show()
+
+                kernel_size = kernel_sizes[idx]
+                kernel = 2 * kernel_size + 1
                 if kernel <= 0:
-                    logger.warning(f"Kernel size for spot {idx} is non-positive ({kernel_sizes[idx]}). Forcing to 1.")
+                    logger.warning(f"Kernel size for spot {idx} is non-positive ({kernel_size}). Forcing to 1.")
                     kernel = 1
                 elif kernel % 2 == 0:
                     kernel += 1
 
                 if sigma > 0 and kernel > 1:
                     mask = cv2.GaussianBlur(mask, (kernel, kernel), sigma)
-                    logger.debug(
-                        f"Spot {idx}: Applied Gaussian blur with kernel {kernel}x{kernel} and sigma {sigma:.2f}.")
-                else:
-                    logger.debug(f"Spot {idx}: Skipping Gaussian blur (sigma={sigma:.2f}, kernel={kernel}).")
+
+                    # plt.imshow(mask, cmap='viridis')
+                    # plt.axis('off')
+                    # plt.title(f"Blurred mask for spot {idx} at ({y},{x}) with shape {shape}")
+                    # plt.show()
 
                 if is_rgb:
-                    img -= mask[..., np.newaxis]
-                else:
-                    img -= mask
+                    mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
+
+
+                img += mask
+
+                # plt.imshow(img, cmap='viridis')
+                # plt.axis('off')
+                # plt.title(f"Spot {idx} at ({y},{x}) with shape {shape}")
+                # plt.show()
+
 
             except Exception as e:
                 logger.error(f"Error drawing spot {idx} at ({y},{x}): {e}", exc_info=True)
 
-        logger.debug(f"Finished drawing {len(spot_coords)} spots.")
-        return img
+        return np.clip(img, 0.0, 1.0)
 
     @staticmethod
     def apply_random_spots(img: np.ndarray, spot_cfg: SpotConfig) -> np.ndarray:
@@ -285,16 +273,19 @@ class SpotGenerator:
         radii = [np.random.randint(spot_cfg.radius_min, spot_cfg.radius_max + 1) for _ in range(n_spots)]
         kernel_sizes = [np.random.randint(spot_cfg.kernel_size_min, spot_cfg.kernel_size_max + 1) for _ in
                         range(n_spots)]
+        shapes = ['circle'] * n_spots
 
         if n_spots > 0:
             logger.debug(
                 f"Sample random spot properties: Coords={coords[0]}, Intensity={intensities[0]:.4f}, Radius={radii[0]}, Kernel Size={kernel_sizes[0]}.")
 
-        return SpotGenerator.draw_spots(
-            img,
-            coords,
-            intensities,
-            radii,
-            kernel_sizes,
-            spot_cfg.sigma,
+        return SpotGenerator._draw_spots(
+            img=img,
+            spot_coords=coords,
+            intensities=intensities,
+            radii=radii,
+            kernel_sizes=kernel_sizes,
+            sigma=spot_cfg.sigma,
+            shapes=shapes,
+            polygon_vertices={},  # No polygons for random spots
         )

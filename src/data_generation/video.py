@@ -1,19 +1,19 @@
-import os
 import logging
+import os
 from typing import List, Tuple, Optional, Dict, Any
 
 import albumentations as A
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
 from config.synthetic_data import SyntheticDataConfig
 from data_generation import utils
-from data_generation.spots import SpotGenerator
 from data_generation.microtubule import Microtubule
+from data_generation.spots import SpotGenerator
 from file_io.utils import save_ground_truth
 from file_io.writers import VideoOutputManager
-
-
+from plotting.plotting import show_frame
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -62,7 +62,7 @@ def render_frame(
 
     # ─── Simulate and Draw Microtubules ──────────────────────────
     logger.debug(f"Frame {frame_idx}: Simulating and drawing {len(mts)} microtubules.")
-    for mt_idx, mt in enumerate(mts):
+    for mt_idx, mt in enumerate(tqdm(mts, desc=f"Frame {frame_idx} MTs", unit="MT")):
         try:
             mt.step()
             mt.base_point += jitter
@@ -125,6 +125,19 @@ def render_frame(
 
         frame = utils.apply_global_blur(frame, cfg)
         logger.debug(f"Frame {frame_idx}: Applied global blur (sigma={cfg.global_blur_sigma:.2f}).")
+
+        show_frame(frame, title="Before Albumentations")
+
+        if cfg.contrast > 0.0:
+            frame = utils.apply_contrast(frame, cfg.contrast)
+            logger.debug(f"Frame {frame_idx}: Applied contrast adjustment (factor={cfg.contrast:.2f}).")
+
+        if cfg.brightness > 0.0:
+            frame = utils.apply_brightness(frame, cfg.brightness)
+            logger.debug(f"Frame {frame_idx}: Applied brightness adjustment (factor={cfg.brightness:.2f}).")
+
+        show_frame(frame, title="After Albumentations")
+
     except Exception as e:
         logger.error(f"Frame {frame_idx}: Error applying photophysics/camera effects: {e}", exc_info=True)
 
@@ -135,11 +148,20 @@ def render_frame(
             # Albumentations expects uint8 or float, ensure float [0,1]
             # Convert back to original frame type if needed
             # For simplicity, passing float32 as is.
+            plt.imshow(frame)
+            plt.axis("off")
+            plt.title(f"Frame {frame_idx}")
+            plt.show()
             augmented = aug_pipeline(image=frame, mask=microtubule_mask if microtubule_mask is not None else None)
             frame = augmented['image']
             if microtubule_mask is not None:
                 microtubule_mask = augmented['mask']
             logger.debug(f"Frame {frame_idx}: Albumentations applied.")
+
+            plt.imshow(frame)
+            plt.axis("off")
+            plt.title(f"Augmented Frame {frame_idx}")
+            plt.show()
         except Exception as e:
             logger.error(f"Frame {frame_idx}: Error applying Albumentations: {e}", exc_info=True)
             # Log error but don't stop rendering the frame
@@ -212,10 +234,10 @@ def generate_frames(
     try:
         if cfg.albumentations:
             aug_pipeline = utils.build_albumentations_pipeline(cfg.albumentations)
-            if aug_pipeline:
-                logger.info(f"Albumentations pipeline built successfully (master prob: {cfg.albumentations.p:.2f}).")
-            else:
-                logger.info("Albumentations config provided but pipeline is None (e.g., p=0 or no transforms).")
+            # if aug_pipeline:
+            #     logger.info(f"Albumentations pipeline built successfully (master prob: {cfg.albumentations.p:.2f}).")
+            # else:
+            #     logger.info("Albumentations config provided but pipeline is None (e.g., p=0 or no transforms).")
         else:
             logger.info("Albumentations configuration is None. No augmentation pipeline will be built.")
     except Exception as e:
@@ -265,16 +287,11 @@ def generate_video(
 
     try:
         # Process and write each frame one-by-one using the generator
-        for frame_img_rgb, gt_data_for_frame, microtubule_mask_img, seed_mask_img in tqdm(
-                generate_frames(
-                    cfg,
-                    cfg.num_frames,
-                    return_microtubule_mask=cfg.generate_microtubule_mask,
-                    return_seed_mask=cfg.generate_seed_mask,
-                ),
-                total=cfg.num_frames,
-                desc=f"Generating video Series {cfg.id}"
-        ):
+        for frame_img_rgb, gt_data_for_frame, microtubule_mask_img, seed_mask_img in (
+                generate_frames(cfg, cfg.num_frames,
+                                return_microtubule_mask=cfg.generate_microtubule_mask,
+                                return_seed_mask=cfg.generate_seed_mask)):
+
             frames.append(frame_img_rgb)
             all_gt_data.extend(gt_data_for_frame)
             try:
