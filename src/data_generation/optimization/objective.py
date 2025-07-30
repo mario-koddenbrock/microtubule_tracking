@@ -36,31 +36,21 @@ def objective(
     logger.info(f"--- Starting Optuna Trial {trial.number} ---")
     logger.debug(f"Trial parameters being evaluated: {trial.params}")
 
-    cfg: Optional[SyntheticDataConfig] = None
-    synthetic_embeddings: Optional[np.ndarray] = None
-    score: float = -float('inf')  # Default to a very bad score in case of any failure
-
     try:
-        # 1. Generate synthetic data config for this trial
+        # Generate synthetic data config for this trial
         logger.debug(f"Trial {trial.number}: Creating SyntheticDataConfig from trial parameters.")
         cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
-        logger.debug(f"Trial {trial.number}: SyntheticDataConfig created successfully (ID: {cfg.id}).")
 
-        # Determine how many frames to generate for comparison
-        # Use num_compare_frames from tuning_cfg, which determines how many frames are used for evaluation
+        # Extract embeddings from the newly generated synthetic data
         num_eval_frames = tuning_cfg.num_compare_frames
         logger.debug(f"Trial {trial.number}: Generating and extracting embeddings for {num_eval_frames} frames.")
-
-        # 2. Extract embeddings from the newly generated synthetic data
         synthetic_embeddings = embedding_extractor.extract_from_synthetic_config(cfg, num_eval_frames)
 
         if synthetic_embeddings is None or synthetic_embeddings.size == 0:
             logger.warning(f"Trial {trial.number}: No synthetic embeddings extracted. Returning -inf.")
             return -float('inf')  # Cannot proceed without embeddings
 
-        logger.debug(f"Trial {trial.number}: Extracted synthetic embeddings shape: {synthetic_embeddings.shape}.")
-
-        # 3. Evaluate this new configuration against the reference embeddings.
+        # Evaluate this new configuration against the reference embeddings.
         logger.debug(f"Trial {trial.number}: Computing similarity score using metric '{tuning_cfg.similarity_metric}'.")
         score = similarity(
             tuning_cfg=tuning_cfg,
