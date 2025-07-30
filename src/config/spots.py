@@ -52,6 +52,8 @@ class SpotConfig(BaseConfig):
 
     def __post_init__(self):
         super().__post_init__()
+        self.polygon_vertex_count_max = max(self.polygon_vertex_count_min, self.polygon_vertex_count_max)
+        self.kernel_size_max = max(self.kernel_size_min, self.kernel_size_max)
         logger.debug(f"SpotConfig initialized with count={self.count}.")
 
 
