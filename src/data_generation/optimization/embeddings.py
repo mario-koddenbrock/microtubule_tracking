@@ -101,8 +101,8 @@ class ImageEmbeddingExtractor:
                 processor = AutoImageProcessor.from_pretrained(model_name, cache_dir=cache_dir, use_fast=True)
                 logger.debug(f"Loaded AutoModel and AutoImageProcessor: {model_name}.")
 
-            self.model.to(self.device)
-            self.model.eval()  # Set model to evaluation mode
+            model.to(self.device)
+            model.eval()  # Set model to evaluation mode
 
             return model, processor
         except Exception as e:
@@ -187,7 +187,10 @@ class ImageEmbeddingExtractor:
         ref_dir = self.config.reference_series_dir
         logger.debug(f"Scanning for reference videos in: {ref_dir}")
 
-        video_files = glob(os.path.join(ref_dir, "*.avi")) + glob(os.path.join(ref_dir, "*.tif"))
+        video_files = (glob(os.path.join(ref_dir, "*.avi")) +
+                       glob(os.path.join(ref_dir, "*.tif")) +
+                          glob(os.path.join(ref_dir, "*.mp4")))
+
         logger.debug(f"Found {len(video_files)} video files matching patterns.")
 
         if not video_files:
@@ -279,22 +282,16 @@ class ImageEmbeddingExtractor:
         logger.info(
             f"Extracting embeddings from synthetic config (ID: {synthetic_cfg.id}). Comparing {num_compare_frames} frames.")
         raw_embeddings = []
-        try:
-            frame_generator = generate_frames(synthetic_cfg, num_compare_frames)
-            # Adjust total for tqdm if generate_frames yields more than num_compare_frames or has a fixed yield.
-            # Assuming it yields exactly num_compare_frames here.
-            for frame, *_ in tqdm(frame_generator, total=num_compare_frames,
-                                  desc=f"Generating & processing frames for {synthetic_cfg.id}"):
-                rgb_frame = self.convert_frame(frame)
-                emb = self._compute_embedding(rgb_frame)
-                raw_embeddings.append(emb)
-                logger.debug(
-                    f"Generated and processed frame for synthetic config {synthetic_cfg.id}. Embedding shape: {emb.shape}")
-        except Exception as e:
-            logger.error(
-                f"Error during synthetic frame generation or embedding extraction for config ID {synthetic_cfg.id}: {e}",
-                exc_info=True)
-            raise
+        frame_generator = generate_frames(synthetic_cfg, num_compare_frames)
+
+        for frame, *_ in tqdm(frame_generator, total=num_compare_frames, desc=f"Generating & processing frames for {synthetic_cfg.id}"):
+
+            # frame is already in RGB format, no need to convert
+            # rgb_frame = self.convert_frame(frame)
+            emb = self._compute_embedding(frame)
+            raw_embeddings.append(emb)
+            logger.debug(f"Generated and processed frame for synthetic config {synthetic_cfg.id}. Embedding shape: {emb.shape}")
+
 
         if not raw_embeddings:
             logger.warning(f"No embeddings generated for synthetic config ID {synthetic_cfg.id}.")
