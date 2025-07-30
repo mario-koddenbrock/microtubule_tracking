@@ -21,89 +21,50 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     """
     logger.info(f"{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
 
-    try:
-        os.makedirs(output_dir, exist_ok=True)
-        logger.debug(f"Ensured output directory exists: {output_dir}")
-    except OSError as e:
-        logger.critical(f"Failed to create output directory {output_dir}. Evaluation cannot proceed. Error: {e}",
-                        exc_info=True)
-        return
 
     logger.info("--- Loading configurations and study results ---")
+    tuning_cfg = TuningConfig.load(tuning_config_path)
 
-    try:
-        tuning_cfg = TuningConfig.load(tuning_config_path)
-        logger.info(f"Loaded tuning configuration from: {tuning_config_path}")
-    except FileNotFoundError:
-        logger.critical(f"Tuning config file not found: {tuning_config_path}. Evaluation cannot proceed.")
-        return
-    except Exception as e:
-        logger.critical(f"Error loading tuning config from {tuning_config_path}: {e}", exc_info=True)
-        return
-
+    # Ensure folders exist for output and temporary files
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(tuning_cfg.temp_dir, exist_ok=True)
 
     # Load the completed Optuna study from its database file
-    os.makedirs(tuning_cfg.temp_dir, exist_ok=True)
     study_db_path = os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')
     full_study_db_uri = f"sqlite:///{study_db_path}"
     logger.debug(f"Attempting to load Optuna study from: {full_study_db_uri}")
-    try:
-        study = optuna.load_study(study_name=tuning_cfg.output_config_id, storage=full_study_db_uri)
-        # trials = study.get_trials(deepcopy=False)
-        # scores = [trial.value for trial in trials if trial.value is not None]
-        # max_score_idx = np.argmax(scores) if scores else None
-        logger.info(f"Loaded Optuna study '{tuning_cfg.output_config_id}' from: {full_study_db_uri}")
-        logger.info(f"Best trial: {study.best_trial.value:.4f} (Trial {study.best_trial.number})")
-    except KeyError:
-        logger.critical(
-            f"Could not find study '{tuning_cfg.output_config_id}' in the database file: {full_study_db_uri}.")
-        logger.critical("Please ensure you have run the optimization script first and the study name/ID matches.")
-        return
-    except Exception as e:
-        logger.critical(f"Error loading Optuna study from {full_study_db_uri}: {e}", exc_info=True)
-        return
 
-    try:
-        best_cfg = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
-        best_cfg.num_frames = tuning_cfg.output_config_num_frames
-        best_cfg.id = tuning_cfg.output_config_id
-        best_cfg.generate_microtubule_mask = False
+    study = optuna.load_study(study_name=tuning_cfg.output_config_id, storage=full_study_db_uri)
+    # trials = study.get_trials(deepcopy=False)
+    # scores = [trial.value for trial in trials if trial.value is not None]
+    # max_score_idx = np.argmax(scores) if scores else None
+    logger.info(f"Loaded Optuna study '{tuning_cfg.output_config_id}' from: {full_study_db_uri}")
+    logger.info(f"Best trial: {study.best_trial.value:.4f} (Trial {study.best_trial.number})")
 
-        # # Load the best synthetic config found during optimization
-        # best_cfg = SyntheticDataConfig.load(tuning_cfg.output_config_file)
-        # logger.info(f"Loaded best synthetic configuration from: {tuning_cfg.output_config_file}")
-    except FileNotFoundError:
-        logger.critical(
-            f"Best synthetic config file not found: {tuning_cfg.output_config_file}. Ensure optimization ran successfully.")
-        return
-    except Exception as e:
-        logger.critical(f"Error loading best synthetic config from {tuning_cfg.output_config_file}: {e}", exc_info=True)
-        return
+
+    best_cfg = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
+    best_cfg.num_frames = tuning_cfg.output_config_num_frames
+    best_cfg.id = tuning_cfg.output_config_id
+    best_cfg.generate_microtubule_mask = False
+
+    # # Load the best synthetic config found during optimization
+    # best_cfg = SyntheticDataConfig.load(tuning_cfg.output_config_file)
+    # logger.info(f"Loaded best synthetic configuration from: {tuning_cfg.output_config_file}")
+
 
     # Proceed with evaluation if all critical elements loaded
     if tuning_cfg and best_cfg and study:
-        try:
-            eval_config(best_cfg, tuning_cfg, output_dir)
-        except Exception as e:
-            logger.error(f"Error during core configuration evaluation: {e}", exc_info=True)
-            # Decide if this error should stop the entire script or just log and continue
-            # For now, we log and proceed to try plotting if possible.
+
+        eval_config(best_cfg, tuning_cfg, output_dir)
 
         # Optimization history plot
         plot_output_dir = os.path.join(output_dir, "plots")
-        try:
-            try:
-                vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
-                vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
-                vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
-                logging.info("Analysis plots saved successfully.")
-            except (ValueError, ImportError) as e:
-                logging.warning(f"Could not generate plots: {e}")
-        except ImportError:
-            logger.warning(
-                "Optuna visualization dependencies not installed ('pip install 'optuna[visualization]'). Skipping history plot.")
-        except Exception as e:
-            logger.error(f"Could not generate optimization history plot: {e}", exc_info=True)
+
+        vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
+        vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
+        vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
+        logging.info("Analysis plots saved successfully.")
+
     else:
         logger.error("Skipping further evaluation due to previous critical errors in loading configurations or study.")
 
