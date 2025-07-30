@@ -3,7 +3,7 @@
   "hf_cache_dir": null,
   "reference_series_dir": "data/mpi_converted/type_B/250123_GLO19_R02_6um HEK PHK10_DMSO _002_cropped_flatfield_registered_BGsubt",
   "num_compare_series": 5,
-  "num_compare_frames": 5,
+  "num_compare_frames": 50,
   "temp_dir": ".temp",
   "output_config_file": "best_250123_GLO19_R02.json",
   "output_config_id": "best_250123_GLO19_R02",

@@ -1,8 +1,7 @@
 import logging
 import os
-from typing import Optional, List
+from typing import Dict, Any
 
-import numpy as np
 import optuna
 import optuna.visualization as vis
 
@@ -11,6 +10,7 @@ from config.tuning import TuningConfig
 from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 from data_generation.video import generate_video
 from plotting.plotting import visualize_embeddings
+from scripts.utils.toy_data import get_toy_data
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -78,10 +78,18 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
     frames = generate_video(cfg, output_dir)
     reference_vecs = embedding_extractor.extract_from_references()
     synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
+    toy_data: Dict[str, Any] = get_toy_data(embedding_extractor)
 
     logger.info("\n--- Creating visualizations ---")
     plot_output_dir = os.path.join(output_dir, "plots")
     os.makedirs(plot_output_dir, exist_ok=True)
 
-    visualize_embeddings(cfg, tuning_cfg, reference_vecs, synthetic_vecs, plot_output_dir)
+    visualize_embeddings(
+        cfg=cfg,
+        tuning_cfg=tuning_cfg,
+        ref_embeddings=reference_vecs,
+        synthetic_embeddings=synthetic_vecs,
+        toy_data=toy_data,
+        output_dir=plot_output_dir
+    )
     logger.info(f"Embedding plot saved in {plot_output_dir}")

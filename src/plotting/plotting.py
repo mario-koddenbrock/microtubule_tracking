@@ -1,12 +1,13 @@
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 import cv2
 import imageio
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from skimage.morphology import skeletonize
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
@@ -23,18 +24,34 @@ logger = logging.getLogger(f"mt.{__name__}")
 
 def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                          ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
+                         toy_data: Optional[Dict[str, Any]] = None,
                          output_dir: str = "plots/"):
 
     logger.info(f"Starting visualization of embeddings for config ID: {cfg.id}...")
     logger.debug(
         f"Reference embeddings shape: {ref_embeddings.shape}, Synthetic embeddings shape: {synthetic_embeddings.shape}.")
 
+    toy_embeddings = None
+    if toy_data and toy_data.get("embeddings") is not None:
+        toy_embeddings = toy_data["embeddings"]
+        if isinstance(toy_embeddings, np.ndarray):
+            logger.debug(f"Toy embeddings shape: {toy_embeddings.shape}")
+        else:
+            logger.warning(f"Toy embeddings are not a numpy array. Type: {type(toy_embeddings)}. Ignoring.")
+            toy_data = None # Invalidate toy_data if embeddings are bad
+            toy_embeddings = None
+    else:
+        toy_data = None # Ensure toy_data is None if no embeddings
+
 
     os.makedirs(output_dir, exist_ok=True)
     heatmap_path = os.path.join(output_dir, f"heatmap_{cfg.id}.png")
 
     try:
-        plot_similarity_matrix(tuning_cfg, ref_embeddings, synthetic_embeddings, save_to=heatmap_path)
+        plot_similarity_matrix(tuning_cfg, ref_embeddings, synthetic_embeddings,
+                               toy_embeddings=toy_embeddings,
+                               toy_labels=toy_data.get("labels") if toy_data else None,
+                               save_to=heatmap_path)
         logger.info(f"Similarity heatmap saved to {heatmap_path}")
     except Exception as e:
         logger.error(f"Failed to generate similarity heatmap: {e}", exc_info=True)
@@ -52,16 +69,36 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
 
     colour[np.isinf(colour)] = 0
 
-    # 3. Perform dimensionality reduction and plot 2D projection
-    projection_path = os.path.join(output_dir, f"projection_{cfg.id}.png")  # Changed from tsne_ to generic projection_
-    projection_method_name = "PCA"  # Default method name
+    # Calculate similarity for toy embeddings
+    toy_colour = None
+    if toy_embeddings is not None:
+        logger.info("Calculating similarity for toy embeddings.")
+        toy_colour = np.array([similarity(
+            tuning_cfg=tuning_cfg,
+            ref_embeddings=ref_embeddings,
+            synthetic_embeddings=toy_embeddings[i, :].reshape(1, -1),
+            **precomputed_kwargs,
+        ) for i in tqdm(range(toy_embeddings.shape[0]), desc="Calculating per-toy similarity")])
+        toy_colour[np.isinf(toy_colour)] = 0
+        logger.debug(f"Toy similarity 'toy_colour' array shape: {toy_colour.shape}")
 
+
+    # 3. Perform dimensionality reduction and plot 2D projection
+    projection_path = os.path.join(output_dir, f"projection_{cfg.id}.png")
+    projection_method_name = "PCA"
 
     logger.info(f"Performing {projection_method_name} projection for 2D plot.")
-    ref_2d, synthetic_2d = pca_projection(ref_embeddings, synthetic_embeddings)
+    ref_2d, synthetic_2d, toy_2d = pca_projection(ref_embeddings, synthetic_embeddings, toy_embeddings)
     logger.debug(f"Projection complete. Ref 2D shape: {ref_2d.shape}, Synthetic 2D shape: {synthetic_2d.shape}.")
+    if toy_2d is not None:
+        logger.debug(f"Toy 2D shape: {toy_2d.shape}.")
 
-    plot_2d_projection(ref_2d, synthetic_2d, colour, save_to=projection_path, method_name=projection_method_name)
+
+    plot_2d_projection(ref_2d, synthetic_2d, colour,
+                       toy_2d=toy_2d,
+                       toy_images=toy_data.get("images") if toy_data else None,
+                       toy_border_colours=toy_colour,
+                       save_to=projection_path, method_name=projection_method_name)
     logger.info(f"2D embedding projection plot saved to {projection_path}")
 
 
@@ -107,50 +144,66 @@ def tsne_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray
         return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2))
 
 
-def pca_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def pca_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
+                   toy_embeddings: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
     """
-    Performs PCA projection on reference and synthetic embeddings.
+    Performs PCA projection on reference, synthetic, and optional toy embeddings.
+    The PCA is fitted only on the reference embeddings.
 
     Args:
         ref_embeddings (np.ndarray): Embeddings from reference images.
         synthetic_embeddings (np.ndarray): Embeddings from synthetic images.
+        toy_embeddings (Optional[np.ndarray]): Optional embeddings from toy images.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: 2D projected reference and synthetic embeddings.
+        Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]: 2D projected reference, synthetic, and toy embeddings.
     """
     logger.debug("Starting PCA projection to 2 components.")
     logger.debug(
         f"Ref embeddings shape: {ref_embeddings.shape}, Synthetic embeddings shape: {synthetic_embeddings.shape}.")
 
-    all_vecs = np.vstack([ref_embeddings, synthetic_embeddings])
-    if all_vecs.shape[0] <= 1 or all_vecs.shape[1] < 2:
+    if ref_embeddings.shape[0] < 2 or ref_embeddings.shape[1] < 2:
         logger.warning(
-            f"Not enough samples or features for PCA (shape: {all_vecs.shape}). Returning original embeddings as is or zeros.")
-        # If all_vecs.shape[1] is 1, PCA to 2 components will fail.
-        # Handle by returning original or zeros.
-        return np.zeros((ref_embeddings.shape[0], 2)), np.zeros(
-            (synthetic_embeddings.shape[0], 2))  # Return zeros to avoid errors downstream
+            f"Not enough samples or features in reference embeddings for PCA (shape: {ref_embeddings.shape}). Returning zeros.")
+        toy_result = np.zeros((toy_embeddings.shape[0], 2)) if toy_embeddings is not None else None
+        return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
 
     try:
+        # Fit PCA *only* on the reference embeddings
         pca = PCA(n_components=2, random_state=42)
-        all_2d = pca.fit_transform(all_vecs)
-        logger.debug(f"PCA fitted. Explained variance ratio: {sum(pca.explained_variance_ratio_):.4f}")
-        logger.debug("PCA fitting and transformation complete.")
-        return np.split(all_2d, [len(ref_embeddings)], axis=0)
+        pca.fit(ref_embeddings)
+        logger.debug(f"PCA fitted on reference data. Explained variance ratio: {sum(pca.explained_variance_ratio_):.4f}")
+
+        # Transform all datasets using the fitted PCA
+        ref_2d = pca.transform(ref_embeddings)
+        synthetic_2d = pca.transform(synthetic_embeddings)
+
+        toy_2d = None
+        if toy_embeddings is not None:
+            logger.debug(f"Transforming toy embeddings of shape: {toy_embeddings.shape}.")
+            toy_2d = pca.transform(toy_embeddings)
+
+        return ref_2d, synthetic_2d, toy_2d
     except Exception as e:
         logger.error(f"Error during PCA projection: {e}", exc_info=True)
-        return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2))
+        toy_result = np.zeros((toy_embeddings.shape[0], 2)) if toy_embeddings is not None else None
+        return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
 
 
-def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.ndarray, save_to: str = None,
-                       method_name: str = "PCA"):
+def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.ndarray,
+                       toy_2d: Optional[np.ndarray] = None, toy_images: Optional[List[np.ndarray]] = None,
+                       toy_border_colours: Optional[np.ndarray] = None,
+                       save_to: str = None, method_name: str = "PCA"):
     """
-    Plots the 2D projection of embeddings.
+    Plots the 2D projection of embeddings, showing toy images directly on the plot.
 
     Args:
         ref_2d (np.ndarray): 2D projected reference embeddings.
         synthetic_2d (np.ndarray): 2D projected synthetic embeddings.
         colour (np.ndarray): Array of similarity scores for coloring synthetic points.
+        toy_2d (Optional[np.ndarray]): 2D projected toy embeddings.
+        toy_images (Optional[List[np.ndarray]]): The actual toy images to display.
+        toy_border_colours (Optional[np.ndarray]): Similarity scores for toy image borders.
         save_to (str, optional): Path to save the plot. If None, only displays.
         method_name (str): Name of the projection method (e.g., "PCA", "t-SNE").
     """
@@ -163,44 +216,87 @@ def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.
         return
 
     try:
-        plt.figure(figsize=(6, 5))
-        plt.scatter(ref_2d[:, 0], ref_2d[:, 1], alpha=.3, s=35, label="reference")
+        fig, ax = plt.subplots(figsize=(10, 9))
+        ax.scatter(ref_2d[:, 0], ref_2d[:, 1], alpha=.3, s=35, label="real")
 
-        # Only plot synthetic if data exists and is 2D
+        cmap = plt.get_cmap("viridis")
+        sc = None
         if synthetic_2d.shape[0] > 0 and synthetic_2d.shape[1] == 2:
-            sc = plt.scatter(synthetic_2d[:, 0], synthetic_2d[:, 1], c=colour, cmap="viridis",
-                             marker="x", s=80, linewidths=2, label="synthetic frames")
-            plt.colorbar(sc, label="max sim → reference")
+            sc = ax.scatter(synthetic_2d[:, 0], synthetic_2d[:, 1], c=colour, cmap=cmap,
+                            marker="x", s=80, linewidths=2, label="synthetic",
+                            vmin=0, vmax=1)  # Set fixed color limits
+            plt.colorbar(sc, ax=ax, label="max sim → reference")
         else:
             logger.warning("Synthetic 2D data is empty or not 2-dimensional. Skipping synthetic points in 2D plot.")
 
-        plt.legend()
-        plt.title(f"{method_name} of embeddings")
-        plt.tight_layout()
+        if toy_2d is not None and toy_images and toy_2d.shape[0] == len(toy_images):
+            logger.debug(f"Plotting {len(toy_images)} toy images on the 2D projection.")
+            norm = plt.Normalize(vmin=0, vmax=1)  # Use fixed normalization for borders
+
+            for i, (img, (x, y)) in enumerate(zip(toy_images, toy_2d)):
+                resized_img = cv2.resize(img, (32, 32), interpolation=cv2.INTER_AREA)
+                imagebox = OffsetImage(resized_img, zoom=2) # Zoom adjusted for smaller base size
+
+                border_color = 'red' # Default color
+                if toy_border_colours is not None and i < len(toy_border_colours):
+                    border_color = cmap(norm(toy_border_colours[i]))
+
+                ab = AnnotationBbox(imagebox, (x, y), frameon=True, pad=0.2,
+                                    bboxprops=dict(edgecolor=border_color, linewidth=2))
+                ax.add_artist(ab)
+        elif toy_2d is not None:
+            logger.warning(
+                "Toy images could not be plotted. Mismatch between image count and embedding count, or no images provided.")
+
+        # --- Adjust plot limits to include all points ---
+        all_x_coords = []
+        all_y_coords = []
+        if ref_2d.size > 0:
+            all_x_coords.append(ref_2d[:, 0])
+            all_y_coords.append(ref_2d[:, 1])
+        if synthetic_2d.size > 0:
+            all_x_coords.append(synthetic_2d[:, 0])
+            all_y_coords.append(synthetic_2d[:, 1])
+        if toy_2d is not None and toy_2d.size > 0:
+            all_x_coords.append(toy_2d[:, 0])
+            all_y_coords.append(toy_2d[:, 1])
+
+        if all_x_coords:
+            min_x, max_x = np.min(np.concatenate(all_x_coords)), np.max(np.concatenate(all_x_coords))
+            min_y, max_y = np.min(np.concatenate(all_y_coords)), np.max(np.concatenate(all_y_coords))
+            x_pad = (max_x - min_x) * 0.2 # Increased padding
+            y_pad = (max_y - min_y) * 0.2 # Increased padding
+            ax.set_xlim(min_x - x_pad, max_x + x_pad)
+            ax.set_ylim(min_y - y_pad, max_y + y_pad)
+        # --- End of adjustment ---
+
+        ax.legend()
+        ax.set_title(f"{method_name} of embeddings")
+        fig.tight_layout()
 
         if save_to:
-            try:
-                plt.savefig(save_to, bbox_inches='tight', dpi=300)
-                logger.info(f"2D {method_name} plot saved to {save_to}")
-            except Exception as e:
-                logger.error(f"Failed to save {method_name} plot to {save_to}: {e}", exc_info=True)
+            plt.savefig(save_to, bbox_inches='tight', dpi=300)
+            logger.info(f"2D {method_name} plot saved to {save_to}")
         else:
             logger.debug("2D projection plot not saved (save_to is None).")
 
-        plt.show(block=False)  # Show plot without blocking execution
+        plt.show(block=False)
     except Exception as e:
         logger.error(f"Error generating 2D projection plot: {e}", exc_info=True)
 
 
 def plot_similarity_matrix(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
+                           toy_embeddings: Optional[np.ndarray] = None, toy_labels: Optional[List[str]] = None,
                            max_labels: int = 30, save_to: str = None):
     """
-    Plots a similarity matrix (heatmap) between reference and synthetic embeddings.
+    Plots a similarity matrix (heatmap) between reference, synthetic, and toy embeddings.
 
     Args:
         tuning_cfg (TuningConfig): The tuning configuration, specifying the similarity metric.
         ref_embeddings (np.ndarray): Embeddings from reference images.
         synthetic_embeddings (np.ndarray): Embeddings from synthetic images.
+        toy_embeddings (Optional[np.ndarray]): Optional embeddings from other images.
+        toy_labels (Optional[List[str]]): Labels for toy embeddings.
         max_labels (int): Maximum number of labels to display on the heatmap axes.
         save_to (str, optional): Path to save the plot.
     """
@@ -212,7 +308,19 @@ def plot_similarity_matrix(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray,
         logger.warning("Reference or synthetic embeddings are empty. Skipping similarity matrix plot.")
         return
 
-    all_vecs = np.vstack([ref_embeddings, synthetic_embeddings])
+    vecs_to_stack = [ref_embeddings, synthetic_embeddings]
+    labels = ([f"ref {idx}" for idx in range(len(ref_embeddings))] +
+              [f"synth {idx}" for idx in range(len(synthetic_embeddings))])
+
+    if toy_embeddings is not None:
+        logger.debug(f"Adding {len(toy_embeddings)} toy embeddings to similarity matrix.")
+        vecs_to_stack.append(toy_embeddings)
+        if toy_labels and len(toy_labels) == len(toy_embeddings):
+            labels.extend(toy_labels)
+        else:
+            labels.extend([f"toy {idx}" for idx in range(len(toy_embeddings))])
+
+    all_vecs = np.vstack(vecs_to_stack)
     num_vecs = len(all_vecs)
     sim_mat = np.zeros((num_vecs, num_vecs))
 
@@ -228,25 +336,18 @@ def plot_similarity_matrix(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray,
     logger.debug("Calculating pairwise similarity matrix (might be slow for large N)...")
     for a in tqdm(range(sim_mat.shape[0]), desc="Calculating similarity matrix rows"):
         for b in range(sim_mat.shape[1]):
-            # The similarity function expects ref_embeddings to define the distribution
-            # and synthetic_embeddings to be the one(s) being compared.
-            # Here, we treat 'ref_embeddings' as the context for ALL comparisons.
-            # This might need review if cross-comparison (synth vs synth) is intended
-            # in a different context, but for now, it's comparing against the reference space.
             try:
                 sim_mat[a, b] = similarity(
                     tuning_cfg=tuning_cfg,
-                    ref_embeddings=ref_embeddings,  # Reference context
-                    synthetic_embeddings=all_vecs[b].reshape(1, -1),  # Single vector being compared
+                    ref_embeddings=ref_embeddings,
+                    synthetic_embeddings=all_vecs[b].reshape(1, -1),
                     **precomputed_kwargs,
                 )
             except Exception as e:
                 logger.error(f"Error computing similarity for matrix cell ({a},{b}): {e}. Setting to NaN.",
                              exc_info=True)
-                sim_mat[a, b] = np.nan  # Mark failed computations
+                sim_mat[a, b] = np.nan
 
-    labels = ([f"ref {idx}" for idx in range(len(ref_embeddings))] +
-              [f"synth {idx}" for idx in range(len(synthetic_embeddings))])
     step = max(1, len(labels) // max_labels)
     logger.debug(f"Heatmap labels count: {len(labels)}, step for display: {step}.")
 
