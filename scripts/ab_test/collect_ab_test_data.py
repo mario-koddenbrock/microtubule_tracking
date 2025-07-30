@@ -24,7 +24,7 @@ def main(data_path: str, output_path: str, num_frames: int = 10):
     for video_path in video_files:
         print(f"\nProcessing: {video_path}")
 
-        frames_list, fps = extract_frames(video_path, color_mode="rgb")
+        frames_list, fps = extract_frames(video_path)
         if not frames_list:
             print(f"  -> Skipping video, no frames were extracted.")
             return
