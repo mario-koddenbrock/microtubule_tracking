@@ -25,7 +25,7 @@ def load_all_frames(video_folder: str, max_frames_per_video: int) -> List[Tuple[
     all_frames_data = []
     for video_path in sorted(video_paths):
         try:
-            frames, _ = extract_frames(video_path, "rgb")
+            frames, _ = extract_frames(video_path)
             if not frames:
                 print(f"Warning: Could not extract frames from {os.path.basename(video_path)}")
                 continue
