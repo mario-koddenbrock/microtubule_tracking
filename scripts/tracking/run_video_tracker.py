@@ -20,7 +20,7 @@ def main(args):
 
     # 1. Load video into frames
     print(f"Loading video from: {args.video}")
-    frames, fps = extract_frames(args.video, color_mode="bgr")
+    frames, fps = extract_frames(args.video)
     if not frames:
         return
 
