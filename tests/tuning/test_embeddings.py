@@ -12,10 +12,15 @@ def tiny_model_tuning_config(shared_tmp_path):
     ref_dir.mkdir(exist_ok=True)
     # Create a dummy video file that extract_frames can process
     dummy_video_path = ref_dir / "ref.tif"
-    dummy_frame = (np.random.rand(32, 32, 3) * 255).astype(np.uint8)
-    # Mock cv2.imwrite if it's complex, or just use a library that works like tifffile
-    import tifffile
-    tifffile.imwrite(dummy_video_path, dummy_frame)
+    dummy_frame = (np.random.rand(500, 500, 3) * 255).astype(np.uint8)
+
+    import cv2
+    # Optionally, create a dummy mp4 video with OpenCV
+    dummy_video_path = ref_dir / "ref.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(str(dummy_video_path), fourcc, 1.0, (500, 500))
+    out.write(dummy_frame)
+    out.release()
 
     # Use a fast, small model for testing
     return TuningConfig(

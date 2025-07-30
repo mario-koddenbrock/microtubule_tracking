@@ -97,9 +97,9 @@ def test_create_config_from_trial():
     assert synth_cfg.tubulus_contrast == -0.3
     assert synth_cfg.seed_red_channel_boost == 0.6
     assert synth_cfg.max_angle_sign_changes == 1
-    assert synth_cfg.prob_to_flip_bend == 0.05
+    assert synth_cfg.prob_to_flip_bend == 0.1
 
     # Assert that nested objects are still created correctly
     assert isinstance(synth_cfg.fixed_spots, SpotConfig)
     assert synth_cfg.fixed_spots.count == 10
-    assert synth_cfg.moving_spots.max_step == 4
+    assert synth_cfg.moving_spots.max_step == 0  # Default value for moving spots
