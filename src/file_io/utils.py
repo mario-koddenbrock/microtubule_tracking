@@ -226,9 +226,9 @@ def process_tiff_video(
     return all_cropped_videos
 
 
-def extract_frames(video_path: str, color_mode: str = "grayscale", num_splits:int = 0, crop_size=(500, 500)) -> Tuple[List[List[np.ndarray]], int]:
+def extract_frames(video_path: str, num_splits:int = 0, crop_size=(500, 500)) -> Tuple[List[List[np.ndarray]], int]:
 
-    logger.info(f"Extracting frames from: {video_path} (desired color_mode: '{color_mode}').")
+    logger.info(f"Extracting frames from: {video_path}")
 
     if not os.path.isfile(video_path):
         logger.error(f"Video file not found: {video_path}")
@@ -263,15 +263,6 @@ def extract_frames(video_path: str, color_mode: str = "grayscale", num_splits:in
     except Exception as e:
         logger.error(f"An error occurred while extracting frames from {video_path}: {e}", exc_info=True)
         raise e
-
-
-    logger.debug(f"Performing final color mode conversion. First frame ndim: {ndim}, desired: '{color_mode}'.")
-
-    # If output color mode is grayscale but frames are 3-channel
-    if color_mode == "grayscale" and ndim == 3:
-        frames = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in
-                  frames]  # Assuming initial 3-channel is BGR from OpenCV
-        logger.debug(f"Converted all frames to grayscale.")
 
     logger.info(f"Finished extracting {len(frames)} frames with FPS {fps}.")
     return frames, fps
