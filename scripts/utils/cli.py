@@ -59,6 +59,37 @@ def parse_gen_args():
 
 
 
+def parse_optimization_args():
+    parser = argparse.ArgumentParser(
+        description="Run Optuna hyperparameter optimization and/or evaluation for microtubule tracking.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter  # Show default values in help
+    )
+    parser.add_argument(
+        "config_path",
+        type=str,
+        help="Path to the tuning configuration JSON file (e.g., config/tuning_config_A.json)."
+    )
+    parser.add_argument(
+        "--optimize",
+        action="store_true",
+        help="Run the Optuna optimization step. If neither --optimize nor --evaluate are specified, both run by default."
+    )
+    parser.add_argument(
+        "--evaluate",
+        action="store_true",
+        help="Run the evaluation step. If neither --optimize nor --evaluate are specified, both run by default."
+    )
+    args = parser.parse_args()
+    # Determine which actions to perform based on command-line flags
+    run_optimization_flag = args.optimize
+    run_evaluation_flag = args.evaluate
+    # If neither --optimize nor --evaluate flags were provided, default to running both
+    if not run_optimization_flag and not run_evaluation_flag:
+        run_optimization_flag = True
+        run_evaluation_flag = True
+
+    return run_optimization_flag, run_evaluation_flag, args.config_path
+
 
 def get_run_ids(args, base_config):
     if args.ids:
