@@ -24,47 +24,23 @@ logger = logging.getLogger(f"mt.{__name__}")
 def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                          ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
                          output_dir: str = "plots/"):
-    """
-    Generates and saves visualizations of image embeddings.
 
-    Args:
-        cfg (SyntheticDataConfig): The synthetic data configuration.
-        tuning_cfg (TuningConfig): The tuning configuration, specifying the similarity metric.
-        ref_embeddings (np.ndarray): Embeddings from reference images.
-        synthetic_embeddings (np.ndarray): Embeddings from synthetic images.
-        output_dir (str): Directory to save the plots.
-    """
     logger.info(f"Starting visualization of embeddings for config ID: {cfg.id}...")
     logger.debug(
         f"Reference embeddings shape: {ref_embeddings.shape}, Synthetic embeddings shape: {synthetic_embeddings.shape}.")
 
-    try:
-        os.makedirs(output_dir, exist_ok=True)
-        logger.debug(f"Ensured output directory exists: {output_dir}")
-    except OSError as e:
-        logger.error(f"Failed to create output directory {output_dir}: {e}", exc_info=True)
-        return  # Cannot proceed without output directory
 
-
-    # 1. Plot Similarity Matrix (Heatmap)
+    os.makedirs(output_dir, exist_ok=True)
     heatmap_path = os.path.join(output_dir, f"heatmap_{cfg.id}.png")
+
     try:
         plot_similarity_matrix(tuning_cfg, ref_embeddings, synthetic_embeddings, save_to=heatmap_path)
         logger.info(f"Similarity heatmap saved to {heatmap_path}")
     except Exception as e:
         logger.error(f"Failed to generate similarity heatmap: {e}", exc_info=True)
 
-    # 2. Compute per-synthetic-frame similarity for coloring 2D projection
-    logger.debug(
-        f"Calculating per-synthetic-frame similarity for 2D projection coloring using metric '{tuning_cfg.similarity_metric}'.")
-    precomputed_kwargs = {}
-    try:
-        precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
-    except Exception as e:
-        logger.error(f"Error during pre-computation of metric args for 2D projection: {e}", exc_info=True)
-        # Continue without precomputed, similarity function will recompute on-the-fly.
 
-
+    precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
     colour = np.array([similarity(
         tuning_cfg=tuning_cfg,
         ref_embeddings=ref_embeddings,
@@ -80,18 +56,15 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
     projection_path = os.path.join(output_dir, f"projection_{cfg.id}.png")  # Changed from tsne_ to generic projection_
     projection_method_name = "PCA"  # Default method name
 
-    try:
-        logger.info(f"Performing {projection_method_name} projection for 2D plot.")
-        ref_2d, synthetic_2d = pca_projection(ref_embeddings, synthetic_embeddings)
-        logger.debug(f"Projection complete. Ref 2D shape: {ref_2d.shape}, Synthetic 2D shape: {synthetic_2d.shape}.")
 
-        plot_2d_projection(ref_2d, synthetic_2d, colour, save_to=projection_path, method_name=projection_method_name)
-        logger.info(f"2D embedding projection plot saved to {projection_path}")
-    except Exception as e:
-        logger.error(f"Failed to generate 2D embedding projection plot using {projection_method_name}: {e}",
-                     exc_info=True)
+    logger.info(f"Performing {projection_method_name} projection for 2D plot.")
+    ref_2d, synthetic_2d = pca_projection(ref_embeddings, synthetic_embeddings)
+    logger.debug(f"Projection complete. Ref 2D shape: {ref_2d.shape}, Synthetic 2D shape: {synthetic_2d.shape}.")
 
-    logger.info(f"Embedding visualization complete for config ID: {cfg.id}.")
+    plot_2d_projection(ref_2d, synthetic_2d, colour, save_to=projection_path, method_name=projection_method_name)
+    logger.info(f"2D embedding projection plot saved to {projection_path}")
+
+
 
 
 def tsne_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray, similarity_metric: str,
