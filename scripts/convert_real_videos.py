@@ -29,7 +29,7 @@ def process_all(data_path, output_path):
 
 def split_and_convert(output_path, video_path, num_splits=3, num_frames=10):
 
-    frames_list, fps = extract_frames(video_path, color_mode="rgb", num_splits=num_splits, crop_size=(500, 500))
+    frames_list, fps = extract_frames(video_path, num_splits=num_splits, crop_size=(500, 500))
     if not frames_list:
         print(f"  -> Skipping video, no frames were extracted.")
         return
