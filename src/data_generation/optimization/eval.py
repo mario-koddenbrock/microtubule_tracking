@@ -32,28 +32,30 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     logger.debug(f"Attempting to load Optuna study from: {full_study_db_uri}")
 
     study = optuna.load_study(study_name=tuning_cfg.output_config_id, storage=full_study_db_uri)
-    # trials = study.get_trials(deepcopy=False)
-    # scores = [trial.value for trial in trials if trial.value is not None]
-    # max_score_idx = np.argmax(scores) if scores else None
     logger.info(f"Loaded Optuna study '{tuning_cfg.output_config_id}' from: {full_study_db_uri}")
-    logger.info(f"Best trial: {study.best_trial.value:.4f} (Trial {study.best_trial.number})")
+
+    trials = [t for t in study.get_trials(deepcopy=False) if t.state == optuna.trial.TrialState.COMPLETE]
+    sorted_trials = sorted(trials, key=lambda t: t.value, reverse=True)
+
+    # Choose top-N
+    top_n = 10
+    top_trials = sorted_trials[:top_n]
+
+    for i, trial in enumerate(top_trials):
+        logger.info(f"Trial {i + 1}: Value = {trial.value:.4f}, Params = {trial.params}")
+
+        current_cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
+        current_cfg.num_frames = tuning_cfg.output_config_num_frames
+        current_cfg.id = tuning_cfg.output_config_id
+        current_cfg.generate_microtubule_mask = False
+
+        if tuning_cfg and current_cfg and study:
+            eval_config(current_cfg, tuning_cfg, output_dir)
+        else:
+            logger.error("Skipping further evaluation due to previous critical errors in loading configurations or study.")
 
 
-    best_cfg = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
-    best_cfg.num_frames = tuning_cfg.output_config_num_frames
-    best_cfg.id = tuning_cfg.output_config_id
-    best_cfg.generate_microtubule_mask = False
-
-    # # Load the best synthetic config found during optimization
-    # best_cfg = SyntheticDataConfig.load(tuning_cfg.output_config_file)
-    # logger.info(f"Loaded best synthetic configuration from: {tuning_cfg.output_config_file}")
-
-
-    # Proceed with evaluation if all critical elements loaded
-    if tuning_cfg and best_cfg and study:
-
-        eval_config(best_cfg, tuning_cfg, output_dir)
-
+    try:
         # Optimization history plot
         plot_output_dir = os.path.join(output_dir, "plots")
 
@@ -62,8 +64,9 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
         logging.info("Analysis plots saved successfully.")
 
-    else:
-        logger.error("Skipping further evaluation due to previous critical errors in loading configurations or study.")
+    except Exception as e:
+        logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
+
 
     logger.info("Evaluation complete.")
 
@@ -75,10 +78,11 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
     logger.info("\n--- Setting up model for evaluation ---")
     embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
 
-    frames = generate_video(cfg, output_dir)
     reference_vecs = embedding_extractor.extract_from_references()
-    synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
     toy_data: Dict[str, Any] = get_toy_data(embedding_extractor)
+    frames = generate_video(cfg, output_dir)
+    synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
+
 
     logger.info("\n--- Creating visualizations ---")
     plot_output_dir = os.path.join(output_dir, "plots")
