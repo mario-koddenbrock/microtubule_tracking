@@ -2,15 +2,16 @@ import logging
 import os
 from typing import Dict, Any
 
+import numpy as np
 import optuna
 import optuna.visualization as vis
 
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
-from data_generation.optimization.embeddings import ImageEmbeddingExtractor
-from data_generation.video import generate_video
+from .embeddings import ImageEmbeddingExtractor
+from ..video import generate_video
 from plotting.plotting import visualize_embeddings
-from scripts.utils.toy_data import get_toy_data
+from .toy_data import get_toy_data
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -18,13 +19,19 @@ logger = logging.getLogger(f"mt.{__name__}")
 def evaluate_results(tuning_config_path: str, output_dir: str):
     logger.info(f"{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
 
-
     logger.info("--- Loading configurations and study results ---")
     tuning_cfg = TuningConfig.load(tuning_config_path)
 
     # Ensure folders exist for output and temporary files
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(tuning_cfg.temp_dir, exist_ok=True)
+    plot_output_dir = os.path.join(output_dir, "plots")
+    os.makedirs(plot_output_dir, exist_ok=True)
+
+    # Initialize the ImageEmbeddingExtractor to extract embeddings from images
+    embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
+    reference_vecs = embedding_extractor.extract_from_references()
+    toy_data: Dict[str, Any] = get_toy_data(embedding_extractor)
 
     # Load the completed Optuna study from its database file
     study_db_path = os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')
@@ -41,6 +48,8 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     top_n = 10
     top_trials = sorted_trials[:top_n]
 
+
+
     for i, trial in enumerate(top_trials):
         logger.info(f"Trial {i + 1}: Value = {trial.value:.4f}, Params = {trial.params}")
 
@@ -49,16 +58,10 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         current_cfg.id = tuning_cfg.output_config_id
         current_cfg.generate_microtubule_mask = False
 
-        if tuning_cfg and current_cfg and study:
-            eval_config(current_cfg, tuning_cfg, output_dir)
-        else:
-            logger.error("Skipping further evaluation due to previous critical errors in loading configurations or study.")
-
+        eval_config(current_cfg, tuning_cfg, output_dir, plot_output_dir, embedding_extractor, reference_vecs, toy_data)
 
     try:
         # Optimization history plot
-        plot_output_dir = os.path.join(output_dir, "plots")
-
         vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
         vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
         vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
@@ -67,25 +70,20 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     except Exception as e:
         logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
 
-
     logger.info("Evaluation complete.")
 
 
-def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str):
+def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str, plot_output_dir: str,
+                embedding_extractor: ImageEmbeddingExtractor, reference_vecs: np.ndarray,
+                toy_data: Dict[str, Any]):
     """
     Evaluates a specific SyntheticDataConfig against reference data.
     """
 
-    embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
-    reference_vecs = embedding_extractor.extract_from_references()
-    toy_data: Dict[str, Any] = get_toy_data(embedding_extractor)
     frames = generate_video(cfg, output_dir)
     synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 
-
     logger.info("\n--- Creating visualizations ---")
-    plot_output_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plot_output_dir, exist_ok=True)
 
     visualize_embeddings(
         cfg=cfg,

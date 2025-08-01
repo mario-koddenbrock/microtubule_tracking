@@ -6,9 +6,9 @@ import optuna
 
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
-from data_generation.optimization.embeddings import ImageEmbeddingExtractor
-from data_generation.optimization.metrics import precompute_matric_args
-from data_generation.optimization.objective import objective
+from .embeddings import ImageEmbeddingExtractor
+from .metrics import precompute_matric_args
+from .objective import objective
 
 logger = logging.getLogger(f"mt.{__name__}")
 

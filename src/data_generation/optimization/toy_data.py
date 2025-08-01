@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 
 import numpy as np
 import requests
@@ -29,9 +29,12 @@ def get_toy_data(embedding_extractor) -> Dict[str, Optional[Any]]:
     ]
     toy_labels = ["dog", "donald duck", "pink noise", "micrograph"]
     toy_images = []
+    headers = {
+        'User-Agent': 'Microtubule Tracking Reasearch (https://github.com/mario-koddenbrock/microtubule_tracking; mario.koddenbrock@htw-berlin.de)'
+    }
     for url in toy_image_urls:
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=10, headers=headers)
             response.raise_for_status()
             img = Image.open(io.BytesIO(response.content)).convert("RGB")
             toy_images.append(np.array(img))

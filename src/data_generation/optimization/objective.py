@@ -1,13 +1,11 @@
 import logging
-from typing import Optional
 
 import numpy as np
 import optuna
 
-from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
-from data_generation.optimization.embeddings import ImageEmbeddingExtractor
-from data_generation.optimization.metrics import similarity
+from .embeddings import ImageEmbeddingExtractor
+from .metrics import similarity
 
 logger = logging.getLogger(f"mt.{__name__}")
 
