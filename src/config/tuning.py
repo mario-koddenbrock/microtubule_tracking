@@ -165,7 +165,6 @@ class TuningConfig(BaseConfig):
         Uses the ranges defined in this tuning config to suggest parameters for an Optuna trial.
         """
         logger.info(f"Generating SyntheticDataConfig for Optuna trial {trial.number}.")
-
         suggested_params = {}
 
         # --- Microtubule Geometry (with dependent ranges) ---
