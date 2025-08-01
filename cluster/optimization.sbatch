@@ -9,6 +9,8 @@
 #SBATCH --time=3-12:00:00
 #SBATCH --output=%j_microtubule_out.log
 #SBATCH --error=%j_microtubule_err.log
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=koddenb@htw-berlin.de
 
 # Get the tuning config path from the command line argument passed to sbatch
 # Slurm automatically passes arguments after the script name to the script's execution environment.
