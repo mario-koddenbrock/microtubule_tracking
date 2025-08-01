@@ -11,7 +11,7 @@ def main():
     run_optimization_flag, run_evaluation_flag, config_path = parse_optimization_args()
     output_dir = get_output_dir_from_config_path(config_path)
 
-    run_optimization_flag = False
+
     if run_optimization_flag:
         print(f"\n--- Starting Optimization for: {config_path} ---")
         run_optimization(config_path)
