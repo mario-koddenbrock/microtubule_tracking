@@ -75,9 +75,8 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
     """
     Evaluates a specific SyntheticDataConfig against reference data.
     """
-    logger.info("\n--- Setting up model for evaluation ---")
-    embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
 
+    embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
     reference_vecs = embedding_extractor.extract_from_references()
     toy_data: Dict[str, Any] = get_toy_data(embedding_extractor)
     frames = generate_video(cfg, output_dir)
