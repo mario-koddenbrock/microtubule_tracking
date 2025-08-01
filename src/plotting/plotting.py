@@ -28,8 +28,6 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                          output_dir: str = "plots/"):
 
     logger.info(f"Starting visualization of embeddings for config ID: {cfg.id}...")
-    logger.debug(
-        f"Reference embeddings shape: {ref_embeddings.shape}, Synthetic embeddings shape: {synthetic_embeddings.shape}.")
 
     toy_embeddings = None
     if toy_data and toy_data.get("embeddings") is not None:
@@ -45,16 +43,16 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
 
 
     os.makedirs(output_dir, exist_ok=True)
-    heatmap_path = os.path.join(output_dir, f"heatmap_{cfg.id}.png")
+    # heatmap_path = os.path.join(output_dir, f"heatmap_{cfg.id}.png")
 
-    try:
-        plot_similarity_matrix(tuning_cfg, ref_embeddings, synthetic_embeddings,
-                               toy_embeddings=toy_embeddings,
-                               toy_labels=toy_data.get("labels") if toy_data else None,
-                               save_to=heatmap_path)
-        logger.info(f"Similarity heatmap saved to {heatmap_path}")
-    except Exception as e:
-        logger.error(f"Failed to generate similarity heatmap: {e}", exc_info=True)
+    # try:
+    #     plot_similarity_matrix(tuning_cfg, ref_embeddings, synthetic_embeddings,
+    #                            toy_embeddings=toy_embeddings,
+    #                            toy_labels=toy_data.get("labels") if toy_data else None,
+    #                            save_to=heatmap_path)
+    #     logger.info(f"Similarity heatmap saved to {heatmap_path}")
+    # except Exception as e:
+    #     logger.error(f"Failed to generate similarity heatmap: {e}", exc_info=True)
 
 
     precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
