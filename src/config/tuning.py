@@ -158,7 +158,7 @@ class TuningConfig(BaseConfig):
         for name, rng, allow_zero in range_params: _validate_range(name, rng, allow_zero)
 
         if errors: raise ValueError(f"TuningConfig validation failed:\n" + "\n".join(errors))
-        logger.info("TuningConfig validation successful.")
+        logger.debug("TuningConfig validation successful.")
 
     def create_synthetic_config_from_trial(self, trial: Trial) -> SyntheticDataConfig:
         """

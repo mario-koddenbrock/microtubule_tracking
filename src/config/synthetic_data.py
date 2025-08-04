@@ -158,4 +158,4 @@ class SyntheticDataConfig(BaseConfig):
         if errors:
             full_msg = f"Validation failed with {len(errors)} error(s):\n" + "\n".join(errors)
             raise ValueError(full_msg)
-        logger.info(f"SyntheticDataConfig '{self.id}' validation successful.")
+        logger.debug(f"SyntheticDataConfig '{self.id}' validation successful.")

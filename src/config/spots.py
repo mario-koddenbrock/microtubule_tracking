@@ -102,12 +102,12 @@ class SpotConfig(BaseConfig):
             logger.error(full_msg)
             raise ValueError(full_msg)
 
-        logger.info("SpotConfig validation successful.")
+        logger.debug("SpotConfig validation successful.")
 
     @staticmethod
     def from_trial(trial: Trial, name: str, tuning: SpotTuningConfig) -> 'SpotConfig':
         """Creates a SpotConfig instance by suggesting parameters from an Optuna trial."""
-        logger.info(f"Suggesting SpotConfig parameters for '{name}' using Optuna trial {trial.number}.")
+        logger.debug(f"Suggesting SpotConfig parameters for '{name}' using Optuna trial {trial.number}.")
 
         # --- Standard Parameters ---
         count = trial.suggest_int(f"{name}_count", *tuning.count_range)

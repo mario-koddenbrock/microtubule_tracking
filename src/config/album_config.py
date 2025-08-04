@@ -72,4 +72,4 @@ class AlbumentationsConfig(BaseConfig):
         #     logger.error(msg)
         #     raise ValueError(msg)
 
-        logger.info("AlbumentationsConfig validation successful.")
+        logger.debug("AlbumentationsConfig validation successful.")
