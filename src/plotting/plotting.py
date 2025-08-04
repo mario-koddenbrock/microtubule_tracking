@@ -7,6 +7,7 @@ import cv2
 import imageio
 import matplotlib.pyplot as plt
 import numpy as np
+import umap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from skimage.morphology import skeletonize
 from sklearn.decomposition import PCA
@@ -25,7 +26,8 @@ logger = logging.getLogger(f"mt.{__name__}")
 def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                          ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
                          toy_data: Optional[Dict[str, Any]] = None,
-                         output_dir: str = "plots/"):
+                         output_dir: str = "plots/",
+                         projection_method: str = "UMAP"):
 
     logger.info(f"Starting visualization of embeddings for config ID: {cfg.id}...")
 
@@ -55,38 +57,37 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
     #     logger.error(f"Failed to generate similarity heatmap: {e}", exc_info=True)
 
 
-    precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
-    colour = np.array([similarity(
-        tuning_cfg=tuning_cfg,
-        ref_embeddings=ref_embeddings,
-        synthetic_embeddings=synthetic_embeddings[i, :].reshape(1, -1),
-        **precomputed_kwargs,
-    ) for i in tqdm(range(synthetic_embeddings.shape[0]), desc="Calculating per-frame similarity")])
-    logger.debug(
-        f"Per-frame similarity 'colour' array shape: {colour.shape}, Min={colour.min():.4f}, Max={colour.max():.4f}.")
 
-    colour[np.isinf(colour)] = 0
+    colour = compute_plotting_colour(ref_embeddings, synthetic_embeddings, tuning_cfg)
+    logger.debug(f"Per-frame similarity 'colour': Min={colour.min():.4f}, Max={colour.max():.4f}.")
 
-    # Calculate similarity for toy embeddings
     toy_colour = None
     if toy_embeddings is not None:
-        logger.info("Calculating similarity for toy embeddings.")
-        toy_colour = np.array([similarity(
-            tuning_cfg=tuning_cfg,
-            ref_embeddings=ref_embeddings,
-            synthetic_embeddings=toy_embeddings[i, :].reshape(1, -1),
-            **precomputed_kwargs,
-        ) for i in tqdm(range(toy_embeddings.shape[0]), desc="Calculating per-toy similarity")])
-        toy_colour[np.isinf(toy_colour)] = 0
-        logger.debug(f"Toy similarity 'toy_colour' array shape: {toy_colour.shape}")
+        toy_colour = compute_plotting_colour(ref_embeddings, toy_embeddings, tuning_cfg)
+        logger.debug(f"Toy similarity 'colour': Min={toy_colour.min():.4f}, Max={toy_colour.max():.4f}.")
 
 
     # 3. Perform dimensionality reduction and plot 2D projection
-    projection_path = os.path.join(output_dir, f"projection_{cfg.id}.png")
-    projection_method_name = "PCA"
+    projection_path = os.path.join(output_dir, f"projection_{projection_method.lower()}_{cfg.id}.png")
 
-    logger.info(f"Performing {projection_method_name} projection for 2D plot.")
-    ref_2d, synthetic_2d, toy_2d = pca_projection(ref_embeddings, synthetic_embeddings, toy_embeddings)
+    logger.info(f"Performing {projection_method} projection for 2D plot.")
+    if projection_method.upper() == 'UMAP':
+        ref_2d, synthetic_2d, toy_2d = umap_projection(ref_embeddings, synthetic_embeddings, toy_embeddings)
+    elif projection_method.upper() == 'TSNE':
+        # Note: tsne_projection doesn't currently support toy_embeddings.
+        # It would need to be updated to handle the combined data correctly.
+        ref_2d, synthetic_2d = tsne_projection(ref_embeddings, synthetic_embeddings,
+                                               similarity_metric=tuning_cfg.similarity_metric,
+                                               perplexity=30) # Example perplexity
+        toy_2d = None
+        if toy_embeddings is not None:
+            logger.warning("t-SNE projection currently does not support toy embeddings. They will be ignored.")
+    else: # Default to PCA
+        if projection_method.upper() != 'PCA':
+            logger.warning(f"Unknown projection method '{projection_method}'. Defaulting to PCA.")
+        projection_method = "PCA"
+        ref_2d, synthetic_2d, toy_2d = pca_projection(ref_embeddings, synthetic_embeddings, toy_embeddings)
+
     logger.debug(f"Projection complete. Ref 2D shape: {ref_2d.shape}, Synthetic 2D shape: {synthetic_2d.shape}.")
     if toy_2d is not None:
         logger.debug(f"Toy 2D shape: {toy_2d.shape}.")
@@ -96,10 +97,22 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                        toy_2d=toy_2d,
                        toy_images=toy_data.get("images") if toy_data else None,
                        toy_border_colours=toy_colour,
-                       save_to=projection_path, method_name=projection_method_name)
+                       save_to=projection_path, method_name=projection_method)
     logger.info(f"2D embedding projection plot saved to {projection_path}")
 
 
+def compute_plotting_colour(ref_embeddings, synthetic_embeddings, tuning_cfg):
+    precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
+    colour = np.array([similarity(
+        tuning_cfg=tuning_cfg,
+        ref_embeddings=ref_embeddings,
+        synthetic_embeddings=synthetic_embeddings[i, :].reshape(1, -1),
+        **precomputed_kwargs,
+    ) for i in range(synthetic_embeddings.shape[0])])
+
+    colour[np.isinf(colour)] = 0
+
+    return colour
 
 
 def tsne_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray, similarity_metric: str,
@@ -187,6 +200,53 @@ def pca_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
         logger.error(f"Error during PCA projection: {e}", exc_info=True)
         toy_result = np.zeros((toy_embeddings.shape[0], 2)) if toy_embeddings is not None else None
         return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
+
+
+def umap_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
+                    toy_embeddings: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+    """
+    Performs UMAP projection on reference, synthetic, and optional toy embeddings.
+    The UMAP model is fitted only on the reference embeddings.
+
+    Args:
+        ref_embeddings (np.ndarray): Embeddings from reference images.
+        synthetic_embeddings (np.ndarray): Embeddings from synthetic images.
+        toy_embeddings (Optional[np.ndarray]): Optional embeddings from toy images.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]: 2D projected reference, synthetic, and toy embeddings.
+    """
+    logger.debug("Starting UMAP projection to 2 components.")
+    logger.debug(
+        f"Ref embeddings shape: {ref_embeddings.shape}, Synthetic embeddings shape: {synthetic_embeddings.shape}.")
+
+    if ref_embeddings.shape[0] < 2:
+        logger.warning(
+            f"Not enough samples in reference embeddings for UMAP (shape: {ref_embeddings.shape}). Returning zeros.")
+        toy_result = np.zeros((toy_embeddings.shape[0], 2)) if toy_embeddings is not None else None
+        return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
+
+    try:
+        # Fit UMAP *only* on the reference embeddings
+        reducer = umap.UMAP(n_components=2, random_state=42)
+        reducer.fit(ref_embeddings)
+        logger.info("UMAP fitted on reference data.")
+
+        # Transform all datasets using the fitted UMAP model
+        ref_2d = reducer.transform(ref_embeddings)
+        synthetic_2d = reducer.transform(synthetic_embeddings)
+
+        toy_2d = None
+        if toy_embeddings is not None:
+            logger.debug(f"Transforming toy embeddings of shape: {toy_embeddings.shape}.")
+            toy_2d = reducer.transform(toy_embeddings)
+
+        return ref_2d, synthetic_2d, toy_2d
+    except Exception as e:
+        logger.error(f"Error during UMAP projection: {e}", exc_info=True)
+        toy_result = np.zeros((toy_embeddings.shape[0], 2)) if toy_embeddings is not None else None
+        return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
+
 
 def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.ndarray,
                        toy_2d: Optional[np.ndarray] = None, toy_images: Optional[List[np.ndarray]] = None,

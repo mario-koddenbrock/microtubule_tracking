@@ -26,7 +26,8 @@ dependencies = [
   "cellpose-adapt @ git+https://github.com/mario-koddenbrock/cellpose-adapt.git",
   "albumentations",
   "btrack",
-  "hf_xet"
+  "hf_xet",
+  "umap"
 ]
 
 [project.urls]
