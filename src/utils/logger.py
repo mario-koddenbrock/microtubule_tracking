@@ -5,10 +5,9 @@ import os
 
 
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-LOG_LEVEL = logging.INFO
 
 # --- Setup ---
-def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs")):
+def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), log_level_console: int = "INFO", log_level: int = logging.DEBUG):
     """Configures the application's logging."""
 
     os.makedirs(log_dir, exist_ok=True)
@@ -31,7 +30,7 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs")):
     console_handler = logging.StreamHandler()
     # You can set a different level for the console. For example, INFO.
     # The level can be controlled by an environment variable for flexibility.
-    console_log_level_str = os.environ.get('LOG_LEVEL', 'ERROR').upper()
+    console_log_level_str = os.environ.get('LOG_LEVEL', log_level_console).upper()
     console_log_level = getattr(logging, console_log_level_str, logging.INFO)
     console_handler.setLevel(console_log_level)
     console_handler.setFormatter(formatter)
@@ -41,7 +40,7 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs")):
     file_handler = logging.FileHandler(log_file)
 
     # The file handler should typically log everything (DEBUG and up).
-    file_handler.setLevel(LOG_LEVEL)
+    file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
 
     # 5. Add handlers to the logger
