@@ -170,7 +170,8 @@ def pca_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
         # Fit PCA *only* on the reference embeddings
         pca = PCA(n_components=2, random_state=42)
         pca.fit(ref_embeddings)
-        logger.debug(f"PCA fitted on reference data. Explained variance ratio: {sum(pca.explained_variance_ratio_):.4f}")
+        explained_variance = sum(pca.explained_variance_ratio_)
+        logger.info(f"PCA fitted on reference data. The 2 principal components explain {explained_variance:.2%} of the variance.")
 
         # Transform all datasets using the fitted PCA
         ref_2d = pca.transform(ref_embeddings)
@@ -186,7 +187,6 @@ def pca_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
         logger.error(f"Error during PCA projection: {e}", exc_info=True)
         toy_result = np.zeros((toy_embeddings.shape[0], 2)) if toy_embeddings is not None else None
         return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
-
 
 def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.ndarray,
                        toy_2d: Optional[np.ndarray] = None, toy_images: Optional[List[np.ndarray]] = None,
