@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import numpy as np
 import optuna
@@ -9,7 +9,7 @@ import optuna.visualization as vis
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
 from .embeddings import ImageEmbeddingExtractor
-from ..video import generate_video
+from ..video import generate_video, generate_frames
 from plotting.plotting import visualize_embeddings
 from .toy_data import get_toy_data
 
@@ -48,8 +48,6 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     top_n = 10
     top_trials = sorted_trials[:top_n]
 
-
-
     for i, trial in enumerate(top_trials):
         logger.info(f"Trial {i + 1}: Value = {trial.value:.4f}, Params = {trial.params}")
 
@@ -60,15 +58,15 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
 
         eval_config(current_cfg, tuning_cfg, output_dir, plot_output_dir, embedding_extractor, reference_vecs, toy_data)
 
-    try:
-        # Optimization history plot
-        vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
-        vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
-        vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
-        logging.info("Analysis plots saved successfully.")
-
-    except Exception as e:
-        logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
+    # try:
+    #     # Optimization history plot
+    #     vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
+    #     vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
+    #     vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
+    #     logging.info("Analysis plots saved successfully.")
+    #
+    # except Exception as e:
+    #     logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
 
     logger.info("Evaluation complete.")
 
@@ -80,7 +78,16 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
     Evaluates a specific SyntheticDataConfig against reference data.
     """
 
-    frames = generate_video(cfg, output_dir)
+    # frames = generate_video(cfg, output_dir)
+
+    frames: List[np.ndarray] = []
+    cfg.num_frames = 3
+    for frame_img_rgb, _, _, _ in generate_frames(cfg, cfg.num_frames,
+                            return_microtubule_mask=cfg.generate_microtubule_mask,
+                            return_seed_mask=cfg.generate_seed_mask):
+
+        frames.append(frame_img_rgb)
+
     synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 
     logger.info("\n--- Creating visualizations ---")

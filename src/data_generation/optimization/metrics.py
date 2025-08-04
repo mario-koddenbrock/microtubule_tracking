@@ -29,8 +29,8 @@ def similarity(
     Core evaluation logic: Computes similarity using the specified metric.
     """
     similarity_metric = getattr(tuning_cfg, 'similarity_metric', 'cosine')
-    logger.info(f"--- [METRIC START] ---")
-    logger.info(f"Metric: '{similarity_metric}'")
+    logger.debug(f"--- [METRIC START] ---")
+    logger.debug(f"Metric: '{similarity_metric}'")
     logger.debug(
         f"Ref Embeddings Shape: {ref_embeddings.shape}, Min/Max: {ref_embeddings.min():.4f}/{ref_embeddings.max():.4f}")
     logger.debug(
@@ -114,8 +114,8 @@ def similarity(
         logger.error(f"Error computing similarity with metric '{similarity_metric}': {e}", exc_info=True)
         return -float('inf')  # Return a very bad score if computation fails
 
-    logger.info(f"Final Score for Trial: {score:.6f}")
-    logger.info(f"--- [METRIC END] ---\n")
+    logger.debug(f"Final Score for Trial: {score:.6f}")
+    logger.debug(f"--- [METRIC END] ---\n")
     return score
 
 
@@ -339,19 +339,19 @@ def precompute_matric_args(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray)
             # Add a small regularization for stability if covariance is ill-conditioned
             cov_matrix = np.cov(ref_embeddings, rowvar=False)
             precomputed_args['ref_inv_cov'] = np.linalg.pinv(cov_matrix) + np.eye(ref_embeddings.shape[1]) * 1e-6
-            logger.info("Pre-computed inverse covariance matrix for Mahalanobis.")
+            logger.debug("Pre-computed inverse covariance matrix for Mahalanobis.")
 
         elif metric == 'fid':
             precomputed_args['ref_mean'] = np.mean(ref_embeddings, axis=0)
             precomputed_args['ref_cov'] = np.cov(ref_embeddings, rowvar=False)
-            logger.info("Pre-computed mean and covariance matrix for FID.")
+            logger.debug("Pre-computed mean and covariance matrix for FID.")
 
         elif metric == 'kid':
             m = ref_embeddings.shape[0]
             if m > 1:
                 k_xx = _polynomial_kernel(ref_embeddings, ref_embeddings)
                 precomputed_args['ref_kid_term1'] = (k_xx.sum() - np.trace(k_xx)) / (m * (m - 1))
-                logger.info("Pre-computed reference kernel matrix term for KID.")
+                logger.debug("Pre-computed reference kernel matrix term for KID.")
             else:
                 logger.warning("Cannot pre-compute KID term, not enough reference samples.")
 
@@ -359,17 +359,17 @@ def precompute_matric_args(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray)
             num_bins = getattr(tuning_cfg, 'num_hist_bins', 10) # TODO: Make this configurable
             hist, bins = np.histogramdd(ref_embeddings, bins=num_bins)
             precomputed_args['ref_hist_bins'] = bins
-            logger.info(f"Pre-computed histogram bins for '{metric}'.")
+            logger.debug(f"Pre-computed histogram bins for '{metric}'.")
 
             if metric == 'ndb':
                 precomputed_args['ref_hist'] = hist
-                logger.info("Pre-computed reference histogram for NDB.")
+                logger.debug("Pre-computed reference histogram for NDB.")
             if metric == 'jsd':
                 if hist.sum() > 0:
                     prob = (hist / hist.sum()).flatten()
                     prob[prob == 0] = 1e-10
                     precomputed_args['ref_prob'] = prob
-                    logger.info("Pre-computed reference probability distribution for JSD.")
+                    logger.debug("Pre-computed reference probability distribution for JSD.")
                 else:
                     logger.warning("Reference histogram sum is zero during JSD pre-computation.")
         else:

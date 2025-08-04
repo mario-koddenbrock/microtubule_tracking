@@ -131,7 +131,7 @@ def process_tiff_video(
         logger.error(f"Failed to read TIFF file {video_path}: {e}")
         return []
 
-    logger.info(f"Loaded TIFF stack of shape {data.shape}.")
+    logger.debug(f"Loaded TIFF stack of shape {data.shape}.")
     if data.ndim not in [3, 4]:
         logger.error(f"Unsupported TIFF dimension: {data.ndim}.")
         return []
@@ -228,7 +228,7 @@ def process_tiff_video(
 
 def extract_frames(video_path: str, num_splits:int = 0, crop_size=(500, 500)) -> Tuple[List[List[np.ndarray]], int]:
 
-    logger.info(f"Extracting frames from: {video_path}")
+    logger.debug(f"Extracting frames from: {video_path}")
 
     if not os.path.isfile(video_path):
         logger.error(f"Video file not found: {video_path}")
@@ -264,7 +264,7 @@ def extract_frames(video_path: str, num_splits:int = 0, crop_size=(500, 500)) ->
         logger.error(f"An error occurred while extracting frames from {video_path}: {e}", exc_info=True)
         raise e
 
-    logger.info(f"Finished extracting {len(frames)} frames with FPS {fps}.")
+    logger.debug(f"Finished extracting {len(frames)} frames with FPS {fps}.")
     return frames, fps
 
 
@@ -284,7 +284,7 @@ def process_avi_video(fps, video_path):
         frames.append(frame)
         frame_count += 1
     cap.release()
-    logger.info(f"Successfully extracted {frame_count} frames from OpenCV video file.")
+    logger.debug(f"Successfully extracted {frame_count} frames from OpenCV video file.")
     return frames, fps
 
 
@@ -308,7 +308,7 @@ def save_ground_truth(gt_data: List[dict], json_output_path: str):
         with open(json_output_path, "w") as fh:
             # Pass the custom encoder class to json.dump using the `cls` argument.
             json.dump(gt_data, fh, indent=2, cls=CustomJsonEncoder)
-        logger.info(f"Successfully saved JSON ground truth to: {json_output_path}")
+        logger.debug(f"Successfully saved JSON ground truth to: {json_output_path}")
     except Exception as e:
         logger.error(f"Failed to save JSON ground truth to {json_output_path}: {e}", exc_info=True)
         # Re-raise the exception to signal failure to the caller

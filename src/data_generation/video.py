@@ -201,7 +201,7 @@ def generate_frames(
     Generates a sequence of synthetic video frames and associated data.
     This is a generator function, yielding one frame's data at a time.
     """
-    logger.info(f"Preparing to generate {num_frames} frames for series ID {cfg.id}...")
+    logger.debug(f"Preparing to generate {num_frames} frames for series ID {cfg.id}...")
 
     mts: List[Microtubule] = []
     try:
@@ -215,7 +215,7 @@ def generate_frames(
                     instance_id=idx,
                 )
             )
-        logger.info(f"Initialized {len(mts)} microtubules.")
+        logger.debug(f"Initialized {len(mts)} microtubules.")
     except Exception as e:
         logger.critical(f"Failed to initialize microtubules: {e}", exc_info=True)
         # If MTs cannot be initialized, we cannot generate frames. Raise or return empty.
@@ -223,9 +223,9 @@ def generate_frames(
 
     try:
         fixed_spot_generator = SpotGenerator(cfg.fixed_spots, cfg.img_size)
-        logger.info(f"Initialized fixed spot generator with {cfg.fixed_spots.count} spots.")
+        logger.debug(f"Initialized fixed spot generator with {cfg.fixed_spots.count} spots.")
         moving_spot_generator = SpotGenerator(cfg.moving_spots, cfg.img_size)
-        logger.info(f"Initialized moving spot generator with {cfg.moving_spots.count} spots.")
+        logger.debug(f"Initialized moving spot generator with {cfg.moving_spots.count} spots.")
     except Exception as e:
         logger.critical(f"Failed to initialize spot generators: {e}", exc_info=True)
         raise  # Critical setup failure
@@ -235,11 +235,11 @@ def generate_frames(
         if cfg.albumentations:
             aug_pipeline = utils.build_albumentations_pipeline(cfg.albumentations)
             # if aug_pipeline:
-            #     logger.info(f"Albumentations pipeline built successfully (master prob: {cfg.albumentations.p:.2f}).")
+            #     logger.debug(f"Albumentations pipeline built successfully (master prob: {cfg.albumentations.p:.2f}).")
             # else:
-            #     logger.info("Albumentations config provided but pipeline is None (e.g., p=0 or no transforms).")
+            #     logger.debug("Albumentations config provided but pipeline is None (e.g., p=0 or no transforms).")
         else:
-            logger.info("Albumentations configuration is None. No augmentation pipeline will be built.")
+            logger.debug("Albumentations configuration is None. No augmentation pipeline will be built.")
     except Exception as e:
         logger.error(f"Error building Albumentations pipeline: {e}. Augmentations will be skipped.", exc_info=True)
         aug_pipeline = None  # Ensure it's None if building fails
@@ -274,7 +274,7 @@ def generate_video(
 
     try:
         output_manager = VideoOutputManager(cfg, base_output_dir)
-        logger.info(f"VideoOutputManager initialized for output directory: {base_output_dir}")
+        logger.debug(f"VideoOutputManager initialized for output directory: {base_output_dir}")
     except Exception as e:
         logger.critical(f"Failed to initialize VideoOutputManager for '{base_output_dir}': {e}", exc_info=True)
         raise  # Critical error, cannot save video
@@ -307,11 +307,11 @@ def generate_video(
         if export_gt_data:
             try:
                 save_ground_truth(all_gt_data, gt_json_path)
-                logger.info(f"Ground truth data saved to: {gt_json_path}")
+                logger.debug(f"Ground truth data saved to: {gt_json_path}")
             except Exception as e:
                 logger.error(f"Error saving ground truth data to {gt_json_path}: {e}", exc_info=True)
         else:
-            logger.info("Ground truth export disabled.")
+            logger.debug("Ground truth export disabled.")
 
     except Exception as e:
         logger.critical(f"A critical error occurred during video generation for Series {cfg.id}: {e}", exc_info=True)
@@ -322,7 +322,7 @@ def generate_video(
         if output_manager:
             try:
                 output_manager.close()
-                logger.info(f"Video output manager closed for Series {cfg.id}.")
+                logger.debug(f"Video output manager closed for Series {cfg.id}.")
             except Exception as e:
                 logger.error(f"Error closing video output manager: {e}", exc_info=True)
         else:

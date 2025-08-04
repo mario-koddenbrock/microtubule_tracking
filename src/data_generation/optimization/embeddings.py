@@ -46,11 +46,11 @@ class ImageEmbeddingExtractor:
             tuning_cfg (TuningConfig): Configuration object containing model name,
                                        cache directory, and optional PCA components.
         """
-        logger.info("Initializing ImageEmbeddingExtractor...")
+        logger.debug("Initializing ImageEmbeddingExtractor...")
         self.config = tuning_cfg
 
         self.device = self._get_best_device()
-        logger.info(f"Using device: {self.device}")
+        logger.debug(f"Using device: {self.device}")
 
         try:
             self.model, self.processor = self._load_model_and_processor()
@@ -80,7 +80,7 @@ class ImageEmbeddingExtractor:
         model_name = self.config.model_name
         cache_dir = self.config.hf_cache_dir
 
-        logger.info(f"Loading model and processor for '{model_name}' from Hugging Face...")
+        logger.debug(f"Loading model and processor for '{model_name}' from Hugging Face...")
         try:
 
             if "clip" in model_name.lower():
@@ -182,7 +182,7 @@ class ImageEmbeddingExtractor:
         Raises:
             ValueError: If no embeddings could be extracted.
         """
-        logger.info("Starting reference embedding extraction and PCA fitting...")
+        logger.debug("Starting reference embedding extraction and PCA fitting...")
         embeddings = []
         ref_dir = self.config.reference_series_dir
         logger.debug(f"Scanning for reference videos in: {ref_dir}")
@@ -302,7 +302,7 @@ class ImageEmbeddingExtractor:
         return self._apply_pca_if_available(raw_embeddings)
 
     def extract_from_frames(self, frames: List[np.ndarray], num_compare_frames: int = 1) -> np.ndarray:
-        logger.info(
+        logger.debug(
             f"Extracting embeddings from a provided list of {len(frames)} frames. Comparing {num_compare_frames} frames.")
         raw_embeddings = []
 
