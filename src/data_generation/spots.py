@@ -256,7 +256,7 @@ class SpotGenerator:
         """
         Adds stateless circular spots that are regenerated completely on every frame.
         """
-        logger.info(f"Applying {spot_cfg.count} random spots to image of shape {img.shape}.")
+        logger.debug(f"Applying {spot_cfg.count} random spots to image of shape {img.shape}.")
         n_spots = spot_cfg.count
         if n_spots == 0:
             logger.info("No random spots to apply. Returning original image.")
