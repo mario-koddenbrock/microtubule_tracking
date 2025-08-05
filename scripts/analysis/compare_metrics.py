@@ -150,53 +150,35 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
 
 def main():
     """
-    Main script to load data, compute embeddings, calculate similarity scores, and plot results.
+    Main script to load data, compute embeddings for different layers,
+    calculate similarity scores, and plot results for each layer.
     """
     _, _, config_path = parse_optimization_args()
 
     try:
         cfg = TuningConfig.load(config_path)
-        cfg.save(config_path)
     except Exception as e:
         print(f"Error: Failed to load or parse the config file '{config_path}'.")
         print(f"Details: {e}")
         sys.exit(1)
 
-    embedding_extractor = ImageEmbeddingExtractor(cfg)
+    # --- Define layer indices to evaluate ---
+    # Use -1 for the final layer's output.
+    layer_indices_to_test = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+    logger.info(f"Will generate plots for layer indices: {layer_indices_to_test}")
 
-    logger.info("\n--- Loading Data ---")
+    # --- Create output directory ---
+    output_dir = Path("plots/metric_evaluation")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- Load image data once ---
+    logger.info("\n--- Loading All Image Data ---")
     reference_images = load_frames_from_videos(Path(cfg.reference_series_dir))
     manual_images = load_images_from_dir(Path("data/synthetic_manual"))
     optimized_images = load_images_from_dir(Path("data/optimization/config_B"))
-    toy_data: Dict[str, Any] = get_toy_data(embedding_extractor)
+    toy_data: Dict[str, Any] = get_toy_data()
     toy_images = toy_data.get("images", [])
 
-    logger.info("\n--- Computing Embeddings ---")
-    ref_embeddings = embedding_extractor.extract_from_references()
-    manual_embeddings = embedding_extractor.extract_from_frames(manual_images, len(manual_images))
-    optimized_embeddings = embedding_extractor.extract_from_frames(optimized_images, len(optimized_images))
-    toy_embeddings = toy_data.get("embeddings")
-
-    logger.info(f"Found {len(ref_embeddings)} reference embeddings.")
-    logger.info(f"Found {len(manual_embeddings)} manual embeddings.")
-    logger.info(f"Found {len(optimized_embeddings)} optimized embeddings.")
-    logger.info(f"Found {len(toy_embeddings) if toy_embeddings is not None else 0} toy embeddings.")
-
-    logger.info("\n--- Calculating Scores ---")
-    all_scores = {
-        "Reference": calculate_similarity_scores(cfg, ref_embeddings, ref_embeddings),
-        "Manual": calculate_similarity_scores(cfg, ref_embeddings, manual_embeddings),
-        "Optimized": calculate_similarity_scores(cfg, ref_embeddings, optimized_embeddings),
-        "Toy": calculate_similarity_scores(cfg, ref_embeddings, toy_embeddings)
-    }
-
-    for name, scores in all_scores.items():
-        if scores is not None and len(scores) > 0:
-            logger.info(f"{name} Images (avg score): {np.mean(scores):.4f}, std: {np.std(scores):.4f}")
-        else:
-            logger.info(f"{name} Images (avg score): N/A (no data)")
-
-    logger.info("\n--- Plotting Results ---")
     example_images = {
         "Reference": reference_images[0] if reference_images else None,
         "Manual": manual_images[0] if manual_images else None,
@@ -204,9 +186,48 @@ def main():
         "Toy": toy_images[0] if toy_images else None
     }
 
-    output_dir = Path("plots/analysis")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    plot_scores_with_images(all_scores, example_images, output_dir / "metrics_comparison_boxplot.png")
+    # --- Loop over each layer index ---
+    for layer_idx in layer_indices_to_test:
+        logger.info(f"\n{'='*20} Processing Layer Index: {layer_idx} {'='*20}")
+
+        # Update config with the current layer index
+        cfg.embedding_layer = layer_idx
+
+        # Initialize extractor with the modified config for the current layer
+        embedding_extractor = ImageEmbeddingExtractor(cfg)
+
+        logger.info("\n--- Computing Embeddings ---")
+        ref_embeddings = embedding_extractor.extract_from_references()
+        manual_embeddings = embedding_extractor.extract_from_frames(manual_images, None)
+        optimized_embeddings = embedding_extractor.extract_from_frames(optimized_images, None)
+        toy_embeddings = embedding_extractor.extract_from_frames(toy_images, None)
+
+
+        logger.info(f"Found {len(ref_embeddings)} reference embeddings.")
+        logger.info(f"Found {len(manual_embeddings)} manual embeddings.")
+        logger.info(f"Found {len(optimized_embeddings)} optimized embeddings.")
+        logger.info(f"Found {len(toy_embeddings) if toy_embeddings is not None else 0} toy embeddings.")
+
+        logger.info("\n--- Calculating Scores ---")
+        all_scores = {
+            "Reference": calculate_similarity_scores(cfg, ref_embeddings, ref_embeddings),
+            "Manual": calculate_similarity_scores(cfg, ref_embeddings, manual_embeddings),
+            "Optimized": calculate_similarity_scores(cfg, ref_embeddings, optimized_embeddings),
+            "Toy": calculate_similarity_scores(cfg, ref_embeddings, toy_embeddings)
+        }
+
+        for name, scores in all_scores.items():
+            if scores is not None and len(scores) > 0:
+                logger.info(f"{name} Images (avg score): {np.mean(scores):.4f}, std: {np.std(scores):.4f}")
+            else:
+                logger.info(f"{name} Images (avg score): N/A (no data)")
+
+        logger.info("\n--- Plotting Results ---")
+        plot_filename = f"metrics_comparison_layer_{'final' if layer_idx == -1 else layer_idx}.png"
+        plot_path = output_dir / plot_filename
+        plot_scores_with_images(all_scores, example_images, plot_path)
+
+    logger.info(f"\nAll layer evaluations complete. Plots are saved in '{output_dir}'.")
 
 
 if __name__ == "__main__":
