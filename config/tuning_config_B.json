@@ -7,7 +7,7 @@
   "temp_dir": ".temp",
   "output_config_file": "best_250123_GLO19_R02.json",
   "output_config_id": "best_250123_GLO19_R02",
-  "output_config_num_frames": 50,
+  "output_config_num_frames": 10,
   "direction": "maximize",
   "similarity_metric": "cosine",
   "num_trials": 20000,
