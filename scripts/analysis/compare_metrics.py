@@ -91,7 +91,8 @@ def preprocess_image_for_plot(img: np.ndarray, size: int = 96) -> np.ndarray:
     return cv2.resize(cropped_img, (size, size), interpolation=cv2.INTER_AREA)
 
 
-def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.ndarray], output_path: Path):
+def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.ndarray], output_path: Path,
+                            model_name: str, metric_name: str, layer_name: str):
     """Generates and saves a Seaborn box plot of scores with a preprocessed example image and median value."""
     valid_labels = [label for label, s in scores.items() if s is not None and len(s) > 0]
     if not valid_labels:
@@ -107,7 +108,7 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
 
     fig, ax = plt.subplots(figsize=(12, 9))
 
-    # Create box plot using Seaborn, assigning 'Data Source' to hue to avoid deprecation warning
+    # Create box plot using Seaborn
     sns.boxplot(x='Data Source', y='Similarity Score', data=df, ax=ax, order=valid_labels,
                 palette="Set2", boxprops=dict(alpha=.8), showfliers=False,
                 hue='Data Source', legend=False)
@@ -115,7 +116,9 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
                   color=".25", size=3, jitter=True)
 
     ax.set_xlabel(None)
-    ax.set_title('Similarity Score Distribution by Data Source')
+    # Create a descriptive title
+    title = f"Metric: {metric_name.upper()} | Model: {model_name.split('/')[-1]} | Layer: {layer_name}"
+    ax.set_title(title)
 
     # Adjust layout to make space for images at the bottom
     fig.subplots_adjust(bottom=0.25)
@@ -134,7 +137,6 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
             img = preprocess_image_for_plot(images[label])
             imagebox = OffsetImage(img, zoom=0.75)
 
-            # Anchor the annotation to the x-axis tick (using 0-based index for Seaborn)
             ab = AnnotationBbox(imagebox, (i, 0),
                                 xybox=(0., -60.),  # Offset in points
                                 frameon=False,
@@ -145,13 +147,15 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
 
     plt.savefig(output_path)
     logger.info(f"Box plot saved to '{output_path}'")
-    plt.show()
+    plt.close(fig)  # Close the figure to free up memory
+
+
 
 
 def main():
     """
-    Main script to load data, compute embeddings for different layers,
-    calculate similarity scores, and plot results for each layer.
+    Main script to load data, compute embeddings for different models and layers,
+    calculate similarity scores for various metrics, and plot the results.
     """
     _, _, config_path = parse_optimization_args()
 
@@ -162,10 +166,15 @@ def main():
         print(f"Details: {e}")
         sys.exit(1)
 
-    # --- Define layer indices to evaluate ---
+    # --- Define models, metrics, and layer indices to evaluate ---
+    models_to_test = ["openai/clip-vit-base-patch32", "facebook/dinov2-large"]
+    metrics_to_test = ["cosine", "fid", "kid", "ndb", "jsd", "mahalanobis"]
     # Use -1 for the final layer's output.
-    layer_indices_to_test = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-    logger.info(f"Will generate plots for layer indices: {layer_indices_to_test}")
+    layer_indices_to_test = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
+
+    logger.info(f"Will generate plots for models: {models_to_test}")
+    logger.info(f"Will generate plots for metrics: {metrics_to_test}")
+    logger.info(f"And for layer indices: {layer_indices_to_test}")
 
     # --- Create output directory ---
     output_dir = Path("plots/metric_evaluation")
@@ -186,48 +195,65 @@ def main():
         "Toy": toy_images[0] if toy_images else None
     }
 
-    # --- Loop over each layer index ---
-    for layer_idx in layer_indices_to_test:
-        logger.info(f"\n{'='*20} Processing Layer Index: {layer_idx} {'='*20}")
+    # --- Loop over each model, metric, and layer index ---
+    for model_name in models_to_test:
+        logger.info(f"\n{'@' * 20} Processing Model: {model_name} {'@' * 20}")
+        cfg.model_name = model_name
 
-        # Update config with the current layer index
-        cfg.embedding_layer = layer_idx
+        for metric_name in metrics_to_test:
+            logger.info(f"\n{'#' * 20} Processing Metric: {metric_name.upper()} {'#' * 20}")
+            cfg.similarity_metric = metric_name
 
-        # Initialize extractor with the modified config for the current layer
-        embedding_extractor = ImageEmbeddingExtractor(cfg)
+            for layer_idx in layer_indices_to_test:
+                logger.info(f"\n{'=' * 20} Processing Layer Index: {layer_idx} {'=' * 20}")
 
-        logger.info("\n--- Computing Embeddings ---")
-        ref_embeddings = embedding_extractor.extract_from_references()
-        manual_embeddings = embedding_extractor.extract_from_frames(manual_images, None)
-        optimized_embeddings = embedding_extractor.extract_from_frames(optimized_images, None)
-        toy_embeddings = embedding_extractor.extract_from_frames(toy_images, None)
+                # Update config with the current layer index
+                cfg.embedding_layer = layer_idx
 
+                # Initialize extractor with the modified config for the current model and layer
+                embedding_extractor = ImageEmbeddingExtractor(cfg)
 
-        logger.info(f"Found {len(ref_embeddings)} reference embeddings.")
-        logger.info(f"Found {len(manual_embeddings)} manual embeddings.")
-        logger.info(f"Found {len(optimized_embeddings)} optimized embeddings.")
-        logger.info(f"Found {len(toy_embeddings) if toy_embeddings is not None else 0} toy embeddings.")
+                logger.info("\n--- Computing Embeddings ---")
+                ref_embeddings = embedding_extractor.extract_from_references()
+                manual_embeddings = embedding_extractor.extract_from_frames(manual_images, len(manual_images))
+                optimized_embeddings = embedding_extractor.extract_from_frames(optimized_images,
+                                                                               len(optimized_images))
+                toy_embeddings = embedding_extractor.extract_from_frames(toy_images, len(toy_images))
 
-        logger.info("\n--- Calculating Scores ---")
-        all_scores = {
-            "Reference": calculate_similarity_scores(cfg, ref_embeddings, ref_embeddings),
-            "Manual": calculate_similarity_scores(cfg, ref_embeddings, manual_embeddings),
-            "Optimized": calculate_similarity_scores(cfg, ref_embeddings, optimized_embeddings),
-            "Toy": calculate_similarity_scores(cfg, ref_embeddings, toy_embeddings)
-        }
+                logger.info(f"Found {len(ref_embeddings)} reference embeddings.")
+                logger.info(f"Found {len(manual_embeddings)} manual embeddings.")
+                logger.info(f"Found {len(optimized_embeddings)} optimized embeddings.")
+                logger.info(f"Found {len(toy_embeddings) if toy_embeddings is not None else 0} toy embeddings.")
 
-        for name, scores in all_scores.items():
-            if scores is not None and len(scores) > 0:
-                logger.info(f"{name} Images (avg score): {np.mean(scores):.4f}, std: {np.std(scores):.4f}")
-            else:
-                logger.info(f"{name} Images (avg score): N/A (no data)")
+                logger.info("\n--- Calculating Scores ---")
+                all_scores = {
+                    "Reference": calculate_similarity_scores(cfg, ref_embeddings, ref_embeddings),
+                    "Manual": calculate_similarity_scores(cfg, ref_embeddings, manual_embeddings),
+                    "Optimized": calculate_similarity_scores(cfg, ref_embeddings, optimized_embeddings),
+                    "Toy": calculate_similarity_scores(cfg, ref_embeddings, toy_embeddings)
+                }
 
-        logger.info("\n--- Plotting Results ---")
-        plot_filename = f"metrics_comparison_layer_{'final' if layer_idx == -1 else layer_idx}.png"
-        plot_path = output_dir / plot_filename
-        plot_scores_with_images(all_scores, example_images, plot_path)
+                for name, scores in all_scores.items():
+                    if scores is not None and len(scores) > 0:
+                        logger.info(f"{name} Images (avg score): {np.mean(scores):.4f}, std: {np.std(scores):.4f}")
+                    else:
+                        logger.info(f"{name} Images (avg score): N/A (no data)")
 
-    logger.info(f"\nAll layer evaluations complete. Plots are saved in '{output_dir}'.")
+                logger.info("\n--- Plotting Results ---")
+                model_filename_part = model_name.replace('/', '_')
+                layer_name = 'final' if layer_idx == -1 else str(layer_idx)
+                plot_filename = f"metrics_comparison_{model_filename_part}_{metric_name}_layer_{layer_name}.png"
+                plot_path = output_dir / plot_filename
+                plot_scores_with_images(
+                    scores=all_scores,
+                    images=example_images,
+                    output_path=plot_path,
+                    model_name=cfg.model_name,
+                    metric_name=metric_name,
+                    layer_name=layer_name
+                )
+
+    logger.info(f"\nAll model, metric, and layer evaluations complete. Plots are saved in '{output_dir}'.")
 
 
 if __name__ == "__main__":
