@@ -159,6 +159,6 @@ class SpotConfig(BaseConfig):
             polygon_vertex_count_min=polygon_vertex_count_min,
             polygon_vertex_count_max=polygon_vertex_count_max,
         )
-        logger.info(f"Successfully created SpotConfig for '{name}' via Optuna trial. Final config: {config.asdict()}")
+        logger.debug(f"Successfully created SpotConfig for '{name}' via Optuna trial. Final config: {config.asdict()}")
         return config
 
