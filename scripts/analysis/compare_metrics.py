@@ -107,9 +107,10 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
 
     fig, ax = plt.subplots(figsize=(12, 9))
 
-    # Create box plot using Seaborn
+    # Create box plot using Seaborn, assigning 'Data Source' to hue to avoid deprecation warning
     sns.boxplot(x='Data Source', y='Similarity Score', data=df, ax=ax, order=valid_labels,
-                palette="Set2", boxprops=dict(alpha=.8), showfliers=False)
+                palette="Set2", boxprops=dict(alpha=.8), showfliers=False,
+                hue='Data Source', legend=False)
     sns.stripplot(x='Data Source', y='Similarity Score', data=df, ax=ax, order=valid_labels,
                   color=".25", size=3, jitter=True)
 
