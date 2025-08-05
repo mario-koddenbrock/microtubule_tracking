@@ -63,7 +63,7 @@ class VideoOutputManager:
 
         self._initialize_paths()
         self._initialize_writers()
-        logger.info("VideoOutputManager initialization complete.")
+        logger.debug("VideoOutputManager initialization complete.")
 
     def _initialize_paths(self):
         """Defines all output paths based on configuration."""
