@@ -90,9 +90,11 @@ def preprocess_image_for_plot(img: np.ndarray, size: int = 96) -> np.ndarray:
 
 
 def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.ndarray], output_path: Path):
-    """Generates and saves a box plot of scores with a preprocessed example image for each category."""
+    """Generates and saves a box plot of scores with a preprocessed example image and median value for each category."""
     labels = list(scores.keys())
-    score_data = [s for s in scores.values() if len(s) > 0]
+    # Filter out categories with no scores before plotting
+    score_data = [s for s in scores.values() if s is not None and len(s) > 0]
+    valid_labels = [label for label, s in scores.items() if s is not None and len(s) > 0]
 
     if not score_data:
         logger.warning("No score data to plot.")
@@ -100,21 +102,28 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
 
     fig, ax = plt.subplots(figsize=(12, 9))
 
-    ax.boxplot(score_data, labels=labels)
+    # Create box plot and get the dictionary of artists
+    boxplot_dict = ax.boxplot(score_data, labels=valid_labels)
     ax.set_ylabel('Similarity Score')
     ax.set_title('Similarity Score Distribution by Data Source')
 
     # Adjust layout to make space for images at the bottom
     fig.subplots_adjust(bottom=0.25)
 
+    # Add median score text to each box
+    for i, median_line in enumerate(boxplot_dict['medians']):
+        median_value = median_line.get_ydata()[0]
+        ax.text(i + 1, median_value, f'{median_value:.3f}',
+                va='center', ha='center', color='white',
+                bbox=dict(boxstyle='round,pad=0.3', fc='black', ec='none', alpha=0.6))
+
     # Overlay a preprocessed example image for each category below the x-axis
-    for i, label in enumerate(labels):
+    for i, label in enumerate(valid_labels):
         if label in images and images[label] is not None:
             img = preprocess_image_for_plot(images[label])
             imagebox = OffsetImage(img, zoom=0.75)
 
-            # Anchor the annotation to the x-axis tick (in axis coordinates)
-            # and offset it downwards.
+            # Anchor the annotation to the x-axis tick
             ab = AnnotationBbox(imagebox, (i + 1, 0),
                                 xybox=(0., -60.),  # Offset in points
                                 frameon=False,
