@@ -53,7 +53,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
 
         current_cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
         current_cfg.num_frames = tuning_cfg.output_config_num_frames
-        current_cfg.id = tuning_cfg.output_config_id
+        current_cfg.id = f"{tuning_cfg.output_config_id}_rank_{i + 1}"
         current_cfg.generate_microtubule_mask = False
 
         eval_config(current_cfg, tuning_cfg, output_dir, plot_output_dir, embedding_extractor, reference_vecs, toy_data)
@@ -78,15 +78,15 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
     Evaluates a specific SyntheticDataConfig against reference data.
     """
 
-    # frames = generate_video(cfg, output_dir)
+    if output_dir is None:
+        frames: List[np.ndarray] = []
+        for frame_img_rgb, _, _, _ in generate_frames(cfg, cfg.num_frames,
+                                return_microtubule_mask=cfg.generate_microtubule_mask,
+                                return_seed_mask=cfg.generate_seed_mask):
 
-    frames: List[np.ndarray] = []
-    cfg.num_frames = 3
-    for frame_img_rgb, _, _, _ in generate_frames(cfg, cfg.num_frames,
-                            return_microtubule_mask=cfg.generate_microtubule_mask,
-                            return_seed_mask=cfg.generate_seed_mask):
-
-        frames.append(frame_img_rgb)
+            frames.append(frame_img_rgb)
+    else:
+        frames = generate_video(cfg, output_dir)
 
     synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 
@@ -98,6 +98,6 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
         ref_embeddings=reference_vecs,
         synthetic_embeddings=synthetic_vecs,
         toy_data=toy_data,
-        output_dir=plot_output_dir
+        output_dir=plot_output_dir,
     )
     logger.info(f"Embedding plot saved in {plot_output_dir}")
