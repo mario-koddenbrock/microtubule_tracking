@@ -1,5 +1,6 @@
 {
   "model_name": "facebook/dinov2-large",
+  "embedding_layer": 3,
   "hf_cache_dir": null,
   "reference_series_dir": "data/mpi_converted/type_B/250123_GLO19_R02_6um HEK PHK10_DMSO _002_cropped_flatfield_registered_BGsubt",
   "num_compare_series": 5,

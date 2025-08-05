@@ -119,13 +119,10 @@ class ImageEmbeddingExtractor:
         Returns:
             np.ndarray: A 1D numpy array representing the raw image embedding.
         """
-        # This is called frequently, so keep logging minimal unless debugging specific issues.
         logger.debug(f"Computing embedding for image of shape {image.shape} (RGB).")
 
         try:
-
             if "cellpose" in self.config.model_name.lower():
-
                 x = cv2.resize(image, (256, 256), interpolation=cv2.INTER_LINEAR)
                 x = transforms.convert_image(x, channel_axis=None, z_axis=None)
                 x = x[np.newaxis, ...]
@@ -143,25 +140,40 @@ class ImageEmbeddingExtractor:
                 return out.detach().squeeze().cpu().to(torch.float32).numpy().flatten()
 
             else:
-
                 inputs = self.processor(images=image, return_tensors="pt").to(self.device)
 
                 with torch.no_grad():
                     if isinstance(self.model, CLIPModel):
+                        # CLIP model's get_image_features is a high-level API and doesn't expose layers.
+                        # Using its final output.
                         embedding = self.model.get_image_features(**inputs)
-                        logger.debug("Using CLIP model's image features.")
+                        logger.debug("Using CLIP model's final image features.")
                     else:
-                        outputs = self.model(**inputs)
-                        if hasattr(outputs, "last_hidden_state"):
-                            embedding = outputs.last_hidden_state.mean(dim=1)
-                            logger.debug("Using last_hidden_state mean for embedding.")
-                        elif hasattr(outputs, "pooler_output"):
-                            embedding = outputs.pooler_output
-                            logger.debug("Using pooler_output for embedding.")
-                        else:
-                            msg = "Model output does not contain a usable embedding (last_hidden_state or pooler_output)."
+                        # For models like DINOv2, request hidden states to select a specific layer.
+                        outputs = self.model(**inputs, output_hidden_states=True)
+
+                        if not hasattr(outputs, "hidden_states") or not outputs.hidden_states:
+                            msg = "Model output does not contain 'hidden_states'. Cannot select a specific layer."
                             logger.error(msg)
                             raise ValueError(msg)
+
+                        # hidden_states is a tuple of (batch_size, sequence_length, hidden_size)
+                        # The first element is the input embeddings, subsequent are layer outputs.
+                        hidden_states = outputs.hidden_states
+                        layer_idx = self.config.embedding_layer
+
+                        if layer_idx >= len(hidden_states):
+                            logger.warning(
+                                f"Configured embedding_layer {layer_idx} is out of bounds for model with "
+                                f"{len(hidden_states)} layers. Falling back to the last layer ({len(hidden_states) - 1})."
+                            )
+                            layer_idx = -1  # Use the last layer
+
+                        logger.debug(f"Extracting embedding from layer {layer_idx}.")
+                        # Select the specified layer's hidden state.
+                        embedding_tensor = hidden_states[layer_idx]
+                        # Take the mean over the sequence dimension (patch tokens) to get a single vector.
+                        embedding = embedding_tensor.mean(dim=1)
 
                 return embedding.squeeze().cpu().numpy()
 

@@ -21,6 +21,7 @@ class TuningConfig(BaseConfig):
     """
     # ─── General tuning settings ────────────────────────────────────
     model_name: str = "openai/clip-vit-base-patch32"
+    embedding_layer: int = 3
     hf_cache_dir: Optional[str] = None
     reference_series_dir: str = "reference_data"
     num_compare_series: int = 3
