@@ -27,7 +27,8 @@ dependencies = [
   "albumentations",
   "btrack",
   "hf_xet",
-  "umap"
+  "umap",
+  "seaborn"
 ]
 
 [project.urls]

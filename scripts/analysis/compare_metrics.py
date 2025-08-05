@@ -6,6 +6,8 @@ from typing import Dict, Any
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
 from PIL import Image
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
@@ -90,32 +92,40 @@ def preprocess_image_for_plot(img: np.ndarray, size: int = 96) -> np.ndarray:
 
 
 def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.ndarray], output_path: Path):
-    """Generates and saves a box plot of scores with a preprocessed example image and median value for each category."""
-    labels = list(scores.keys())
-    # Filter out categories with no scores before plotting
-    score_data = [s for s in scores.values() if s is not None and len(s) > 0]
+    """Generates and saves a Seaborn box plot of scores with a preprocessed example image and median value."""
     valid_labels = [label for label, s in scores.items() if s is not None and len(s) > 0]
-
-    if not score_data:
+    if not valid_labels:
         logger.warning("No score data to plot.")
         return
 
+    # Prepare data for Seaborn: long-form DataFrame
+    plot_data = []
+    for label in valid_labels:
+        for score in scores[label]:
+            plot_data.append({'Data Source': label, 'Similarity Score': score})
+    df = pd.DataFrame(plot_data)
+
     fig, ax = plt.subplots(figsize=(12, 9))
 
-    # Create box plot and get the dictionary of artists
-    boxplot_dict = ax.boxplot(score_data, labels=valid_labels)
-    ax.set_ylabel('Similarity Score')
+    # Create box plot using Seaborn
+    sns.boxplot(x='Data Source', y='Similarity Score', data=df, ax=ax, order=valid_labels,
+                palette="Set2", boxprops=dict(alpha=.8), showfliers=False)
+    sns.stripplot(x='Data Source', y='Similarity Score', data=df, ax=ax, order=valid_labels,
+                  color=".25", size=3, jitter=True)
+
+    ax.set_xlabel(None)
     ax.set_title('Similarity Score Distribution by Data Source')
 
     # Adjust layout to make space for images at the bottom
     fig.subplots_adjust(bottom=0.25)
 
-    # Add median score text to each box
-    for i, median_line in enumerate(boxplot_dict['medians']):
-        median_value = median_line.get_ydata()[0]
-        ax.text(i + 1, median_value, f'{median_value:.3f}',
-                va='center', ha='center', color='white',
-                bbox=dict(boxstyle='round,pad=0.3', fc='black', ec='none', alpha=0.6))
+    # Calculate medians and add text to each box
+    medians = df.groupby('Data Source')['Similarity Score'].median().reindex(valid_labels)
+    for i, label in enumerate(valid_labels):
+        median_value = medians[label]
+        ax.text(i, median_value, f'{median_value:.3f}',
+                va='center', ha='center', color='white', weight='bold',
+                bbox=dict(boxstyle='round,pad=0.3', fc='black', ec='none', alpha=0.7))
 
     # Overlay a preprocessed example image for each category below the x-axis
     for i, label in enumerate(valid_labels):
@@ -123,8 +133,8 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
             img = preprocess_image_for_plot(images[label])
             imagebox = OffsetImage(img, zoom=0.75)
 
-            # Anchor the annotation to the x-axis tick
-            ab = AnnotationBbox(imagebox, (i + 1, 0),
+            # Anchor the annotation to the x-axis tick (using 0-based index for Seaborn)
+            ab = AnnotationBbox(imagebox, (i, 0),
                                 xybox=(0., -60.),  # Offset in points
                                 frameon=False,
                                 xycoords=('data', 'axes fraction'),
@@ -169,7 +179,7 @@ def main():
     logger.info(f"Found {len(ref_embeddings)} reference embeddings.")
     logger.info(f"Found {len(manual_embeddings)} manual embeddings.")
     logger.info(f"Found {len(optimized_embeddings)} optimized embeddings.")
-    logger.info(f"Found {len(toy_embeddings)} toy embeddings.")
+    logger.info(f"Found {len(toy_embeddings) if toy_embeddings is not None else 0} toy embeddings.")
 
     logger.info("\n--- Calculating Scores ---")
     all_scores = {
@@ -180,7 +190,7 @@ def main():
     }
 
     for name, scores in all_scores.items():
-        if len(scores) > 0:
+        if scores is not None and len(scores) > 0:
             logger.info(f"{name} Images (avg score): {np.mean(scores):.4f}, std: {np.std(scores):.4f}")
         else:
             logger.info(f"{name} Images (avg score): N/A (no data)")
