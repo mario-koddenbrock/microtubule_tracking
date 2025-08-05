@@ -143,37 +143,36 @@ class ImageEmbeddingExtractor:
                 inputs = self.processor(images=image, return_tensors="pt").to(self.device)
 
                 with torch.no_grad():
+                    # Unified logic for models that support hidden states (like DINO, CLIP)
                     if isinstance(self.model, CLIPModel):
-                        # CLIP model's get_image_features is a high-level API and doesn't expose layers.
-                        # Using its final output.
-                        embedding = self.model.get_image_features(**inputs)
-                        logger.debug("Using CLIP model's final image features.")
+                        # For CLIP, we call the vision_model specifically to get hidden states
+                        outputs = self.model.vision_model(**inputs, output_hidden_states=True)
                     else:
-                        # For models like DINOv2, request hidden states to select a specific layer.
+                        # For other models like DINOv2, the main model forward pass is used
                         outputs = self.model(**inputs, output_hidden_states=True)
 
-                        if not hasattr(outputs, "hidden_states") or not outputs.hidden_states:
-                            msg = "Model output does not contain 'hidden_states'. Cannot select a specific layer."
-                            logger.error(msg)
-                            raise ValueError(msg)
+                    if not hasattr(outputs, "hidden_states") or not outputs.hidden_states:
+                        msg = "Model output does not contain 'hidden_states'. Cannot select a specific layer."
+                        logger.error(msg)
+                        raise ValueError(msg)
 
-                        # hidden_states is a tuple of (batch_size, sequence_length, hidden_size)
-                        # The first element is the input embeddings, subsequent are layer outputs.
-                        hidden_states = outputs.hidden_states
-                        layer_idx = self.config.embedding_layer
+                    # hidden_states is a tuple of (batch_size, sequence_length, hidden_size)
+                    # The first element is the input embeddings, subsequent are layer outputs.
+                    hidden_states = outputs.hidden_states
+                    layer_idx = self.config.embedding_layer
 
-                        if layer_idx >= len(hidden_states):
-                            logger.warning(
-                                f"Configured embedding_layer {layer_idx} is out of bounds for model with "
-                                f"{len(hidden_states)} layers. Falling back to the last layer ({len(hidden_states) - 1})."
-                            )
-                            layer_idx = -1  # Use the last layer
+                    if layer_idx >= len(hidden_states):
+                        logger.warning(
+                            f"Configured embedding_layer {layer_idx} is out of bounds for model with "
+                            f"{len(hidden_states)} layers. Falling back to the last layer ({len(hidden_states) - 1})."
+                        )
+                        layer_idx = -1  # Use the last layer
 
-                        logger.debug(f"Extracting embedding from layer {layer_idx}.")
-                        # Select the specified layer's hidden state.
-                        embedding_tensor = hidden_states[layer_idx]
-                        # Take the mean over the sequence dimension (patch tokens) to get a single vector.
-                        embedding = embedding_tensor.mean(dim=1)
+                    logger.debug(f"Extracting embedding from layer {layer_idx}.")
+                    # Select the specified layer's hidden state.
+                    embedding_tensor = hidden_states[layer_idx]
+                    # Take the mean over the sequence dimension (patch tokens) to get a single vector.
+                    embedding = embedding_tensor.mean(dim=1)
 
                 return embedding.squeeze().cpu().numpy()
 
