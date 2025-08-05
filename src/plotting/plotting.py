@@ -13,6 +13,7 @@ from skimage.morphology import skeletonize
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from tqdm import tqdm
+from umap import UMAP
 
 from analysis.kymographs import generate_kymographs
 from config.synthetic_data import SyntheticDataConfig
@@ -27,7 +28,7 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                          ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
                          toy_data: Optional[Dict[str, Any]] = None,
                          output_dir: str = "plots/",
-                         projection_method: str = "UMAP"):
+                         projection_method: str = "PCA"):
 
     logger.info(f"Starting visualization of embeddings for config ID: {cfg.id}...")
 
@@ -227,10 +228,10 @@ def umap_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray
         return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
 
     try:
-        # Fit UMAP *only* on the reference embeddings
-        reducer = umap.UMAP(n_components=2, random_state=42)
+
+        reducer = UMAP(n_components=2, init='random', random_state=0)
         reducer.fit(ref_embeddings)
-        logger.info("UMAP fitted on reference data.")
+        logger.debug("UMAP fitted on reference data.")
 
         # Transform all datasets using the fitted UMAP model
         ref_2d = reducer.transform(ref_embeddings)
@@ -242,6 +243,7 @@ def umap_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray
             toy_2d = reducer.transform(toy_embeddings)
 
         return ref_2d, synthetic_2d, toy_2d
+
     except Exception as e:
         logger.error(f"Error during UMAP projection: {e}", exc_info=True)
         toy_result = np.zeros((toy_embeddings.shape[0], 2)) if toy_embeddings is not None else None
