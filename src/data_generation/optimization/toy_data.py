@@ -6,10 +6,12 @@ import numpy as np
 import requests
 from PIL import Image
 
+from data_generation.optimization.embeddings import ImageEmbeddingExtractor
+
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-def get_toy_data(embedding_extractor) -> Dict[str, Optional[Any]]:
+def get_toy_data(embedding_extractor:ImageEmbeddingExtractor = None) -> Dict[str, Optional[Any]]:
     """
     Downloads toy images, extracts their embeddings, and returns them in a structured dictionary.
 
@@ -45,9 +47,13 @@ def get_toy_data(embedding_extractor) -> Dict[str, Optional[Any]]:
 
     toy_vecs = None
     if toy_images:
-        logger.info(f"Extracting embeddings from {len(toy_images)} toy images.")
-        # The extractor expects a list of frames; num_frames=None processes all provided images.
-        toy_vecs = embedding_extractor.extract_from_frames(toy_images, num_compare_frames=None)
+        if embedding_extractor is None:
+            logger.warning("No embedding extractor provided. Skipping embedding extraction.")
+            toy_vecs = None
+        else:
+            logger.info(f"Extracting embeddings from {len(toy_images)} toy images.")
+            # The extractor expects a list of frames; num_frames=None processes all provided images.
+            toy_vecs = embedding_extractor.extract_from_frames(toy_images, num_compare_frames=None)
 
     return {
         "images": toy_images,
