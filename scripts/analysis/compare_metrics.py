@@ -120,6 +120,10 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
     title = f"Metric: {metric_name.upper()} | Model: {model_name.split('/')[-1]} | Layer: {layer_name}"
     ax.set_title(title)
 
+    # Set y-axis limits for cosine similarity for better comparison
+    if metric_name == "cosine":
+        ax.set_ylim(0, 1)
+
     # Adjust layout to make space for images at the bottom
     fig.subplots_adjust(bottom=0.25)
 
@@ -150,8 +154,6 @@ def plot_scores_with_images(scores: Dict[str, np.ndarray], images: Dict[str, np.
     plt.close(fig)  # Close the figure to free up memory
 
 
-
-
 def main():
     """
     Main script to load data, compute embeddings for different models and layers,
@@ -167,14 +169,16 @@ def main():
         sys.exit(1)
 
     # --- Define models, metrics, and layer indices to evaluate ---
-    models_to_test = ["openai/clip-vit-base-patch32", "facebook/dinov2-large"]
-    metrics_to_test = ["cosine", "fid", "kid", "ndb", "jsd", "mahalanobis"]
-    # Use -1 for the final layer's output.
-    layer_indices_to_test = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
+    models_to_test = ["lpips-alex", "lpips-vgg", "openai/clip-vit-base-patch32", "facebook/dinov2-large"]
+    metrics_to_test = ["cosine", "fid", "kid", "jsd", "mahalanobis"]
+    layer_indices_map = {
+        "openai/clip-vit-base-patch32": list(range(1, 13)),
+        "facebook/dinov2-large": list(range(1, 25)),
+        "lpips-alex": [0],  # Operates on images, use dummy layer 0
+        "lpips-vgg": [0],  # Operates on images, use dummy layer 0
+    }
 
     logger.info(f"Will generate plots for models: {models_to_test}")
-    logger.info(f"Will generate plots for metrics: {metrics_to_test}")
-    logger.info(f"And for layer indices: {layer_indices_to_test}")
 
     # --- Create output directory ---
     output_dir = Path("plots/metric_evaluation")
@@ -188,70 +192,94 @@ def main():
     toy_data: Dict[str, Any] = get_toy_data()
     toy_images = toy_data.get("images", [])
 
-    example_images = {
-        "Reference": reference_images[0] if reference_images else None,
-        "Manual": manual_images[0] if manual_images else None,
-        "Optimized": optimized_images[0] if optimized_images else None,
-        "Toy": toy_images[0] if toy_images else None
+    all_image_data = {
+        "Reference": reference_images,
+        "Manual": manual_images,
+        "Optimized": optimized_images,
+        "Toy": toy_images
     }
+    example_images = {label: data[0] if data else None for label, data in all_image_data.items()}
 
     # --- Loop over each model, metric, and layer index ---
     for model_name in models_to_test:
         logger.info(f"\n{'@' * 20} Processing Model: {model_name} {'@' * 20}")
         cfg.model_name = model_name
+        is_lpips_model = "lpips" in model_name
 
-        for metric_name in metrics_to_test:
+        metrics_for_model = [model_name] if is_lpips_model else metrics_to_test
+
+        for metric_name in metrics_for_model:
             logger.info(f"\n{'#' * 20} Processing Metric: {metric_name.upper()} {'#' * 20}")
             cfg.similarity_metric = metric_name
 
-            for layer_idx in layer_indices_to_test:
+            for layer_idx in layer_indices_map[model_name]:
                 logger.info(f"\n{'=' * 20} Processing Layer Index: {layer_idx} {'=' * 20}")
-
-                # Update config with the current layer index
                 cfg.embedding_layer = layer_idx
 
-                # Initialize extractor with the modified config for the current model and layer
-                embedding_extractor = ImageEmbeddingExtractor(cfg)
+                all_scores = {}
+                all_embeddings = {}
 
-                logger.info("\n--- Computing Embeddings ---")
-                ref_embeddings = embedding_extractor.extract_from_references()
-                manual_embeddings = embedding_extractor.extract_from_frames(manual_images, len(manual_images))
-                optimized_embeddings = embedding_extractor.extract_from_frames(optimized_images,
-                                                                               len(optimized_images))
-                toy_embeddings = embedding_extractor.extract_from_frames(toy_images, len(toy_images))
+                # --- Get Embeddings (or images for LPIPS) ---
+                if is_lpips_model:
+                    # For LPIPS, the "embeddings" are the raw images.
+                    logger.info("\n--- Using Raw Images for LPIPS model ---")
+                    for label, images in all_image_data.items():
+                        all_embeddings[label] = np.array(images) if images else np.array([])
+                        logger.info(f"Found {len(images)} {label.lower()} images.")
+                else:
+                    # For other models, compute embeddings.
+                    logger.info("\n--- Computing Embeddings ---")
+                    embedding_extractor = ImageEmbeddingExtractor(cfg)
+                    ref_embeddings = embedding_extractor.extract_from_references()
+                    all_embeddings = {
+                        "Reference": ref_embeddings,
+                        "Manual": embedding_extractor.extract_from_frames(manual_images, len(manual_images)),
+                        "Optimized": embedding_extractor.extract_from_frames(optimized_images, len(optimized_images)),
+                        "Toy": embedding_extractor.extract_from_frames(toy_images, len(toy_images))
+                    }
+                    for name, embs in all_embeddings.items():
+                        logger.info(f"Found {len(embs) if embs is not None else 0} {name.lower()} embeddings.")
 
-                logger.info(f"Found {len(ref_embeddings)} reference embeddings.")
-                logger.info(f"Found {len(manual_embeddings)} manual embeddings.")
-                logger.info(f"Found {len(optimized_embeddings)} optimized embeddings.")
-                logger.info(f"Found {len(toy_embeddings) if toy_embeddings is not None else 0} toy embeddings.")
-
+                # --- Calculate Scores ---
                 logger.info("\n--- Calculating Scores ---")
-                all_scores = {
-                    "Reference": calculate_similarity_scores(cfg, ref_embeddings, ref_embeddings),
-                    "Manual": calculate_similarity_scores(cfg, ref_embeddings, manual_embeddings),
-                    "Optimized": calculate_similarity_scores(cfg, ref_embeddings, optimized_embeddings),
-                    "Toy": calculate_similarity_scores(cfg, ref_embeddings, toy_embeddings)
-                }
+                ref_data = all_embeddings["Reference"]
+                if ref_data.shape[0] == 0:
+                    logger.warning("Reference data is empty. Skipping score calculation for this configuration.")
+                    continue
+
+                precomputed_kwargs = {}
+                if not is_lpips_model:
+                    precomputed_kwargs = precompute_matric_args(cfg, ref_data)
+
+                for label, target_data in all_embeddings.items():
+                    if target_data.shape[0] == 0:
+                        all_scores[label] = np.array([])
+                        continue
+
+                    # Pass all embeddings/images at once. The metric function handles aggregation.
+                    # This now includes evaluating the reference data against itself.
+                    score = similarity(
+                        tuning_cfg=cfg,
+                        ref_embeddings=ref_data,
+                        synthetic_embeddings=target_data,
+                        **precomputed_kwargs
+                    )
+                    # Since similarity now returns a single aggregated score, we create an array with that score.
+                    # This maintains the structure for plotting, though it represents a single value for the whole set.
+                    all_scores[label] = np.array([score])
 
                 for name, scores in all_scores.items():
-                    if scores is not None and len(scores) > 0:
-                        logger.info(f"{name} Images (avg score): {np.mean(scores):.4f}, std: {np.std(scores):.4f}")
-                    else:
-                        logger.info(f"{name} Images (avg score): N/A (no data)")
+                    if len(scores) > 0:
+                        logger.info(f"{name} Images Score: {np.mean(scores):.4f}")
 
+                # --- Plotting ---
                 logger.info("\n--- Plotting Results ---")
                 model_filename_part = model_name.replace('/', '_')
-                layer_name = 'final' if layer_idx == -1 else str(layer_idx)
+                layer_name = 'img' if is_lpips_model else ('final' if layer_idx == -1 else str(layer_idx))
                 plot_filename = f"metrics_comparison_{model_filename_part}_{metric_name}_layer_{layer_name}.png"
                 plot_path = output_dir / plot_filename
-                plot_scores_with_images(
-                    scores=all_scores,
-                    images=example_images,
-                    output_path=plot_path,
-                    model_name=cfg.model_name,
-                    metric_name=metric_name,
-                    layer_name=layer_name
-                )
+                plot_scores_with_images(scores=all_scores, images=example_images, output_path=plot_path,
+                                        model_name=cfg.model_name, metric_name=metric_name, layer_name=layer_name)
 
     logger.info(f"\nAll model, metric, and layer evaluations complete. Plots are saved in '{output_dir}'.")
 
