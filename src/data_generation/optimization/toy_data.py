@@ -2,6 +2,7 @@ import io
 import logging
 from typing import Dict, Optional, Any
 
+import cv2
 import numpy as np
 import requests
 from PIL import Image
@@ -11,18 +12,19 @@ from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-def get_toy_data(embedding_extractor:ImageEmbeddingExtractor = None) -> Dict[str, Optional[Any]]:
+def get_toy_data(embedding_extractor: ImageEmbeddingExtractor = None) -> Dict[str, Optional[Any]]:
     """
-    Downloads toy images, extracts their embeddings, and returns them in a structured dictionary.
+    Downloads toy images, standardizes them to a 500x500 square, and returns them.
 
     Args:
-        embedding_extractor: An instance of ImageEmbeddingExtractor.
+        embedding_extractor (ImageEmbeddingExtractor, optional): Not used in this version
+                                                                 but kept for signature consistency.
 
     Returns:
-        A dictionary containing 'images' (List[np.ndarray]), 'labels' (List[str]),
-        and 'embeddings' (np.ndarray). Returns None for values if fetching fails.
+        Dict[str, Optional[Any]]: A dictionary containing the list of processed toy images
+                                  and their corresponding labels.
     """
-    logger.info("\n--- Loading toy images for comparison ---")
+    logger.info("\n--- Loading and processing toy images for comparison ---")
     toy_image_urls = [
         "https://upload.wikimedia.org/wikipedia/commons/1/18/Dog_Breeds.jpg",
         "https://upload.wikimedia.org/wikipedia/en/2/2e/Donald_Duck_-_temper.png",
@@ -39,24 +41,31 @@ def get_toy_data(embedding_extractor:ImageEmbeddingExtractor = None) -> Dict[str
             response = requests.get(url, timeout=10, headers=headers)
             response.raise_for_status()
             img = Image.open(io.BytesIO(response.content)).convert("RGB")
-            toy_images.append(np.array(img))
+            img_np = np.array(img)
+
+            # --- Standardize image shape ---
+            h, w, _ = img_np.shape
+            min_dim = min(h, w)
+
+            # Center crop to a square
+            start_x = (w - min_dim) // 2
+            start_y = (h - min_dim) // 2
+            cropped_img = img_np[start_y:start_y + min_dim, start_x:start_x + min_dim]
+
+            # Resize to a fixed size (e.g., 500x500)
+            resized_img = cv2.resize(cropped_img, (500, 500), interpolation=cv2.INTER_AREA)
+            toy_images.append(resized_img)
+
         except requests.exceptions.RequestException as e:
             logger.warning(f"Failed to download toy image from {url}: {e}")
         except Exception as e:
-            logger.error(f"An error occurred while processing toy image from {url}: {e}", exc_info=True)
+            logger.error(f"Error processing toy image from {url}: {e}")
 
-    toy_vecs = None
-    if toy_images:
-        if embedding_extractor is None:
-            logger.warning("No embedding extractor provided. Skipping embedding extraction.")
-            toy_vecs = None
-        else:
-            logger.info(f"Extracting embeddings from {len(toy_images)} toy images.")
-            # The extractor expects a list of frames; num_frames=None processes all provided images.
-            toy_vecs = embedding_extractor.extract_from_frames(toy_images, num_compare_frames=None)
+    logger.info(f"Loaded and processed {len(toy_images)} toy images.")
 
-    return {
-        "images": toy_images,
-        "labels": toy_labels,
-        "embeddings": toy_vecs
-    }
+    # The embedding extractor is not used here, but the structure is maintained
+    # for potential future use or consistency with other data loading functions.
+    if embedding_extractor and toy_images:
+        logger.info("Note: embedding_extractor was passed but is not used for image processing in get_toy_data.")
+
+    return {"images": toy_images, "labels": toy_labels}
