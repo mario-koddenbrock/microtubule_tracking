@@ -2,7 +2,7 @@ import sys
 
 from config.synthetic_data import SyntheticDataConfig
 from data_generation.video import generate_video
-from ..utils.cli import parse_gen_args, get_run_ids
+from scripts.utils.cli import parse_gen_args, get_run_ids
 
 
 def main():
@@ -12,6 +12,7 @@ def main():
     try:
         base_config = SyntheticDataConfig.load(args.config)
         base_config.save(args.config)
+        print(f"Loaded base config from: {args.config}")
     except Exception as e:
         print(f"Error: Failed to load or parse the config file '{args.config}'.")
         print(f"Details: {e}")
