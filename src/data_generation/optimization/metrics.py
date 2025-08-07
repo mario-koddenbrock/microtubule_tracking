@@ -224,14 +224,12 @@ def compute_js_divergence_score(synthetic_embeddings: np.ndarray, ref_hist_bins:
     return float(-jsd)
 
 
-def compute_lpips_score(model_net: str, synthetic_images: np.ndarray, ref_images: np.ndarray) -> float:
+def compute_lpips_score(model_net: str, synthetic_image: np.ndarray, ref_images: np.ndarray) -> float:
     """
     Calculates the mean LPIPS score for synthetic images against the average of reference images.
     Expects images as numpy arrays.
     """
     logger.debug(f"[LPIPS-{model_net.upper()}] Computing scores...")
-    if ref_images.shape[0] == 0 or synthetic_images.shape[0] == 0:
-        return -float('inf')
 
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     loss_fn = lpips.LPIPS(net=model_net).to(device)
@@ -245,14 +243,11 @@ def compute_lpips_score(model_net: str, synthetic_images: np.ndarray, ref_images
     ref_tensors = torch.cat([to_tensor(img) for img in ref_images], dim=0).to(device)
     avg_ref_tensor = ref_tensors.mean(dim=0, keepdim=True)
 
-    scores = []
-    for target_img in synthetic_images:
-        target_tensor = to_tensor(target_img).to(device)
-        with torch.no_grad():
-            dist = loss_fn(avg_ref_tensor, target_tensor)
-        scores.append(dist.item())
+    target_tensor = to_tensor(synthetic_image).to(device)
+    with torch.no_grad():
+        dist = loss_fn(avg_ref_tensor, target_tensor)
 
-    return -float(np.mean(scores))
+    return -float(dist.item())
 
 
 def precompute_matric_args(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray) -> dict[str, Any]:
@@ -260,7 +255,7 @@ def precompute_matric_args(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray)
     Pre-computes values based on the selected metric to avoid redundant calculations.
     """
     metric = getattr(tuning_cfg, 'similarity_metric', 'cosine')
-    logger.info(f"Pre-computing values for metric: '{metric}'")
+    logger.debug(f"Pre-computing values for metric: '{metric}'")
     precomputed_args: dict[str, Any] = {}
 
     if "lpips" in metric or ref_embeddings.shape[0] == 0:
@@ -292,5 +287,5 @@ def precompute_matric_args(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray)
             prob[prob == 0] = 1e-10
             precomputed_args['ref_prob'] = prob
 
-    logger.info(f"Pre-computation for '{metric}' complete.")
+    logger.debug(f"Pre-computation for '{metric}' complete.")
     return precomputed_args
