@@ -182,7 +182,7 @@ class ImageEmbeddingExtractor:
 
     def extract_from_references(self) -> np.ndarray:
         """
-        Loads reference videos, computes embeddings, and fits the PCA model.
+        Loads the reference video, computes embeddings, and fits the PCA model.
 
         This method MUST be called before any other extraction method if you want
         to use PCA, as it trains the PCA model on these reference embeddings.
@@ -195,54 +195,40 @@ class ImageEmbeddingExtractor:
         """
         logger.debug("Starting reference embedding extraction and PCA fitting...")
         embeddings = []
-        ref_dir = self.config.reference_series_dir
-        logger.debug(f"Scanning for reference videos in: {ref_dir}")
+        video_path = self.config.reference_video_path
 
-        video_files = (glob(os.path.join(ref_dir, "*.avi")) +
-                       glob(os.path.join(ref_dir, "*.tif")) +
-                          glob(os.path.join(ref_dir, "*.mp4")))
-
-        logger.debug(f"Found {len(video_files)} video files matching patterns.")
-
-        if not video_files:
-            msg = f"No reference video files found in directory: {ref_dir}"
+        if not os.path.isfile(video_path):
+            msg = f"Reference video file not found: {video_path}"
             logger.error(msg)
             raise ValueError(msg)
 
-        # Limit to num_compare_series
-        original_num_videos = len(video_files)
-        video_files = video_files[:self.config.num_compare_series]
-        if len(video_files) < original_num_videos:
-            logger.warning(f"Limiting reference videos to {len(video_files)} as per config.num_compare_series.")
+        logger.debug(f"Processing reference video: {video_path}")
+        try:
+            frames, _ = extract_frames(video_path)
+            original_num_frames = len(frames)
+            frames = frames[:self.config.num_compare_frames]
 
-        for video_idx, video_path in enumerate(video_files):
-            logger.debug(
-                f"Processing reference video {video_idx + 1}/{len(video_files)}: {os.path.basename(video_path)}")
-            try:
-                frames, _ = extract_frames(video_path)
-                original_num_frames = len(frames)
-                frames = frames[:self.config.num_compare_frames]
-                if len(frames) < original_num_frames:
-                    logger.debug(
-                        f"Limiting frames from '{os.path.basename(video_path)}' to {len(frames)} as per config.num_compare_frames.")
+            if len(frames) < original_num_frames:
+                logger.debug(
+                    f"Limiting frames from '{os.path.basename(video_path)}' to {len(frames)} as per config.num_compare_frames.")
 
-                if not frames:
-                    logger.warning(
-                        f"No frames extracted from {os.path.basename(video_path)} or num_compare_frames is 0. Skipping.")
-                    continue
+            if not frames:
+                msg = f"No frames extracted from {os.path.basename(video_path)} or num_compare_frames is 0."
+                logger.error(msg)
+                raise ValueError(msg)
 
-                for frame_idx, frame in enumerate(tqdm(frames, desc=f"Processing reference {video_idx}")):
-                    frame_rgb = self.convert_frame(frame)
-                    emb = self._compute_embedding(frame_rgb)
-                    embeddings.append(emb)
-                    logger.debug(
-                        f"Processed frame {frame_idx + 1} from {os.path.basename(video_path)}. Embedding shape: {emb.shape}")
-            except Exception as e:
-                logger.error(f"Error processing reference video {os.path.basename(video_path)}: {e}", exc_info=True)
-                continue  # Try to continue with other videos
+            for frame_idx, frame in enumerate(tqdm(frames, desc=f"Processing reference video")):
+                frame_rgb = self.convert_frame(frame)
+                emb = self._compute_embedding(frame_rgb)
+                embeddings.append(emb)
+                logger.debug(
+                    f"Processed frame {frame_idx + 1} from {os.path.basename(video_path)}. Embedding shape: {emb.shape}")
+        except Exception as e:
+            logger.error(f"Error processing reference video {os.path.basename(video_path)}: {e}", exc_info=True)
+            raise  # Rethrow as this is the only video
 
         if not embeddings:
-            msg = "No embeddings were extracted from any reference files. Cannot proceed."
+            msg = "No embeddings were extracted from the reference file. Cannot proceed."
             logger.critical(msg)
             raise ValueError(msg)
 

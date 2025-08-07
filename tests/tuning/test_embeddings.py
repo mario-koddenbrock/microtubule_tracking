@@ -7,16 +7,12 @@ from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 @pytest.fixture
 def tiny_model_tuning_config(shared_tmp_path):
     """A fixture that provides a TuningConfig pointing to a tiny, fast model."""
-    # Use a mock directory for reference videos
-    ref_dir = shared_tmp_path / "references"
-    ref_dir.mkdir(exist_ok=True)
     # Create a dummy video file that extract_frames can process
-    dummy_video_path = ref_dir / "ref.tif"
+    dummy_video_path = shared_tmp_path / "ref.mp4"
     dummy_frame = (np.random.rand(512, 512, 3) * 255).astype(np.uint8)
 
     import cv2
-    # Optionally, create a dummy mp4 video with OpenCV
-    dummy_video_path = ref_dir / "ref.mp4"
+    # Create a dummy mp4 video with OpenCV
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(str(dummy_video_path), fourcc, 1.0, (512, 512))
     out.write(dummy_frame)
@@ -25,7 +21,7 @@ def tiny_model_tuning_config(shared_tmp_path):
     # Use a fast, small model for testing
     return TuningConfig(
         model_name="openai/clip-vit-base-patch16",
-        reference_series_dir=str(ref_dir),
+        reference_video_path=str(dummy_video_path),
         num_compare_frames=1,
         pca_components=3  # Enable PCA for one of the tests
     )
