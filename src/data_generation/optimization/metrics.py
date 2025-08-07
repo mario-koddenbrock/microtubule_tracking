@@ -30,13 +30,16 @@ def similarity(
     """
     Core evaluation logic: Computes similarity using the specified metric.
     Handles both embedding vectors and raw image data (for LPIPS).
+    Returns an array of scores. For instance-based metrics, this is one score per synthetic image.
+    For distribution-based metrics, this is a single score in an array.
     """
+
     similarity_metric = getattr(tuning_cfg, 'similarity_metric', 'cosine')
-    aggregation_method = getattr(tuning_cfg, 'aggregation_method', 'max')
+    aggregation_method = getattr(tuning_cfg, 'aggregation_method', 'mean')
     logger.debug(f"--- [METRIC START] ---")
     logger.debug(f"Metric: '{similarity_metric}', Aggregation: '{aggregation_method}'")
 
-    score: float
+
     try:
         # --- LPIPS Metric (Image-based) ---
         if "lpips" in similarity_metric:
@@ -53,16 +56,13 @@ def similarity(
                 logger.warning("Synthetic embeddings are empty. Cannot compute similarity.")
                 return -float('inf')
 
-            # Handle 'mean_ref' aggregation for pointwise metrics
-            if aggregation_method == 'mean_ref' and similarity_metric in ['cosine', 'mahalanobis']:
-                logger.debug("Using 'mean_ref' aggregation. Averaging reference embeddings.")
-                ref_embeddings = np.mean(ref_embeddings, axis=0, keepdims=True)
-
             if similarity_metric == "mahalanobis":
                 if ref_inv_cov is None:
                     raise ValueError("Inverse covariance matrix is required for Mahalanobis distance.")
+                # Returns a score per synthetic image
                 score = compute_mahalanobis_score(synthetic_embeddings, ref_embeddings, ref_inv_cov, aggregation_method)
             elif similarity_metric == "cosine":
+                # Returns a score per synthetic image
                 score = compute_cosine_score(synthetic_embeddings, ref_embeddings, aggregation_method)
             elif similarity_metric == "fid":
                 if ref_mean is None or ref_cov is None:
@@ -85,7 +85,7 @@ def similarity(
         logger.error(f"Error during '{similarity_metric}' computation: {e}", exc_info=True)
         score = -float('inf')
 
-    logger.debug(f"Final Score for Trial: {score:.6f}")
+    logger.debug(f"Final Score(s) for Trial: {score}")
     logger.debug(f"--- [METRIC END] ---\n")
     return score
 
@@ -173,6 +173,9 @@ def compute_kernel_inception_distance(synthetic_embeddings: np.ndarray, ref_embe
     term2 = (k_yy.sum() - np.trace(k_yy)) / (n * (n - 1))
     term3 = 2 * k_xy.sum() / (m * n)
     kid = term1 + term2 - term3
+    if np.isnan(kid):
+        kid = float('inf')
+
     return -float(kid)
 
 
@@ -218,7 +221,7 @@ def compute_js_divergence_score(synthetic_embeddings: np.ndarray, ref_hist_bins:
     synth_prob[synth_prob == 0] = 1e-10
 
     jsd = jensenshannon(ref_prob, synth_prob)
-    return -jsd
+    return float(-jsd)
 
 
 def compute_lpips_score(model_net: str, synthetic_images: np.ndarray, ref_images: np.ndarray) -> float:
