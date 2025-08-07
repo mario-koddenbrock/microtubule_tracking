@@ -12,13 +12,13 @@ def tiny_model_tuning_config(shared_tmp_path):
     ref_dir.mkdir(exist_ok=True)
     # Create a dummy video file that extract_frames can process
     dummy_video_path = ref_dir / "ref.tif"
-    dummy_frame = (np.random.rand(500, 500, 3) * 255).astype(np.uint8)
+    dummy_frame = (np.random.rand(512, 512, 3) * 255).astype(np.uint8)
 
     import cv2
     # Optionally, create a dummy mp4 video with OpenCV
     dummy_video_path = ref_dir / "ref.mp4"
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out = cv2.VideoWriter(str(dummy_video_path), fourcc, 1.0, (500, 500))
+    out = cv2.VideoWriter(str(dummy_video_path), fourcc, 1.0, (512, 512))
     out.write(dummy_frame)
     out.release()
 

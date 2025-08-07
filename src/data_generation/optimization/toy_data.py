@@ -14,7 +14,7 @@ logger = logging.getLogger(f"mt.{__name__}")
 
 def get_toy_data(embedding_extractor: ImageEmbeddingExtractor = None) -> Dict[str, Optional[Any]]:
     """
-    Downloads toy images, standardizes them to a 500x500 square, and returns them.
+    Downloads toy images, standardizes them to a 512x512 square, and returns them.
 
     Args:
         embedding_extractor (ImageEmbeddingExtractor, optional): Not used in this version
@@ -52,8 +52,8 @@ def get_toy_data(embedding_extractor: ImageEmbeddingExtractor = None) -> Dict[st
             start_y = (h - min_dim) // 2
             cropped_img = img_np[start_y:start_y + min_dim, start_x:start_x + min_dim]
 
-            # Resize to a fixed size (e.g., 500x500)
-            resized_img = cv2.resize(cropped_img, (500, 500), interpolation=cv2.INTER_AREA)
+            # Resize to a fixed size (e.g., 512x512)
+            resized_img = cv2.resize(cropped_img, (512, 512), interpolation=cv2.INTER_AREA)
             toy_images.append(resized_img)
 
         except requests.exceptions.RequestException as e:

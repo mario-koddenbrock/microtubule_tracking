@@ -37,7 +37,7 @@ class TuningConfig(BaseConfig):
     load_if_exists: bool = True
 
     # ─── Static Video Properties (not tuned) ────────────────────────
-    img_size: Tuple[int, int] = (500, 500)
+    img_size: Tuple[int, int] = (512, 512)
     fps: int = 5
 
     # =========================================================================

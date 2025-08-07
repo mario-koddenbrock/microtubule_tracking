@@ -106,7 +106,7 @@ def normalize_contrast_stretch(
 def process_tiff_video(
         video_path: str,
         num_crops: int = 3,
-        crop_size: Tuple[int, int] = (500, 500),
+        crop_size: Tuple[int, int] = (512, 512),
         norm_bounds: List[Tuple[float, float]] = [(0.0, 0.75), (0.0, 0.75)]
 ) -> List[List[np.ndarray]]:
     """
@@ -226,7 +226,7 @@ def process_tiff_video(
     return all_cropped_videos
 
 
-def extract_frames(video_path: str, num_splits:int = 0, crop_size=(500, 500)) -> Tuple[List[List[np.ndarray]], int]:
+def extract_frames(video_path: str, num_splits:int = 0, crop_size=(512, 512)) -> Tuple[List[List[np.ndarray]], int]:
 
     logger.debug(f"Extracting frames from: {video_path}")
 

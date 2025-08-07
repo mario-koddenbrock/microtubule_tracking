@@ -19,7 +19,7 @@ class SyntheticDataConfig(BaseConfig):
 
     # ─── core video info ────────────────────────────────────
     id: int | str = 309
-    img_size: Tuple[int, int] = (500, 500)
+    img_size: Tuple[int, int] = (512, 512)
     fps: int = 5
     num_frames: int = 100
     color_mode: bool = True
