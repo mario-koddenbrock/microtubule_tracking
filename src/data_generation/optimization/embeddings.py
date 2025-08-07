@@ -216,7 +216,7 @@ class ImageEmbeddingExtractor:
             logger.warning(f"Limiting reference videos to {len(video_files)} as per config.num_compare_series.")
 
         for video_idx, video_path in enumerate(video_files):
-            logger.info(
+            logger.debug(
                 f"Processing reference video {video_idx + 1}/{len(video_files)}: {os.path.basename(video_path)}")
             try:
                 frames, _ = extract_frames(video_path)
@@ -231,7 +231,7 @@ class ImageEmbeddingExtractor:
                         f"No frames extracted from {os.path.basename(video_path)} or num_compare_frames is 0. Skipping.")
                     continue
 
-                for frame_idx, frame in enumerate(tqdm(frames, desc=f"Processing frames from {os.path.basename(video_path)}")):
+                for frame_idx, frame in enumerate(tqdm(frames, desc=f"Processing reference {video_idx}")):
                     frame_rgb = self.convert_frame(frame)
                     emb = self._compute_embedding(frame_rgb)
                     embeddings.append(emb)
@@ -247,7 +247,7 @@ class ImageEmbeddingExtractor:
             raise ValueError(msg)
 
         raw_embeddings = np.stack(embeddings)
-        logger.info(
+        logger.debug(
             f"Extracted {raw_embeddings.shape[0]} raw reference embeddings with dimension {raw_embeddings.shape[1]}.")
 
         # Fit and apply PCA if configured
@@ -255,21 +255,20 @@ class ImageEmbeddingExtractor:
             # Ensure PCA components are not more than the number of samples or features
             pca_components = min(self.config.pca_components, raw_embeddings.shape[0], raw_embeddings.shape[1])
             if pca_components <= 0:
-                logger.warning(
-                    f"PCA components effectively zero or negative ({pca_components}). Skipping PCA reduction.")
+                logger.debug(f"PCA components set to ({pca_components}). Skipping PCA reduction.")
                 self.pca_model = None  # Ensure it's explicitly None
                 return raw_embeddings
 
-            logger.info(f"Fitting PCA to reduce dimension to {pca_components} components...")
+            logger.debug(f"Fitting PCA to reduce dimension to {pca_components} components...")
             self.pca_model = PCA(n_components=pca_components)
             reduced_embeddings = self.pca_model.fit_transform(raw_embeddings)
             explained_variance_ratio = sum(self.pca_model.explained_variance_ratio_)
-            logger.info(f"PCA fitted. Explained variance ratio: {explained_variance_ratio:.4f}")
-            logger.info(
+            logger.debug(f"PCA fitted. Explained variance ratio: {explained_variance_ratio:.4f}")
+            logger.debug(
                 f"Reference embeddings reduced from {raw_embeddings.shape[1]} to {reduced_embeddings.shape[1]} dimensions.")
             return reduced_embeddings
         else:
-            logger.info("PCA not configured (pca_components is None). Returning raw reference embeddings.")
+            logger.debug("PCA not configured (pca_components is None). Returning raw reference embeddings.")
             return raw_embeddings
 
     def _apply_pca_if_available(self, embeddings: np.ndarray) -> np.ndarray:
@@ -290,7 +289,7 @@ class ImageEmbeddingExtractor:
 
     def extract_from_synthetic_config(self, synthetic_cfg: SyntheticDataConfig,
                                       num_compare_frames: int = 1) -> np.ndarray:
-        logger.info(
+        logger.debug(
             f"Extracting embeddings from synthetic config (ID: {synthetic_cfg.id}). Comparing {num_compare_frames} frames.")
         raw_embeddings = []
         frame_generator = generate_frames(synthetic_cfg, num_compare_frames)
@@ -309,7 +308,7 @@ class ImageEmbeddingExtractor:
             return np.array([])  # Return empty array if no embeddings could be generated
 
         raw_embeddings = np.stack(raw_embeddings)
-        logger.info(f"Extracted {raw_embeddings.shape[0]} raw embeddings from synthetic config {synthetic_cfg.id}.")
+        logger.debug(f"Extracted {raw_embeddings.shape[0]} raw embeddings from synthetic config {synthetic_cfg.id}.")
         return self._apply_pca_if_available(raw_embeddings)
 
     def extract_from_frames(self, frames: List[np.ndarray], num_compare_frames: int = 1) -> np.ndarray:
@@ -337,7 +336,7 @@ class ImageEmbeddingExtractor:
             return np.array([])
 
         raw_embeddings = np.stack(raw_embeddings)
-        logger.info(f"Extracted {raw_embeddings.shape[0]} raw embeddings from provided frames.")
+        logger.debug(f"Extracted {raw_embeddings.shape[0]} raw embeddings from provided frames.")
         return self._apply_pca_if_available(raw_embeddings)
 
     def convert_frame(self, frame: np.ndarray) -> np.ndarray:
