@@ -243,7 +243,6 @@ def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512)) -> 
     try:
         if video_path.lower().endswith((".avi", ".mp4", ".mov", ".mkv")):
             frames, fps = process_avi_video(fps, video_path)
-            ndim = frames[0].ndim
 
         elif video_path.lower().endswith((".tif", ".tiff")):
             frames = process_tiff_video(
@@ -285,6 +284,11 @@ def process_avi_video(fps, video_path):
         ret, frame = cap.read()
         if not ret:
             break
+
+        if frame.dtype != 'uint8':
+            frame = (255 * frame).astype('uint8')
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         frames.append(frame)
         frame_count += 1
     cap.release()

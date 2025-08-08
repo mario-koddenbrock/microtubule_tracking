@@ -4,6 +4,7 @@ from pathlib import Path
 from random import shuffle
 
 import cv2
+import numpy as np
 
 from file_io.utils import extract_frames
 
@@ -32,6 +33,10 @@ def split_and_convert(output_path, video_path, num_crops=3, num_frames=10):
         print(f"  -> Skipping video, no frames were extracted.")
         return
 
+    is_single_of_videos = isinstance(frames_list[0], np.ndarray)
+    if is_single_of_videos:
+        frames_list = [frames_list]
+
     base_name = Path(video_path).stem
     for frames_idx, frames in enumerate(frames_list):
         if not frames:
@@ -48,7 +53,6 @@ def split_and_convert(output_path, video_path, num_crops=3, num_frames=10):
         # --- 2. Set up PNG Frame Export Directory (new logic) ---
         frame_output_dir = os.path.join(output_path, base_name)
         os.makedirs(frame_output_dir, exist_ok=True)
-        print(f"  -> Exporting {len(frames)} frames to: {frame_output_dir}")
 
         # --- 3. Loop Through Frames to Write Both Video and PNGs ---
         # Use enumerate to get a frame index for naming the PNG files.
@@ -62,8 +66,8 @@ def split_and_convert(output_path, video_path, num_crops=3, num_frames=10):
             else:
                 frame_uint8 = frame
 
-            frame_uint8 = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
-            writer.write(frame_uint8)
+            frame_bgr = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)
+            writer.write(frame_bgr)
 
         writer.release()
         print(f"  -> MP4 video saved to: {video_output_path}")
@@ -95,13 +99,16 @@ def split_and_convert(output_path, video_path, num_crops=3, num_frames=10):
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.realpath(__file__))
     # Define paths relative to the script location
-    data_path_A = os.path.join('data', 'mpi', 'type_A')
-    data_path_B = os.path.join('data', 'mpi', 'type_B')
-    output_path_A = os.path.join('data', 'mpi_converted', 'type_A')
-    output_path_B = os.path.join('data', 'mpi_converted', 'type_B')
 
-    os.makedirs(output_path_A, exist_ok=True)
-    os.makedirs(output_path_B, exist_ok=True)
+    folder_names = [
+        '250523 Exemplary IRM Images',
+        # '250801 Additional Images from Dominik',
+        'Simone'
+    ]
 
-    process_all(data_path_A, output_path_A)
-    process_all(data_path_B, output_path_B)
+    for folder_name in folder_names:
+        data_path = os.path.join("data", "mpi", folder_name)
+        output_path = os.path.join("data", "mpi_converted", folder_name)
+
+        os.makedirs(output_path, exist_ok=True)
+        process_all(data_path, output_path)
