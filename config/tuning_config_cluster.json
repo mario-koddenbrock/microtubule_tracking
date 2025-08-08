@@ -16,8 +16,8 @@
   "pca_components": 0,
   "load_if_exists": true,
   "img_size": [
-    500,
-    500
+    512,
+    512
   ],
   "fps": 0.5,
   "base_wagon_length_min_range": [
@@ -108,7 +108,7 @@
   ],
   "fixed_spots_tuning": {
     "count_range": [
-      500,
+      512,
       1500
     ],
     "intensity_min_range": [
@@ -155,7 +155,7 @@
   },
   "random_spots_tuning": {
     "count_range": [
-      500,
+      512,
       2000
     ],
     "intensity_min_range": [
