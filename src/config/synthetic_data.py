@@ -20,24 +20,22 @@ class SyntheticDataConfig(BaseConfig):
     # ─── core video info ────────────────────────────────────
     id: int | str = 309
     img_size: Tuple[int, int] = (512, 512)
+    num_frames: int = 50
     fps: int = 5
-    num_frames: int = 100
-    color_mode: bool = True
+    num_microtubule: int = 10
+    microtubule_seed_min_dist: int = 10
+    margin: int = 5
 
-    # ─── microtubule kinematics (stateful model) ─────────────────────────
-    growth_speed: float = 2.5  # Pixels per frame
-    shrink_speed: float = 5.0  # Pixels per frame
-    catastrophe_prob: float = 0.01  # Probability per frame to switch from growing to shrinking
-    rescue_prob: float = 0.01  # Probability per frame for a rescue event
+    # --- Microtubule Dynamics ---
+    growth_speed: float = 2.5  # Average length change per frame when growing
+    shrink_speed: float = 5.0  # Average length change per frame when shrinking
+    catastrophe_prob: float = 0.01  # Probability of switching from growth to shrink per frame
+    rescue_prob: float = 0.01  # Probability of switching from shrink to growth per frame
+    max_pause_at_min_frames: int = 5  # Max frames to pause at min length before forced rescue
 
-    # NEW: Max frames a tubule can be paused at its minimum length before a forced rescue.
-    max_pause_at_min_frames: int = 5
-
-    # The "seed" part of the microtubule. Its length is fixed for the entire simulation.
-    base_wagon_length_min: float = 10.0
+    # --- Microtubule Geometry ---
+    base_wagon_length_min: float = 5.0
     base_wagon_length_max: float = 50.0
-
-    # The maximum total length a microtubule can reach before it is forced to shrink.
     microtubule_length_min: int = 100
     microtubule_length_max: int = 200
 
@@ -48,114 +46,68 @@ class SyntheticDataConfig(BaseConfig):
     max_angle_sign_changes: int = 1  # 0 for C-shape, 1 for S-shape, etc.
     prob_to_flip_bend: float = 0.1  # Probability to use an available sign change when adding new visual wagons
 
-    # Seeding parameters
-    num_microtubule: int = 20
-    microtubule_seed_min_dist: int = 50
-    margin: int = 5
+    # --- Minus-end (opposite direction) dynamics ---
+    minus_end_target_length_mean: float = 0.0  # Mean of the target length distribution for the minus-end.
+    minus_end_target_length_std: float = 20.0  # Std dev of the target length distribution.
+    minus_end_velocity: float = 1.0  # Speed of growth/shrink for the minus-end.
 
-    # ─── PSF / drawing width ───────────────────────────────
-    psf_sigma_h: float = 0.3
-    psf_sigma_v: float = 0.8
-    tubule_width_variation: float = 0.05
+    # --- Photophysics & Camera Realism ---
+    psf_sigma_h: float = 0.3  # Horizontal PSF sigma (line width)
+    psf_sigma_v: float = 0.75  # Vertical PSF sigma (line length)
+    tubule_width_variation: float = 0.1  # % variation in line width
+    background_level: float = 0.7  # Base background level [0, 1]
+    tubulus_contrast: float = -0.2  # Base contrast of microtubule body. Negative for dark-on-light.
+    seed_red_channel_boost: float = 0.2  # How much to boost red channel for the seed wagon.
+    tip_brightness_factor: float = 1.2  # Multiplier for the growing tip's brightness.
+    red_channel_noise_std: float = 0.01  # Std dev of noise added only to the red channel.
+    quantum_efficiency: float = 80.0  # Factor for Poisson noise simulation.
+    gaussian_noise: float = 0.05  # Std dev of global Gaussian noise.
+    vignetting_strength: float = 0.1  # Strength of the radial vignetting effect.
+    global_blur_sigma: float = 0.5  # Sigma for a final global Gaussian blur.
+    jitter_px: float = 0.5  # Random jitter applied to all microtubules each frame.
 
-    # ─── photophysics / camera realism ─────────────────
-    background_level: float = 0.8
-    tubulus_contrast: float = -0.4
-    seed_red_channel_boost: float = 0.5
-    tip_brightness_factor: float = 1.2  # Growing tips are brighter
+    # --- Ancillary Objects (Spots) ---
+    fixed_spots: SpotConfig = field(default_factory=lambda: SpotConfig(count=50))
+    moving_spots: SpotConfig = field(default_factory=lambda: SpotConfig(count=0))
+    random_spots: SpotConfig = field(default_factory=lambda: SpotConfig(count=20))
 
-    brightness: float = 0.0  # Default brightness adjustment
-    contrast: float = 0.0  # Default contrast adjustment
-
-    red_channel_noise_std: float = 0.01  # Std dev for red-only noise
-
-    quantum_efficiency: float = 50.0
-    gaussian_noise: float = 0.09
-    jitter_px: float = 0.5
-    vignetting_strength: float = 0.05
-    global_blur_sigma: float = 0.9
-
-    fixed_spots: SpotConfig = field(
-        default_factory=lambda: SpotConfig(
-            count=30, intensity_max=0.1, radius_max=3, kernel_size_max=3, sigma=0.1, polygon_p=0.3
-        )
-    )
-    moving_spots: SpotConfig = field(
-        default_factory=lambda: SpotConfig(
-            count=20, intensity_max=0.08, radius_max=3, kernel_size_max=2, sigma=0.3, max_step=5
-        )
-    )
-    random_spots: SpotConfig = field(
-        default_factory=lambda: SpotConfig(
-            count=20, intensity_max=0.08, radius_max=5, kernel_size_max=2, sigma=0.5
-        )
-    )
-
-    albumentations: Optional[AlbumentationsConfig] = field(default_factory=AlbumentationsConfig)
-
-    # ─── annotations ─────────────────────────────────────
-    show_time: bool = True
-    show_scale: bool = True
+    # --- Rendering & Output ---
+    color_mode: bool = True
+    contrast: float = 0.0
+    brightness: float = 0.0
     annotation_color_rgb: Tuple[float, float, float] = (1.0, 1.0, 1.0)
     um_per_pixel: float = 0.1
     scale_bar_um: float = 5.0
-
-    # ─── misc ──────────────────────────────────────────────
+    show_time: bool = False
+    show_scale: bool = False
     generate_microtubule_mask: bool = True
     generate_seed_mask: bool = False
+    albumentations: Optional[dict] = None
 
     def __post_init__(self):
         super().__post_init__()
-
-        # Convert nested dicts from JSON/dict loading into dataclass instances
-        if self.albumentations and isinstance(self.albumentations, dict):
-            self.albumentations = AlbumentationsConfig(**self.albumentations)
-        if isinstance(self.fixed_spots, dict):
-            self.fixed_spots = SpotConfig(**self.fixed_spots)
-        if isinstance(self.moving_spots, dict):
-            self.moving_spots = SpotConfig(**self.moving_spots)
-        if isinstance(self.random_spots, dict):
-            self.random_spots = SpotConfig(**self.random_spots)
-
         logger.debug(f"SyntheticDataConfig '{self.id}' initialized. Running initial validation...")
         try:
             self.validate()
         except ValueError as e:
-            logger.critical(f"Initial validation of SyntheticDataConfig '{self.id}' failed: {e}", exc_info=False)
+            logger.critical(f"Initial validation of SyntheticDataConfig failed: {e}", exc_info=False)
             raise
 
     def validate(self):
-        """Validates all configuration parameters."""
+        """Validates configuration parameters."""
         logger.debug(f"Starting validation for SyntheticDataConfig '{self.id}'...")
         errors = []
-
-        if not (isinstance(self.img_size, (list, tuple)) and len(self.img_size) == 2 and all(
-                isinstance(x, int) and x > 0 for x in self.img_size)):
-            errors.append(f"img_size must be a tuple of two positive integers, but got {self.img_size}.")
-        if not (self.growth_speed > 0): errors.append("growth_speed must be positive.")
-        if not (self.shrink_speed > 0): errors.append("shrink_speed must be positive.")
-        if not (0 <= self.catastrophe_prob <= 1): errors.append("catastrophe_prob must be between 0 and 1.")
-        if not (0 <= self.rescue_prob <= 1): errors.append("rescue_prob must be between 0 and 1.")
-        if not (self.max_pause_at_min_frames >= 0): errors.append(
-            "max_pause_at_min_frames must be a non-negative integer.")
-        if not (0 < self.base_wagon_length_min <= self.base_wagon_length_max):
-            errors.append("base_wagon_length_min must be positive and <= base_wagon_length_max.")
-        if not (0 < self.microtubule_length_min <= self.microtubule_length_max):
-            errors.append("microtubule_length_min must be positive and <= microtubule_length_max.")
-        if not (self.base_wagon_length_max <= self.microtubule_length_min):
-            errors.append(
-                f"base_wagon_length_max ({self.base_wagon_length_max}) must be <= microtubule_length_min ({self.microtubule_length_min}).")
-        if not (self.tail_wagon_length > 0): errors.append("tail_wagon_length must be positive.")
-        if not (self.red_channel_noise_std >= 0): errors.append("red_channel_noise_std must be non-negative.")
-
-        for name, cfg_instance in [("fixed_spots", self.fixed_spots), ("moving_spots", self.moving_spots),
-                                   ("random_spots", self.random_spots)]:
-            try:
-                cfg_instance.validate()
-            except ValueError as e:
-                errors.append(f"{name} config validation failed: {e}")
+        if self.base_wagon_length_min > self.base_wagon_length_max:
+            errors.append("base_wagon_length_min cannot be greater than base_wagon_length_max.")
+        if self.microtubule_length_min > self.microtubule_length_max:
+            errors.append("microtubule_length_min cannot be greater than microtubule_length_max.")
+        if self.base_wagon_length_max > self.microtubule_length_min:
+            errors.append("base_wagon_length_max should not be greater than microtubule_length_min.")
+        if self.psf_sigma_h <= 0 or self.psf_sigma_v <= 0:
+            errors.append("PSF sigmas must be positive.")
+        if self.fps <= 0:
+            errors.append("FPS must be positive.")
 
         if errors:
-            full_msg = f"Validation failed with {len(errors)} error(s):\n" + "\n".join(errors)
-            raise ValueError(full_msg)
+            raise ValueError(f"SyntheticDataConfig validation failed for '{self.id}':\n" + "\n".join(errors))
         logger.debug(f"SyntheticDataConfig '{self.id}' validation successful.")

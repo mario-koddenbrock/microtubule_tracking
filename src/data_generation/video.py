@@ -5,6 +5,7 @@ from typing import List, Tuple, Optional, Dict, Any
 import albumentations as A
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 
 from config.synthetic_data import SyntheticDataConfig
 from data_generation import utils
@@ -62,7 +63,7 @@ def render_frame(
     logger.debug(f"Frame {frame_idx}: Simulating and drawing {len(mts)} microtubules.")
     for mt_idx, mt in enumerate(mts):
         try:
-            mt.step()
+            mt.step(cfg)
             mt.base_point += jitter
 
             # Pass seed_mask only if it's the first frame and requested
@@ -284,11 +285,13 @@ def generate_video(
     frames: List[np.ndarray] = []
 
     try:
-        # Process and write each frame one-by-one using the generator
-        for frame_img_rgb, gt_data_for_frame, microtubule_mask_img, seed_mask_img in (
+
+        for frame_img_rgb, gt_data_for_frame, microtubule_mask_img, seed_mask_img in tqdm(
                 generate_frames(cfg, cfg.num_frames,
                                 return_microtubule_mask=cfg.generate_microtubule_mask,
-                                return_seed_mask=cfg.generate_seed_mask)):
+                                return_seed_mask=cfg.generate_seed_mask),
+                total=cfg.num_frames,
+                desc=f"Series {cfg.id} frames"):
 
             frames.append(frame_img_rgb)
             all_gt_data.extend(gt_data_for_frame)

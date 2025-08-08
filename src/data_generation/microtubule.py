@@ -1,6 +1,7 @@
 import logging
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -10,141 +11,155 @@ from data_generation.utils import draw_gaussian_line_rgb
 logger = logging.getLogger(f"mt.{__name__}")
 
 
+class MicrotubuleState(Enum):
+    GROWING = auto()
+    SHRINKING = auto()
+    PAUSED = auto()
+
+
 @dataclass
 class Wagon:
-    """Represents a visual segment of a microtubule for drawing purposes."""
+    """Represents a single, persistent segment of a microtubule."""
     length: float
-    angle: float  # relative to the previous wagon (radians)
     is_seed: bool = False
+    relative_bend_angle: float = 0.0  # Angle relative to the previous wagon
 
 
 class Microtubule:
     """
     Represents a single microtubule with stateful, event-driven dynamics.
-    The list of wagons is now persistent, creating a stable shape that grows/shrinks at the tip.
+    It consists of a persistent 'base' (seed) and a dynamic 'tail'.
     """
 
     def __init__(self, cfg: SyntheticDataConfig, base_point: np.ndarray, instance_id: int = 0):
-        logger.debug(f"Initializing Microtubule instance ID: {instance_id} at base point: {base_point.tolist()}.")
-        self.cfg = cfg
         self.instance_id = instance_id
+        self.base_point = base_point.astype(np.float32)
+        self.base_orientation = np.random.uniform(0, 2 * np.pi)
         self.frame_idx = 0
+        self.state = MicrotubuleState.GROWING
+        self.pause_frames_at_min = 0
 
-        # --- Initialize fixed properties ---
-        self.base_point = base_point.copy()
-        self.base_orientation = np.random.uniform(0.0, 2 * np.pi)
-        seed_length = np.random.uniform(cfg.base_wagon_length_min, cfg.base_wagon_length_max)
-        self.max_len = np.random.uniform(cfg.microtubule_length_min, cfg.microtubule_length_max)
+        # Initialize the persistent base wagon (the "seed")
+        base_length = np.random.uniform(cfg.base_wagon_length_min, cfg.base_wagon_length_max)
+        self.wagons: List[Wagon] = [Wagon(length=base_length, is_seed=True)]
 
-        # --- Initialize stateful attributes ---
-        self.state = np.random.choice(["growing", "shrinking"])
-        self.min_pause_counter = 0
+        # Bending state must be initialized before adding the tail
+        self.is_bent = np.random.rand() < cfg.bending_prob
+        self.bend_angle_sign_changes_left = cfg.max_angle_sign_changes if self.is_bent else 0
+        self.current_bend_sign = np.random.choice([-1, 1]) if self.is_bent else 0
 
-        # The list of wagons is the primary state for shape and length.
-        self.seed_wagon = Wagon(length=seed_length, angle=0.0, is_seed=True)
-        self.wagons: List[Wagon] = [self.seed_wagon]
+        # Initialize the dynamic tail length
+        initial_tail_length = np.random.uniform(
+            cfg.microtubule_length_min - base_length,
+            cfg.microtubule_length_max - base_length
+        )
+        self._add_tail_length(initial_tail_length, cfg)
 
-        # <-- FIX: Bending properties MUST be initialized BEFORE the initial tail is built.
-        # --- Initialize bending properties ---
-        self.bending = np.random.random() < cfg.bending_prob
-        self.max_angle = cfg.max_angle if self.bending else 0.0
-        self.max_angle_sign_changes = cfg.max_angle_sign_changes
-        self._current_bend_sign = np.random.choice([-1.0, 1.0])
-        self._sign_changes_count = 0
-
-        # Now, initialize to a random starting length by adding tail wagons.
-        initial_length = np.random.uniform(seed_length, self.max_len)
-        self._add_tail_length(initial_length - seed_length)
+        # Minus-end state
+        self.minus_end_target_length = max(0.0, np.random.normal(
+            cfg.minus_end_target_length_mean, cfg.minus_end_target_length_std
+        ))
+        # Start with a random length between 0 and its target length
+        self.minus_end_length = np.random.uniform(0, self.minus_end_target_length)
 
         logger.debug(
-            f"MT {instance_id}: Initial state: '{self.state}', length: {self.total_length:.2f}, max_len: {self.max_len:.2f}.")
+            f"MT {self.instance_id} created. Base len: {base_length:.2f}, "
+            f"Initial tail: {initial_tail_length:.2f}, Total: {self.total_length:.2f}, "
+            f"Bent: {self.is_bent}, Minus-end target: {self.minus_end_target_length:.2f}"
+        )
 
     @property
     def total_length(self) -> float:
-        """Calculate total length by summing all wagon lengths."""
+        """Calculates the total length of all wagons."""
         return sum(w.length for w in self.wagons)
 
-    def step(self):
+    def step(self, cfg: SyntheticDataConfig):
         """
-        Simulates one time step, updating state and modifying the wagon list at the tip.
+        Advances the microtubule simulation by one time step, updating its state and length.
         """
         self.frame_idx += 1
-        prev_state = self.state
 
-        # 1. Determine state transition logic
-        if self.state == "growing":
-            if self.total_length >= self.max_len:
-                self.state = "shrinking"
-            elif np.random.random() < self.cfg.catastrophe_prob:
-                self.state = "shrinking"
+        # 1. Update state based on catastrophe/rescue probabilities
+        if self.state == MicrotubuleState.GROWING:
+            if np.random.rand() < cfg.catastrophe_prob:
+                self.state = MicrotubuleState.SHRINKING
+                logger.debug(f"MT {self.instance_id}: Catastrophe -> SHRINKING")
+        elif self.state == MicrotubuleState.SHRINKING:
+            if self.total_length <= self.wagons[0].length:  # At min length (only seed left)
+                self.state = MicrotubuleState.PAUSED
+                self.pause_frames_at_min = 0
+                logger.debug(f"MT {self.instance_id}: Min length reached -> PAUSED")
+            elif np.random.rand() < cfg.rescue_prob:
+                self.state = MicrotubuleState.GROWING
+                logger.debug(f"MT {self.instance_id}: Rescue -> GROWING")
 
-        elif self.state == "shrinking":
-            if self.total_length <= self.seed_wagon.length:
-                self.state = "paused_min"
-            elif np.random.random() < self.cfg.rescue_prob:
-                self.state = "growing"
+        # 2. Update plus-end tail length based on the current state
+        if self.state == MicrotubuleState.GROWING:
+            growth = np.random.normal(cfg.growth_speed, cfg.growth_speed * 0.1)
+            self._add_tail_length(growth, cfg)
+        elif self.state == MicrotubuleState.SHRINKING:
+            shrinkage = np.random.normal(cfg.shrink_speed, cfg.shrink_speed * 0.1)
+            if self._remove_tail_length(shrinkage):
+                self.state = MicrotubuleState.PAUSED  # Tail is gone
+                self.pause_frames_at_min = 0
+        elif self.state == MicrotubuleState.PAUSED:
+            self.pause_frames_at_min += 1
+            if self.pause_frames_at_min >= cfg.max_pause_at_min_frames:
+                self.state = MicrotubuleState.GROWING  # Forced rescue
+                logger.debug(f"MT {self.instance_id}: Forced rescue from PAUSED -> GROWING")
 
-        elif self.state == "paused_min":
-            self.min_pause_counter += 1
-            if (np.random.random() < self.cfg.rescue_prob) or (
-                    self.min_pause_counter >= self.cfg.max_pause_at_min_frames):
-                self.state = "growing"
-                self.min_pause_counter = 0
+        # 3. Update minus-end tail length
+        if abs(self.minus_end_length - self.minus_end_target_length) > 1e-6:
+            direction = np.sign(self.minus_end_target_length - self.minus_end_length)
+            change = min(cfg.minus_end_velocity, abs(self.minus_end_target_length - self.minus_end_length))
+            self.minus_end_length += direction * change
 
-        # 2. Apply the change in length based on the NEW state.
-        if self.state == 'growing':
-            self._add_tail_length(self.cfg.growth_speed)
-        elif self.state == 'shrinking':
-            self._remove_tail_length(self.cfg.shrink_speed)
-
-        # 3. Log state changes.
-        if self.state != prev_state:
-            logger.debug(
-                f"MT {self.instance_id} Frame {self.frame_idx}: State changed from '{prev_state}' to '{self.state}'. Length: {self.total_length:.2f}")
-
-    def _add_tail_length(self, amount_to_add: float):
-        """Adds length to the tail, extending the last wagon or adding new ones."""
-        if amount_to_add <= 0: return
-
-        if len(self.wagons) <= 1:
-            self.wagons.append(Wagon(length=0, angle=self._get_next_bend_angle()))
-
+    def _add_tail_length(self, length_to_add: float, cfg: SyntheticDataConfig):
+        """Adds length to the dynamic tail, creating new visual wagons if needed."""
+        if not self.wagons: return
         last_wagon = self.wagons[-1]
-        space_in_last_wagon = self.cfg.tail_wagon_length - last_wagon.length
-        add_here = min(amount_to_add, space_in_last_wagon)
-        last_wagon.length += add_here
-        remaining_to_add = amount_to_add - add_here
 
-        while remaining_to_add > 0:
-            new_len = min(remaining_to_add, self.cfg.tail_wagon_length)
-            self.wagons.append(Wagon(length=new_len, angle=self._get_next_bend_angle()))
-            remaining_to_add -= new_len
+        if last_wagon.is_seed:
+            # Start a new dynamic wagon
+            new_wagon = Wagon(length=length_to_add, relative_bend_angle=self._get_next_bend_angle(cfg))
+            self.wagons.append(new_wagon)
+        else:
+            # Add to the last dynamic wagon
+            last_wagon.length += length_to_add
 
-    def _remove_tail_length(self, amount_to_remove: float):
-        """Removes length from the tail by shrinking and popping wagons from the end."""
-        if amount_to_remove <= 0: return
+        # Subdivide the last wagon if it's too long
+        while len(self.wagons) > 1 and not self.wagons[-1].is_seed and self.wagons[-1].length > cfg.tail_wagon_length:
+            last = self.wagons[-1]
+            excess_length = last.length - cfg.tail_wagon_length
+            last.length = cfg.tail_wagon_length
+            new_wagon = Wagon(length=excess_length, relative_bend_angle=self._get_next_bend_angle(cfg))
+            self.wagons.append(new_wagon)
 
-        while amount_to_remove > 0 and len(self.wagons) > 1:
+    def _remove_tail_length(self, length_to_remove: float) -> bool:
+        """Removes length from the dynamic tail. Returns True if tail is gone."""
+        while length_to_remove > 0 and len(self.wagons) > 1:
             last_wagon = self.wagons[-1]
-            removable_from_wagon = last_wagon.length
+            if last_wagon.is_seed: break  # Should not happen if len > 1
 
-            if amount_to_remove >= removable_from_wagon:
+            if length_to_remove >= last_wagon.length:
+                length_to_remove -= last_wagon.length
                 self.wagons.pop()
-                amount_to_remove -= removable_from_wagon
             else:
-                last_wagon.length -= amount_to_remove
-                amount_to_remove = 0
+                last_wagon.length -= length_to_remove
+                length_to_remove = 0
+        return len(self.wagons) == 1
 
-    def _get_next_bend_angle(self) -> float:
-        """Helper to get a bending angle for a new tail wagon."""
-        if not self.bending: return 0.0
+    def _get_next_bend_angle(self, cfg: SyntheticDataConfig) -> float:
+        """Determines the bend angle for a new wagon based on bending probability."""
+        if not self.is_bent:
+            return 0.0
 
-        can_flip = self._sign_changes_count < self.max_angle_sign_changes
-        if can_flip and np.random.random() < self.cfg.prob_to_flip_bend:
-            self._current_bend_sign *= -1.0
-            self._sign_changes_count += 1
+        # Flip sign probabilistically if allowed
+        if self.bend_angle_sign_changes_left > 0 and np.random.rand() < cfg.prob_to_flip_bend:
+            self.current_bend_sign *= -1
+            self.bend_angle_sign_changes_left -= 1
 
-        return self._current_bend_sign * np.random.uniform(0, self.max_angle)
+        return self.current_bend_sign * np.random.uniform(0, cfg.max_angle)
 
     def draw(
             self,
@@ -154,52 +169,80 @@ class Microtubule:
             seed_mask: Optional[np.ndarray] = None,
     ) -> List[dict]:
         """Rasterizes the microtubule by drawing its persistent list of wagons."""
-        logger.debug(f"MT {self.instance_id}: Drawing for frame {self.frame_idx}. Total wagons: {len(self.wagons)}.")
+        logger.debug(
+            f"MT {self.instance_id}: Drawing for frame {self.frame_idx}. Total wagons: {len(self.wagons)}.")
 
         abs_angle = self.base_orientation
         abs_pos = self.base_point.astype(np.float32)
         gt_info = []
 
+        # --- Draw Minus-End (if it exists) ---
+        if self.minus_end_length > 1e-6:
+            minus_end_vec = np.array([np.cos(abs_angle + np.pi), np.sin(abs_angle + np.pi)])
+            minus_end_pos = abs_pos + minus_end_vec * self.minus_end_length
+
+            # Use a fraction of the tubulus contrast for the minus end
+            color_contrast = (cfg.tubulus_contrast, cfg.tubulus_contrast, cfg.tubulus_contrast)
+
+            draw_gaussian_line_rgb(
+                frame, microtubule_mask, abs_pos, minus_end_pos,
+                cfg.psf_sigma_h, cfg.psf_sigma_v, color_contrast, self.instance_id
+            )
+            gt_info.append({
+                "instance_id": self.instance_id,
+                "segment_id": f"{self.instance_id}-M",
+                "type": "minus_end",
+                "start_pos": abs_pos.tolist(),
+                "end_pos": minus_end_pos.tolist(),
+                "length": self.minus_end_length,
+            })
+
+        # --- Draw Main Body (Plus-End and Seed) ---
         for idx, w in enumerate(self.wagons):
-            if w.length <= 1e-6: continue
+            start_pos = abs_pos.copy()
+            abs_angle += w.relative_bend_angle
+            vec = np.array([np.cos(abs_angle), np.sin(abs_angle)])
+            end_pos = start_pos + vec * w.length
+            abs_pos = end_pos
 
-            abs_angle += w.angle
-            dx = w.length * np.cos(abs_angle)
-            dy = w.length * np.sin(abs_angle)
-            new_pos = abs_pos + np.array([dx, dy], dtype=np.float32)
-
-            psf_sigma_h = max(0.0, cfg.psf_sigma_h * (1 + np.random.normal(0, cfg.tubule_width_variation)))
-            psf_sigma_v = max(0.0, cfg.psf_sigma_v * (1 + np.random.normal(0, cfg.tubule_width_variation)))
+            # Determine color and contrast
+            psf_h = cfg.psf_sigma_h * (
+                        1 + np.random.uniform(-cfg.tubule_width_variation, cfg.tubule_width_variation))
+            psf_v = cfg.psf_sigma_v
 
             base_contrast = cfg.tubulus_contrast
-            is_tip_wagon = (idx == len(self.wagons) - 1)
-            if self.state == "growing" and is_tip_wagon:
-                base_contrast *= cfg.tip_brightness_factor
+            tip_brightness = cfg.tip_brightness_factor if self.state == MicrotubuleState.GROWING and idx == len(
+                self.wagons) - 1 else 1.0
 
-            r, g, b = base_contrast, base_contrast, base_contrast
             if w.is_seed:
-                r += cfg.seed_red_channel_boost
-                g -= cfg.seed_red_channel_boost
-                b -= cfg.seed_red_channel_boost
-
-            additional_mask_to_pass = (seed_mask if w.is_seed else None)
-
-            try:
-                draw_gaussian_line_rgb(
-                    frame, microtubule_mask, abs_pos, new_pos,
-                    psf_sigma_h=psf_sigma_h, psf_sigma_v=psf_sigma_v,
-                    color_contrast_rgb=(r, g, b),
-                    mask_idx=self.instance_id,
-                    additional_mask=additional_mask_to_pass,
+                color_contrast = (
+                    base_contrast + cfg.seed_red_channel_boost,
+                    base_contrast,
+                    base_contrast
                 )
-            except Exception as e:
-                logger.error(f"MT {self.instance_id}, Wagon {idx}: Failed to draw line: {e}", exc_info=True)
+                segment_type = "seed"
+                current_mask = seed_mask
+            else:
+                color_contrast = (
+                    base_contrast * tip_brightness,
+                    base_contrast * tip_brightness,
+                    base_contrast * tip_brightness
+                )
+                segment_type = "plus_end"
+                current_mask = None  # Plus-end segments don't draw to the seed mask
+
+            draw_gaussian_line_rgb(
+                frame, microtubule_mask, start_pos, end_pos,
+                psf_h, psf_v, color_contrast, self.instance_id, additional_mask=current_mask
+            )
 
             gt_info.append({
-                "frame_idx": self.frame_idx, "wagon_index": idx,
-                "start": abs_pos.tolist(), "end": new_pos.tolist(),
-                "length": float(w.length), "instance_id": self.instance_id,
+                "instance_id": self.instance_id,
+                "segment_id": f"{self.instance_id}-{idx}",
+                "type": segment_type,
+                "start_pos": start_pos.tolist(),
+                "end_pos": end_pos.tolist(),
+                "length": w.length,
             })
-            abs_pos = new_pos.copy()
 
         return gt_info
