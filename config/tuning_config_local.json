@@ -52,6 +52,10 @@
     0,
     10
   ],
+  "minus_end_target_length_std_range": [
+    1.0,
+    8.0
+  ],
   "num_microtubule_range": [
     5,
     20
@@ -207,6 +211,8 @@
   "max_pause_at_min_frames": 50,
   "prob_to_flip_bend": 0.1,
   "jitter_px": 0.5,
+  "minus_end_target_length_mean": 0.0,
+  "minus_end_velocity": 1.0,
   "moving_spots": {
     "count": 0,
     "intensity_min": 0.005,

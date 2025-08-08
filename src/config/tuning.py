@@ -1,4 +1,5 @@
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, Union
 
@@ -112,6 +113,34 @@ class TuningConfig(BaseConfig):
     show_scale: bool = False
     generate_microtubule_mask: bool = True
     generate_seed_mask: bool = False
+
+    def validate(self):
+        """
+        Validates the tuning configuration.
+        """
+        logger.debug("Validating TuningConfig...")
+
+        # 1. Check reference data source
+        if not self.reference_video_path and not self.reference_images_dir:
+            raise ValueError("Either 'reference_video_path' or 'reference_images_dir' must be specified.")
+        if self.reference_video_path and self.reference_images_dir:
+            raise ValueError("Specify either 'reference_video_path' or 'reference_images_dir', not both.")
+        if self.reference_video_path and not os.path.isfile(self.reference_video_path):
+            raise FileNotFoundError(f"Reference video not found: {self.reference_video_path}")
+        if self.reference_images_dir and not os.path.isdir(self.reference_images_dir):
+            raise FileNotFoundError(f"Reference image directory not found: {self.reference_images_dir}")
+
+        # 2. Check optimization direction
+        if self.direction not in ["maximize", "minimize"]:
+            raise ValueError(f"Invalid direction '{self.direction}'. Must be 'maximize' or 'minimize'.")
+
+        # 3. Check trial and output numbers
+        if self.num_trials <= 0:
+            raise ValueError(f"'num_trials' must be positive, but got {self.num_trials}.")
+        if self.output_config_num_best <= 0:
+            raise ValueError(f"'output_config_num_best' must be positive, but got {self.output_config_num_best}.")
+
+        logger.debug("TuningConfig validation successful.")
 
     def create_synthetic_config_from_trial(self, trial: Trial) -> SyntheticDataConfig:
         """
