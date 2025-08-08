@@ -131,6 +131,10 @@ def process_tiff_video(
         logger.error(f"Failed to read TIFF file {video_path}: {e}")
         return []
 
+    if num_crops <= 1:
+        logger.warning(f"num_crops is set to {num_crops}. No cropping will be performed.")
+        return [[data]]
+
     logger.debug(f"Loaded TIFF stack of shape {data.shape}.")
     if data.ndim not in [3, 4]:
         logger.error(f"Unsupported TIFF dimension: {data.ndim}.")
@@ -226,7 +230,7 @@ def process_tiff_video(
     return all_cropped_videos
 
 
-def extract_frames(video_path: str, num_splits:int = 0, crop_size=(512, 512)) -> Tuple[List[List[np.ndarray]], int]:
+def extract_frames(video_path: str, num_splits:int = 1, crop_size=(512, 512)) -> Tuple[List[List[np.ndarray]], int]:
 
     logger.debug(f"Extracting frames from: {video_path}")
 
@@ -248,7 +252,7 @@ def extract_frames(video_path: str, num_splits:int = 0, crop_size=(512, 512)) ->
                 crop_size=crop_size,
                 norm_bounds=[(0.1, 100), (0.1, 95)]
             )
-            ndim = frames[0][0].ndim
+            # ndim = frames[0][0].ndim
 
             # plt.imshow(frames[0][0])
             # plt.axis('off')

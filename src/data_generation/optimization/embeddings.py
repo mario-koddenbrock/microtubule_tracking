@@ -193,7 +193,8 @@ class ImageEmbeddingExtractor:
         Raises:
             ValueError: If no embeddings could be extracted.
         """
-        logger.debug("Starting reference embedding extraction and PCA fitting...")
+        logger.info(f"Starting reference embedding extraction (PCA components: {self.config.pca_components}).")
+        logger.info(f"Reference video: {self.config.reference_video_path}")
         embeddings = []
         video_path = self.config.reference_video_path
 

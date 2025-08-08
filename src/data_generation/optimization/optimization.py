@@ -23,29 +23,11 @@ def run_optimization(tuning_config_path: str):
     logger.info(f"\n{'=' * 80}\nStarting OPTIMIZATION for: {tuning_config_path}\n{'=' * 80}")
 
     try:
-        logger.info("--- Step 1: Loading tuning configuration ---")
+        logger.debug("--- Step 1: Loading tuning configuration ---")
         tuning_cfg = TuningConfig.load(tuning_config_path)
-        # tuning_cfg = TuningConfig()
-        logger.info(f"Tuning configuration loaded from: {tuning_config_path}")
-
-        logger.debug("Validating tuning configuration...")
         tuning_cfg.validate()
-        logger.info("Tuning configuration validated successfully.")
+        tuning_cfg.to_json(tuning_config_path)
 
-        # Persist the loaded config (useful if defaults were applied or overrides were passed)
-        try:
-            tuning_cfg.to_json(tuning_config_path)
-            logger.info(f"Tuning configuration persisted to: {tuning_config_path}")
-        except Exception as e:
-            logger.warning(f"Could not persist tuning configuration to {tuning_config_path}: {e}", exc_info=True)
-            # This is a warning, as optimization can still proceed, but the saved config might not match initial expectations.
-
-    except FileNotFoundError:
-        logger.critical(f"Tuning config file not found: {tuning_config_path}. Optimization cannot proceed.")
-        return
-    except ValueError as e:
-        logger.critical(f"Invalid tuning configuration: {e}. Optimization cannot proceed.", exc_info=True)
-        return
     except Exception as e:
         logger.critical(f"An unexpected error occurred during tuning config loading/validation: {e}", exc_info=True)
         return
@@ -56,19 +38,10 @@ def run_optimization(tuning_config_path: str):
         return
 
     try:
-        logger.info("--- Step 2: Performing model setup and reference embedding extraction ---")
-
-        logger.debug("Initializing ImageEmbeddingExtractor (this loads the transformer model).")
+        logger.debug("Performing model setup and reference embedding extraction")
         embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
-        logger.info("ImageEmbeddingExtractor initialized.")
-
-        logger.debug("Extracting reference embeddings (and fitting PCA if configured).")
         ref_embeddings = embedding_extractor.extract_from_references()
-        logger.info(f"Reference embedding extraction complete. Shape: {ref_embeddings.shape}")
-
-        logger.debug("Pre-computing metric arguments based on chosen similarity metric.")
         precomputed_kwargs = precompute_matric_args(tuning_cfg, ref_embeddings)
-        logger.info(f"Metric arguments pre-computed for '{tuning_cfg.similarity_metric}'.")
 
     except Exception as e:
         logger.critical(f"Critical error during model setup or reference embedding extraction: {e}", exc_info=True)
@@ -76,11 +49,10 @@ def run_optimization(tuning_config_path: str):
 
     # Ensure essential elements are available before proceeding to optimization
     if embedding_extractor is None or ref_embeddings is None:
-        logger.critical(
-            "Essential components (embedding extractor or reference embeddings) are missing. Exiting optimization.")
+        logger.critical("Essential components (embedding extractor or reference embeddings) are missing.")
         return
 
-    logger.info("--- Step 3: Running Optuna optimization ---")
+    logger.debug("--- Step 3: Running Optuna optimization ---")
     db_filename = f"{tuning_cfg.output_config_id}.db"
     db_filepath = os.path.join(tuning_cfg.temp_dir, db_filename)
 
@@ -88,13 +60,11 @@ def run_optimization(tuning_config_path: str):
         os.makedirs(tuning_cfg.temp_dir, exist_ok=True)
         logger.debug(f"Ensured temporary directory exists: {tuning_cfg.temp_dir}")
     except OSError as e:
-        logger.critical(
-            f"Failed to create temporary directory {tuning_cfg.temp_dir}. Optimization cannot proceed. Error: {e}",
-            exc_info=True)
+        logger.critical(f"Failed to create temporary directory {tuning_cfg.temp_dir}. Error: {e}", exc_info=True)
         return
 
     storage_uri = f"sqlite:///{db_filepath}"
-    logger.info(f"Using Optuna storage URI: {storage_uri}")
+    logger.debug(f"Using Optuna storage URI: {storage_uri}")
 
     sampler = optuna.samplers.RandomSampler()
 
@@ -106,8 +76,11 @@ def run_optimization(tuning_config_path: str):
             direction=tuning_cfg.direction,
             load_if_exists=tuning_cfg.load_if_exists,
         )
-        logger.info(
-            f"Optuna study '{tuning_cfg.output_config_id}' created/loaded. Direction: '{tuning_cfg.direction}', Load if exists: {tuning_cfg.load_if_exists}.")
+        logger.debug(
+            f"Optuna study '{tuning_cfg.output_config_id}' created/loaded. "
+            f"Direction: '{tuning_cfg.direction}', "
+            f"Load if exists: {tuning_cfg.load_if_exists}."
+        )
         logger.info(f"Starting optimization for {tuning_cfg.num_trials} trials.")
     except Exception as e:
         logger.critical(f"Failed to create or load Optuna study: {e}", exc_info=True)
@@ -128,37 +101,50 @@ def run_optimization(tuning_config_path: str):
         logger.info(f"Best trial found (Trial {study.best_trial.number}): Value = {study.best_trial.value:.6f}")
     except Exception as e:
         logger.critical(f"An unexpected error occurred during Optuna optimization: {e}", exc_info=True)
-        # Depending on the error, you might still want to proceed to save the best result so far
-        # For now; we allow it to proceed to save if a study object exists.
 
-    logger.info("--- Step 4: Saving best configuration ---")
-
-    if study is None or study.best_trial is None:
-        logger.critical("No successful trials completed or best trial not found. Cannot save best configuration.")
+    if study is None or len(study.trials) == 0:
+        logger.critical("No successful trials completed. Cannot save best configurations.")
         return
 
     try:
-        # Ensure the directory for the output config file exists
-        output_config_dir = os.path.dirname(tuning_cfg.output_config_file)
-        if output_config_dir:  # Only make dir if a path is not just a filename in current dir
-            os.makedirs(output_config_dir, exist_ok=True)
-            logger.debug(f"Ensured output config directory exists: {output_config_dir}")
+        # Ensure the output directory exists
+        os.makedirs(tuning_cfg.output_config_folder, exist_ok=True)
+        logger.debug(f"Ensured output config directory exists: {tuning_cfg.output_config_folder}")
 
-        best_cfg: SyntheticDataConfig = tuning_cfg.create_synthetic_config_from_trial(study.best_trial)
-        best_cfg.id = tuning_cfg.output_config_id
-        best_cfg.num_frames = tuning_cfg.output_config_num_frames  # Apply the desired number of frames for the final saved config
-        logger.debug(
-            f"Generated best SyntheticDataConfig for saving (ID: {best_cfg.id}, Num Frames: {best_cfg.num_frames}).")
+        # Get video basename for naming the configs
+        video_basename = os.path.splitext(os.path.basename(tuning_cfg.reference_video_path))[0]
 
-        logger.debug("Validating best generated SyntheticDataConfig...")
-        best_cfg.validate()
-        logger.info("Best SyntheticDataConfig validated successfully.")
+        # Sort trials by value (according to optimization direction)
+        direction_multiplier = 1 if tuning_cfg.direction == "maximize" else -1
+        sorted_trials = sorted(
+            [t for t in study.trials if t.value is not None],
+            key=lambda t: t.value * direction_multiplier,
+            reverse=True
+        )
 
-        best_cfg.to_json(tuning_cfg.output_config_file)
-        logger.info(f"Best synthetic config saved to: {tuning_cfg.output_config_file}")
+        # Get top N trials
+        top_n = min(tuning_cfg.output_config_num_best, len(sorted_trials))
+        if top_n == 0:
+            logger.warning("No valid trials with values found. Cannot save configurations.")
+            return
+
+        logger.info(f"Saving {top_n} best configurations to {tuning_cfg.output_config_folder}")
+
+        for rank, trial in enumerate(sorted_trials[:top_n], 1):
+            config_filename = f"{video_basename}_rank{rank}.json"
+            config_path = os.path.join(tuning_cfg.output_config_folder, config_filename)
+
+            best_cfg: SyntheticDataConfig = tuning_cfg.create_synthetic_config_from_trial(trial)
+            best_cfg.id = f"{video_basename}_rank{rank}"
+            best_cfg.num_frames = tuning_cfg.output_config_num_frames
+
+            logger.debug(f"Validating config for rank {rank}...")
+            best_cfg.validate()
+
+            best_cfg.to_json(config_path)
+            logger.debug(f"Config for rank {rank} saved to: {config_path} (value: {trial.value:.6f})")
 
     except Exception as e:
-        logger.critical(f"Critical error saving the best configuration: {e}", exc_info=True)
-        # This is a critical step, if saving fails, the whole optimization might be pointless.
+        logger.critical(f"Critical error saving the best configurations: {e}", exc_info=True)
 
     logger.info(f"\n{'=' * 80}\nOPTIMIZATION process completed.\n{'=' * 80}")

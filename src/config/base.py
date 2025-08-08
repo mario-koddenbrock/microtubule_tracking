@@ -3,8 +3,9 @@ import json
 import logging
 from abc import abstractmethod, ABC
 from dataclasses import asdict
+from os import PathLike
 from pathlib import Path
-from typing import Optional, get_type_hints, Union
+from typing import Optional, get_type_hints
 
 import yaml
 
@@ -13,14 +14,14 @@ logger = logging.getLogger(f"mt.{__name__}")
 
 class BaseConfig(ABC):
     @classmethod
-    def load(cls, config_path: Optional[Union[str, Path]] = None, overrides: Optional[dict] = None):
+    def load(cls, config_path: Optional[PathLike] = None, overrides: Optional[dict] = None):
         """
         Loads a configuration, recursively handling nested BaseConfig objects.
 
         CHANGED: After loading, it stores the source file path on the instance
         so it can be saved back to the same location later.
         """
-        logger.info(f"Attempting to load configuration for '{cls.__name__}'...")
+        logger.debug(f"Attempting to load configuration for '{cls.__name__}'...")
         data = {}
         config_path_obj = None
 
@@ -60,14 +61,14 @@ class BaseConfig(ABC):
         # Store the source path on the instance for the new save() method
         if config_path_obj:
             instance._source_path = config_path_obj.resolve()
-            logger.info(f"Configuration for '{cls.__name__}' loaded successfully from {instance._source_path}.")
+            logger.debug(f"Configuration for '{cls.__name__}' loaded successfully from {instance._source_path}.")
         else:
             instance._source_path = None
-            logger.info(f"Configuration for '{cls.__name__}' loaded/created in memory (no source file).")
+            logger.debug(f"Configuration for '{cls.__name__}' loaded/created in memory (no source file).")
 
         return instance
 
-    def save(self, path: Optional[Union[str, Path]] = None):
+    def save(self, path: Optional[PathLike] = None):
         """
         NEW: Saves the current configuration state to a file.
 
@@ -78,7 +79,7 @@ class BaseConfig(ABC):
             ValueError: If no path is provided and the config was not loaded
                         from a file (i.e., it was created in memory).
         """
-        logger.info(f"Attempting to save configuration for '{self.__class__.__name__}'...")
+        logger.debug(f"Attempting to save configuration for '{self.__class__.__name__}'...")
         # 1. Determine the target path for saving
         target_path: Optional[Path] = None
         if path:
@@ -111,7 +112,7 @@ class BaseConfig(ABC):
 
         # 3. After a successful save, update the internal source path to the new location
         self._source_path = target_path.resolve()
-        logger.info(f"Configuration for '{self.__class__.__name__}' successfully saved to {self._source_path}")
+        logger.debug(f"Configuration for '{self.__class__.__name__}' successfully saved to {self._source_path}")
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -138,7 +139,7 @@ class BaseConfig(ABC):
         """
         Updates the configuration, recursively handling nested objects.
         """
-        logger.info(f"Updating configuration for '{self.__class__.__name__}' with parameters: {list(params.keys())}")
+        logger.debug(f"Updating configuration for '{self.__class__.__name__}' with parameters: {list(params.keys())}")
         type_hints = get_type_hints(self.__class__)
         for key, value in params.items():
             if not hasattr(self, key):
@@ -154,7 +155,7 @@ class BaseConfig(ABC):
                 old_value = getattr(self, key)
                 setattr(self, key, value)
                 logger.debug(f"Updated key '{key}' from '{old_value}' to '{value}'.")
-        logger.info(f"Configuration for '{self.__class__.__name__}' updated successfully.")
+        logger.debug(f"Configuration for '{self.__class__.__name__}' updated successfully.")
 
     def asdict(self):
         """
@@ -174,7 +175,7 @@ class BaseConfig(ABC):
     def __str__(self):
         return yaml.dump(self.asdict(), sort_keys=False, indent=2)
 
-    def to_yml(self, path: Path):
+    def to_yml(self, path: PathLike):
         logger.debug(f"Writing YAML config to {path}...")
         path_obj = Path(path)
         try:
@@ -186,7 +187,7 @@ class BaseConfig(ABC):
             logger.error(f"Failed to write YAML config to {path}: {e}", exc_info=True)
             raise
 
-    def to_json(self, path: Path):
+    def to_json(self, path: PathLike):
         logger.debug(f"Writing JSON config to {path}...")
         path_obj = Path(path)
         try:
@@ -205,12 +206,12 @@ class BaseConfig(ABC):
             return copy.copy(self)
 
     @classmethod
-    def from_yml(cls, path: Union[str, Path]):
+    def from_yml(cls, path: PathLike):
         logger.debug(f"Calling .load() to load '{cls.__name__}' from YAML path: {path}")
         return cls.load(config_path=path)
 
     @classmethod
-    def from_json(cls, path: Union[str, Path]):
+    def from_json(cls, path: PathLike):
         logger.debug(f"Calling .load() to load '{cls.__name__}' from JSON path: {path}")
         return cls.load(config_path=path)
 

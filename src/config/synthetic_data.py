@@ -117,7 +117,7 @@ class SyntheticDataConfig(BaseConfig):
         if isinstance(self.random_spots, dict):
             self.random_spots = SpotConfig(**self.random_spots)
 
-        logger.info(f"SyntheticDataConfig '{self.id}' initialized. Running initial validation...")
+        logger.debug(f"SyntheticDataConfig '{self.id}' initialized. Running initial validation...")
         try:
             self.validate()
         except ValueError as e:
