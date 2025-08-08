@@ -187,11 +187,5 @@ cython_debug/
 /results/
 /data/
 *.pt
-/.logs/mt_2025-07-07T13:57:13.log.1
-/.logs/mt_2025-07-07T13:57:16.log.1
-/.logs/mt_2025-07-07T13:57:16.log.2
-/.logs/mt_2025-07-07T13:57:16.log.3
-/.logs/mt_2025-07-07T13:57:16.log.4
-/.logs/mt_2025-07-07T13:57:16.log.5
-/.logs/mt_2025-07-07T13:57:21.log.1
-/.logs/mt_2025-07-07T13:57:27.log.1
+/.logs/
+/config/optimal_configs/
