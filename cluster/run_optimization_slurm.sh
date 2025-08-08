@@ -57,8 +57,6 @@ for VIDEO_PATH in "${VIDEO_FILES[@]}"; do
         # Create a custom config file using the template but with updated video path
         cat "$CONFIG_TEMPLATE" | \
             sed "s|\"reference_video_path\": \".*\"|\"reference_video_path\": \"$VIDEO_PATH\"|g" | \
-            sed "s|\"output_config_id\": \".*\"|\"output_config_id\": \"${VIDEO_BASENAME}\"|g" | \
-            sed "s|\"output_config_file\": \".*\"|\"output_config_file\": \"best_${VIDEO_BASENAME}.json\"|g" | \
             sed "s|\"output_config_id\": \".*\"|\"output_config_id\": \"best_${VIDEO_BASENAME}\"|g" > "$OUTPUT_CONFIG"
 
         echo "Created config: '$OUTPUT_CONFIG' for video: '$VIDEO_PATH'"

@@ -26,7 +26,8 @@ class TuningConfig(BaseConfig):
     reference_video_path: str = ""  # Changed from reference_series_dir
     num_compare_frames: int = 1
     temp_dir: str = ".temp"
-    output_config_file: str = "best_synthetic_config.json"
+    output_config_folder: str = "/scratch/koddenbrock/mt/hpo/optimal_configs"
+    output_config_num_best: int = 5  # Number of best configs to save
     output_config_id: int | str = "best_synthetic_config"
     output_config_num_frames: int = 50
     direction: str = "maximize"
@@ -109,7 +110,7 @@ class TuningConfig(BaseConfig):
 
     def __post_init__(self):
         super().__post_init__()
-        logger.info("TuningConfig initialized. Running initial validation...")
+        logger.debug("TuningConfig initialized. Running initial validation...")
         try:
             self.validate()
         except ValueError as e:
