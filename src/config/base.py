@@ -3,7 +3,6 @@ import json
 import logging
 from abc import abstractmethod, ABC
 from dataclasses import asdict
-from os import PathLike
 from pathlib import Path
 from typing import Optional, get_type_hints
 
@@ -14,7 +13,7 @@ logger = logging.getLogger(f"mt.{__name__}")
 
 class BaseConfig(ABC):
     @classmethod
-    def load(cls, config_path: Optional[PathLike] = None, overrides: Optional[dict] = None):
+    def load(cls, config_path: Optional[str] = None, overrides: Optional[dict] = None):
         """
         Loads a configuration, recursively handling nested BaseConfig objects.
 
@@ -68,7 +67,7 @@ class BaseConfig(ABC):
 
         return instance
 
-    def save(self, path: Optional[PathLike] = None):
+    def save(self, path: Optional[str] = None):
         """
         NEW: Saves the current configuration state to a file.
 
@@ -81,7 +80,6 @@ class BaseConfig(ABC):
         """
         logger.debug(f"Attempting to save configuration for '{self.__class__.__name__}'...")
         # 1. Determine the target path for saving
-        target_path: Optional[Path] = None
         if path:
             target_path = Path(path)
             logger.debug(f"Saving to user-provided path: {target_path}")
@@ -175,7 +173,7 @@ class BaseConfig(ABC):
     def __str__(self):
         return yaml.dump(self.asdict(), sort_keys=False, indent=2)
 
-    def to_yml(self, path: PathLike):
+    def to_yml(self, path: str):
         logger.debug(f"Writing YAML config to {path}...")
         path_obj = Path(path)
         try:
@@ -187,7 +185,7 @@ class BaseConfig(ABC):
             logger.error(f"Failed to write YAML config to {path}: {e}", exc_info=True)
             raise
 
-    def to_json(self, path: PathLike):
+    def to_json(self, path: str):
         logger.debug(f"Writing JSON config to {path}...")
         path_obj = Path(path)
         try:
@@ -206,12 +204,12 @@ class BaseConfig(ABC):
             return copy.copy(self)
 
     @classmethod
-    def from_yml(cls, path: PathLike):
+    def from_yml(cls, path: str):
         logger.debug(f"Calling .load() to load '{cls.__name__}' from YAML path: {path}")
         return cls.load(config_path=path)
 
     @classmethod
-    def from_json(cls, path: PathLike):
+    def from_json(cls, path: str):
         logger.debug(f"Calling .load() to load '{cls.__name__}' from JSON path: {path}")
         return cls.load(config_path=path)
 
