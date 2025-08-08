@@ -230,7 +230,7 @@ def process_tiff_video(
     return all_cropped_videos
 
 
-def extract_frames(video_path: str, num_splits:int = 1, crop_size=(512, 512)) -> Tuple[List[List[np.ndarray]], int]:
+def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512)) -> Tuple[List[List[np.ndarray]], int]:
 
     logger.debug(f"Extracting frames from: {video_path}")
 
@@ -248,7 +248,7 @@ def extract_frames(video_path: str, num_splits:int = 1, crop_size=(512, 512)) ->
         elif video_path.lower().endswith((".tif", ".tiff")):
             frames = process_tiff_video(
                 video_path=video_path,
-                num_crops=num_splits,
+                num_crops=num_crops,
                 crop_size=crop_size,
                 norm_bounds=[(0.1, 100), (0.1, 95)]
             )

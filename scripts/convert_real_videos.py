@@ -4,8 +4,6 @@ from pathlib import Path
 from random import shuffle
 
 import cv2
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 
 from file_io.utils import extract_frames
 
@@ -27,9 +25,9 @@ def process_all(data_path, output_path):
         split_and_convert(output_path, video_path)
 
 
-def split_and_convert(output_path, video_path, num_splits=3, num_frames=10):
+def split_and_convert(output_path, video_path, num_crops=3, num_frames=10):
 
-    frames_list, fps = extract_frames(video_path, num_splits=num_splits, crop_size=(512, 512))
+    frames_list, fps = extract_frames(video_path, num_crops=num_crops, crop_size=(512, 512))
     if not frames_list:
         print(f"  -> Skipping video, no frames were extracted.")
         return
