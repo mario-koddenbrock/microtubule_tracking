@@ -111,8 +111,11 @@ def run_optimization(tuning_config_path: str):
         os.makedirs(tuning_cfg.output_config_folder, exist_ok=True)
         logger.debug(f"Ensured output config directory exists: {tuning_cfg.output_config_folder}")
 
-        # Get video basename for naming the configs
-        video_basename = os.path.splitext(os.path.basename(tuning_cfg.reference_video_path))[0]
+        # Get basename for naming the configs
+        if tuning_cfg.reference_images_dir and os.path.isdir(tuning_cfg.reference_images_dir):
+            basename = os.path.basename(tuning_cfg.reference_images_dir)
+        else:
+            basename = os.path.splitext(os.path.basename(tuning_cfg.reference_video_path))[0]
 
         # Sort trials by value (according to optimization direction)
         direction_multiplier = 1 if tuning_cfg.direction == "maximize" else -1
@@ -131,11 +134,11 @@ def run_optimization(tuning_config_path: str):
         logger.info(f"Saving {top_n} best configurations to {tuning_cfg.output_config_folder}")
 
         for rank, trial in enumerate(sorted_trials[:top_n], 1):
-            config_filename = f"{video_basename}_rank{rank}.json"
+            config_filename = f"{basename}_rank{rank}.json"
             config_path = os.path.join(tuning_cfg.output_config_folder, config_filename)
 
             best_cfg: SyntheticDataConfig = tuning_cfg.create_synthetic_config_from_trial(trial)
-            best_cfg.id = f"{video_basename}_rank{rank}"
+            best_cfg.id = f"{basename}_rank{rank}"
             best_cfg.num_frames = tuning_cfg.output_config_num_frames
 
             logger.debug(f"Validating config for rank {rank}...")

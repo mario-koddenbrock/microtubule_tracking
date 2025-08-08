@@ -21,7 +21,7 @@ def build_motion_seeds(cfg: SyntheticDataConfig) -> List[np.ndarray]:
     Precompute the base anchor point for each microtubule. The microtubule object
     will handle its own motion profile generation.
     """
-    logger.info("Building motion seeds for microtubules.")
+    logger.debug("Building motion seeds for microtubules.")
     tubulus_seeds = get_random_seeds(
         img_size=cfg.img_size,
         margin=cfg.margin,
@@ -31,7 +31,7 @@ def build_motion_seeds(cfg: SyntheticDataConfig) -> List[np.ndarray]:
     start_points = [
         np.array(center, dtype=np.float32) for (_slope_intercept, center) in tubulus_seeds
     ]
-    logger.info(f"Generated {len(start_points)} motion seeds.")
+    logger.debug(f"Generated {len(start_points)} motion seeds.")
     logger.debug(f"Sample start points: {start_points[:min(5, len(start_points))]}.")
     return start_points
 
@@ -129,7 +129,7 @@ def get_random_seeds(
         logger.warning(
             f"Reached max attempts ({max_attempts}) before finding all microtubule. Generated {len(points)} out of {max_microtubule} requested."
         )
-    logger.info(f"Found {len(points)} random seeds within specified constraints.")
+    logger.debug(f"Found {len(points)} random seeds within specified constraints.")
 
     seeds: List[Tuple[Tuple[float, float], Tuple[float, float]]] = []
     for x, y in points:
@@ -302,10 +302,10 @@ def build_albumentations_pipeline(cfg: Optional[Union[AlbumentationsConfig, dict
     Constructs an Albumentations composition from the configuration.
     This pipeline should be applied to the final uint8 frame and mask.
     """
-    logger.info("Building Albumentations pipeline.")
+    logger.debug("Building Albumentations pipeline.")
 
     if cfg is None:
-        logger.info("Albumentations config is None. Returning None pipeline.")
+        logger.debug("Albumentations config is None. Returning None pipeline.")
         return None
 
     # Helper function to get attribute/item from config (dict or object)
@@ -396,16 +396,16 @@ def build_albumentations_pipeline(cfg: Optional[Union[AlbumentationsConfig, dict
         master_p = get_param("p", 0.75)  # Master probability for the entire compose pipeline
 
         if not transforms:
-            logger.info("No individual Albumentations transforms configured. Returning None pipeline.")
+            logger.debug("No individual Albumentations transforms configured. Returning None pipeline.")
             return None
 
         if master_p <= 0.0:
-            logger.info(
+            logger.debug(
                 f"Master Albumentations probability (p={master_p:.2f}) is zero or negative. Returning None pipeline.")
             return None
 
         pipeline = A.Compose(transforms, p=master_p)
-        logger.info(
+        logger.debug(
             f"Albumentations pipeline built with {len(transforms)} transforms and master probability {master_p:.2f}.")
         return pipeline
 

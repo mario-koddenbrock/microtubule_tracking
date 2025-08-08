@@ -181,81 +181,85 @@ class ImageEmbeddingExtractor:
             raise
 
     def extract_from_references(self) -> np.ndarray:
-        """
-        Loads the reference video, computes embeddings, and fits the PCA model.
-
-        This method MUST be called before any other extraction method if you want
-        to use PCA, as it trains the PCA model on these reference embeddings.
-
-        Returns:
-            np.ndarray: A 2D array of final (possibly PCA-reduced) embeddings.
-
-        Raises:
-            ValueError: If no embeddings could be extracted.
-        """
+        """Loads reference video or images directory, computes embeddings, and fits PCA model."""
         logger.info(f"Starting reference embedding extraction (PCA components: {self.config.pca_components}).")
-        logger.info(f"Reference video: {self.config.reference_video_path}")
         embeddings = []
-        video_path = self.config.reference_video_path
 
-        if not os.path.isfile(video_path):
-            msg = f"Reference video file not found: {video_path}"
-            logger.error(msg)
-            raise ValueError(msg)
+        # Determine if we're using video or image folder
+        if self.config.reference_images_dir and os.path.isdir(self.config.reference_images_dir):
+            # Process image folder
+            logger.info(f"Processing reference images from directory: {self.config.reference_images_dir}")
+            image_files = sorted(glob(os.path.join(self.config.reference_images_dir, "*.png")) +
+                                 glob(os.path.join(self.config.reference_images_dir, "*.jpg")) +
+                                 glob(os.path.join(self.config.reference_images_dir, "*.tif")))
 
-        logger.debug(f"Processing reference video: {video_path}")
-        try:
-            frames, _ = extract_frames(video_path)
-            original_num_frames = len(frames)
-            frames = frames[:self.config.num_compare_frames]
-
-            if len(frames) < original_num_frames:
-                logger.debug(
-                    f"Limiting frames from '{os.path.basename(video_path)}' to {len(frames)} as per config.num_compare_frames.")
-
-            if not frames:
-                msg = f"No frames extracted from {os.path.basename(video_path)} or num_compare_frames is 0."
+            if not image_files:
+                msg = f"No image files found in directory: {self.config.reference_images_dir}"
                 logger.error(msg)
                 raise ValueError(msg)
 
-            for frame_idx, frame in enumerate(tqdm(frames, desc=f"Processing reference video")):
-                frame_rgb = self.convert_frame(frame)
-                emb = self._compute_embedding(frame_rgb)
-                embeddings.append(emb)
-                logger.debug(
-                    f"Processed frame {frame_idx + 1} from {os.path.basename(video_path)}. Embedding shape: {emb.shape}")
-        except Exception as e:
-            logger.error(f"Error processing reference video {os.path.basename(video_path)}: {e}", exc_info=True)
-            raise  # Rethrow as this is the only video
+            # Limit number of frames if needed
+            image_files = image_files[:self.config.num_compare_frames]
+
+            for img_path in tqdm(image_files, desc="Processing reference images"):
+                try:
+                    frame = cv2.imread(img_path)
+                    if frame is None:
+                        logger.warning(f"Could not read image: {img_path}")
+                        continue
+                    frame_rgb = self.convert_frame(frame)
+                    emb = self._compute_embedding(frame_rgb)
+                    embeddings.append(emb)
+                    logger.debug(f"Processed image {os.path.basename(img_path)}. Embedding shape: {emb.shape}")
+                except Exception as e:
+                    logger.error(f"Error processing image {os.path.basename(img_path)}: {e}", exc_info=True)
+        else:
+            # Process video file
+            video_path = self.config.reference_video_path
+            if not os.path.isfile(video_path):
+                msg = f"Reference video file not found: {video_path}"
+                logger.error(msg)
+                raise ValueError(msg)
+
+            logger.info(f"Processing reference video: {video_path}")
+            try:
+                frames, _ = extract_frames(video_path)
+                if not frames:
+                    msg = f"No frames extracted from reference video: {video_path}"
+                    logger.error(msg)
+                    raise ValueError(msg)
+
+                # Use only a subset of frames if configured
+                frames_to_process = frames[:self.config.num_compare_frames]
+                logger.debug(f"Using {len(frames_to_process)} frames from reference video.")
+
+                for frame in tqdm(frames_to_process, desc="Processing reference frames"):
+                    frame_rgb = self.convert_frame(frame)
+                    emb = self._compute_embedding(frame_rgb)
+                    embeddings.append(emb)
+            except Exception as e:
+                logger.error(f"Error processing reference video {video_path}: {e}", exc_info=True)
+                raise
 
         if not embeddings:
-            msg = "No embeddings were extracted from the reference file. Cannot proceed."
-            logger.critical(msg)
+            msg = "No embeddings were extracted from reference data."
+            logger.error(msg)
             raise ValueError(msg)
 
         raw_embeddings = np.stack(embeddings)
         logger.debug(
-            f"Extracted {raw_embeddings.shape[0]} raw reference embeddings with dimension {raw_embeddings.shape[1]}.")
+            f"Extracted {raw_embeddings.shape[0]} reference embeddings of dimension {raw_embeddings.shape[1]}.")
 
         # Fit and apply PCA if configured
-        if self.config.pca_components is not None:
-            # Ensure PCA components are not more than the number of samples or features
-            pca_components = min(self.config.pca_components, raw_embeddings.shape[0], raw_embeddings.shape[1])
-            if pca_components <= 0:
-                logger.debug(f"PCA components set to ({pca_components}). Skipping PCA reduction.")
-                self.pca_model = None  # Ensure it's explicitly None
-                return raw_embeddings
-
-            logger.debug(f"Fitting PCA to reduce dimension to {pca_components} components...")
-            self.pca_model = PCA(n_components=pca_components)
+        if self.config.pca_components is not None and self.config.pca_components > 0:
+            n_components = min(self.config.pca_components, raw_embeddings.shape[0], raw_embeddings.shape[1])
+            logger.info(f"Fitting PCA with {n_components} components on reference embeddings.")
+            self.pca_model = PCA(n_components=n_components)
             reduced_embeddings = self.pca_model.fit_transform(raw_embeddings)
-            explained_variance_ratio = sum(self.pca_model.explained_variance_ratio_)
-            logger.debug(f"PCA fitted. Explained variance ratio: {explained_variance_ratio:.4f}")
-            logger.debug(
-                f"Reference embeddings reduced from {raw_embeddings.shape[1]} to {reduced_embeddings.shape[1]} dimensions.")
+            logger.debug(f"PCA reduced dimensions from {raw_embeddings.shape[1]} to {reduced_embeddings.shape[1]}.")
             return reduced_embeddings
         else:
-            logger.debug("PCA not configured (pca_components is None). Returning raw reference embeddings.")
+            logger.debug("No PCA requested, returning original embeddings.")
             return raw_embeddings
 
     def _apply_pca_if_available(self, embeddings: np.ndarray) -> np.ndarray:
@@ -281,7 +285,8 @@ class ImageEmbeddingExtractor:
         raw_embeddings = []
         frame_generator = generate_frames(synthetic_cfg, num_compare_frames)
 
-        for frame, *_ in tqdm(frame_generator, total=num_compare_frames, desc=f"Generating & processing frames for {synthetic_cfg.id}"):
+        # for frame, *_ in tqdm(frame_generator, total=num_compare_frames, desc=f"Generating & processing frames for {synthetic_cfg.id}"):
+        for frame, *_ in frame_generator:
 
             # frame is already in RGB format, no need to convert
             # rgb_frame = self.convert_frame(frame)

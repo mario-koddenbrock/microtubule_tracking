@@ -23,7 +23,8 @@ class TuningConfig(BaseConfig):
     model_name: str = "openai/clip-vit-base-patch32"
     embedding_layer: int = 3
     hf_cache_dir: Optional[str] = None
-    reference_video_path: str = ""  # Changed from reference_series_dir
+    reference_video_path: str = ""
+    reference_images_dir: str = ""
     num_compare_frames: int = 1
     temp_dir: str = ".temp"
     output_config_folder: str = "/scratch/koddenbrock/mt/hpo/optimal_configs"
@@ -165,7 +166,7 @@ class TuningConfig(BaseConfig):
         """
         Uses the ranges defined in this tuning config to suggest parameters for an Optuna trial.
         """
-        logger.info(f"Generating SyntheticDataConfig for Optuna trial {trial.number}.")
+        logger.debug(f"Generating SyntheticDataConfig for Optuna trial {trial.number}.")
         suggested_params = {}
 
         # --- Microtubule Geometry (with dependent ranges) ---

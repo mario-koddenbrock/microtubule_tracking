@@ -5,7 +5,6 @@ from typing import List, Tuple, Optional, Dict, Any
 import albumentations as A
 import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
 
 from config.synthetic_data import SyntheticDataConfig
 from data_generation import utils
@@ -13,7 +12,6 @@ from data_generation.microtubule import Microtubule
 from data_generation.spots import SpotGenerator
 from file_io.utils import save_ground_truth
 from file_io.writers import VideoOutputManager
-from plotting.plotting import show_frame
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -62,7 +60,7 @@ def render_frame(
 
     # ─── Simulate and Draw Microtubules ──────────────────────────
     logger.debug(f"Frame {frame_idx}: Simulating and drawing {len(mts)} microtubules.")
-    for mt_idx, mt in enumerate(tqdm(mts, desc=f"Frame {frame_idx} MTs", unit="MT")):
+    for mt_idx, mt in enumerate(mts):
         try:
             mt.step()
             mt.base_point += jitter

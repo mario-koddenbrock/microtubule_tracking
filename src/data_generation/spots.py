@@ -83,7 +83,7 @@ class SpotGenerator:
             spot_cfg (SpotConfig): Configuration for the spots.
             img_shape (Tuple[int, int]): The (height, width) of the image.
         """
-        logger.info(
+        logger.debug(
             f"Initializing SpotGenerator with {spot_cfg.count} spots, image shape {img_shape}.")
         self.cfg = spot_cfg
         self.img_shape = img_shape
@@ -98,7 +98,7 @@ class SpotGenerator:
         if self.n_spots == 0:
             self.coords, self.intensities, self.radii, self.kernel_sizes = [], [], [], []
             self.spot_shapes, self.polygon_vertices = [], {}
-            logger.info("No spots to initialize (n_spots is 0).")
+            logger.debug("No spots to initialize (n_spots is 0).")
             return
 
         h, w = self.img_shape
@@ -199,7 +199,7 @@ class SpotGenerator:
         if isinstance(intensities, float):
             intensities = [intensities] * len(spot_coords)
 
-        for idx, (y, x) in enumerate(tqdm(spot_coords, desc=f"Drawing spots", unit="spots")):
+        for idx, (y, x) in enumerate(spot_coords):
 
             try:
                 mask = np.zeros((h, w), dtype=np.float32)
@@ -259,7 +259,7 @@ class SpotGenerator:
         logger.debug(f"Applying {spot_cfg.count} random spots to image of shape {img.shape}.")
         n_spots = spot_cfg.count
         if n_spots == 0:
-            logger.info("No random spots to apply. Returning original image.")
+            logger.debug("No random spots to apply. Returning original image.")
             return img
 
         if img.ndim == 3:

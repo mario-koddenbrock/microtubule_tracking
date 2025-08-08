@@ -31,7 +31,7 @@ def objective(
         float: The similarity score for the current trial's synthetic data, to be maximized.
               Returns -inf if an error occurs during generation or evaluation.
     """
-    logger.info(f"--- Starting Optuna Trial {trial.number} ---")
+    logger.debug(f"--- Starting Optuna Trial {trial.number} ---")
     logger.debug(f"Trial parameters being evaluated: {trial.params}")
 
     try:
@@ -56,7 +56,7 @@ def objective(
             synthetic_embeddings=synthetic_embeddings,
             **precomputed_kwargs,
         )
-        logger.info(f"--- Optuna Trial {trial.number} completed. Score: {score:.6f} ---")
+        logger.debug(f"--- Optuna Trial {trial.number} completed. Score: {score:.6f} ---")
 
     except optuna.exceptions.TrialPruned as e:
         logger.info(f"Trial {trial.number} pruned: {e}")
