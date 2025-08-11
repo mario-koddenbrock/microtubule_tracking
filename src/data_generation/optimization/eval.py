@@ -54,7 +54,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         current_cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
         current_cfg.num_frames = tuning_cfg.output_config_num_frames
         current_cfg.id = f"{tuning_cfg.output_config_id}_rank_{i + 1}"
-        current_cfg.generate_microtubule_mask = False
+        current_cfg.generate_mt_mask = False
 
         eval_config(current_cfg, tuning_cfg, output_dir, plot_output_dir, embedding_extractor, reference_vecs, toy_data)
 
@@ -81,7 +81,7 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
     if output_dir is None:
         frames: List[np.ndarray] = []
         for frame_img_rgb, _, _, _ in generate_frames(cfg, cfg.num_frames,
-                                return_microtubule_mask=cfg.generate_microtubule_mask,
+                                return_mt_mask=cfg.generate_mt_mask,
                                 return_seed_mask=cfg.generate_seed_mask):
 
             frames.append(frame_img_rgb)

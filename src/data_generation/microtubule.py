@@ -164,7 +164,7 @@ class Microtubule:
     def draw(
             self,
             frame: np.ndarray,
-            microtubule_mask: Optional[np.ndarray],
+            mt_mask: Optional[np.ndarray],
             cfg: SyntheticDataConfig,
             seed_mask: Optional[np.ndarray] = None,
     ) -> List[dict]:
@@ -185,7 +185,7 @@ class Microtubule:
             color_contrast = (cfg.tubulus_contrast, cfg.tubulus_contrast, cfg.tubulus_contrast)
 
             draw_gaussian_line_rgb(
-                frame, microtubule_mask, abs_pos, minus_end_pos,
+                frame, mt_mask, abs_pos, minus_end_pos,
                 cfg.psf_sigma_h, cfg.psf_sigma_v, color_contrast, self.instance_id
             )
             gt_info.append({
@@ -232,7 +232,7 @@ class Microtubule:
                 current_mask = None  # Plus-end segments don't draw to the seed mask
 
             draw_gaussian_line_rgb(
-                frame, microtubule_mask, start_pos, end_pos,
+                frame, mt_mask, start_pos, end_pos,
                 psf_h, psf_v, color_contrast, self.instance_id, additional_mask=current_mask
             )
 

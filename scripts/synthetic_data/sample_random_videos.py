@@ -30,7 +30,7 @@ def sample_hyperparameters(
 
         sampled_config:SyntheticDataConfig = tuning_config.create_synthetic_config_from_trial(trial)
         sampled_config.id = sample_id
-        sampled_config.generate_microtubule_mask = False
+        sampled_config.generate_mt_mask = False
         sampled_config.num_frames = tuning_config.output_config_num_frames
 
         config_filename = output_dir / f"series_{sample_id:04d}_config.json"

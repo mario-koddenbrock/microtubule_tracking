@@ -309,28 +309,3 @@ def process_avi_video(fps, video_path):
     return frames, fps
 
 
-def save_ground_truth(gt_data: List[dict], json_output_path: str):
-    """
-    Saves annotation data (for detection/tracking) as a JSON file.
-    Uses a custom encoder to handle special data types like sets and numpy arrays.
-
-    Args:
-        gt_data (List[dict]): List of ground truth dictionaries.
-        json_output_path (str): Full path to save the JSON file.
-    """
-    logger.debug(f"Attempting to save JSON ground truth to: {json_output_path}")
-    try:
-        # Ensure the output directory exists
-        output_dir = os.path.dirname(json_output_path)
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir, exist_ok=True)
-            logger.debug(f"Created output directory for ground truth: {output_dir}")
-
-        with open(json_output_path, "w") as fh:
-            # Pass the custom encoder class to json.dump using the `cls` argument.
-            json.dump(gt_data, fh, indent=2, cls=CustomJsonEncoder)
-        logger.debug(f"Successfully saved JSON ground truth to: {json_output_path}")
-    except Exception as e:
-        logger.error(f"Failed to save JSON ground truth to {json_output_path}: {e}", exc_info=True)
-        # Re-raise the exception to signal failure to the caller
-        raise

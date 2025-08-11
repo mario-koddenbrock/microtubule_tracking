@@ -111,7 +111,7 @@ class TuningConfig(BaseConfig):
     scale_bar_um: float = 5.0
     show_time: bool = False
     show_scale: bool = False
-    generate_microtubule_mask: bool = True
+    generate_mt_mask: bool = True
     generate_seed_mask: bool = False
 
     def validate(self):
@@ -232,7 +232,7 @@ class TuningConfig(BaseConfig):
             scale_bar_um=self.scale_bar_um,
             show_time=self.show_time,
             show_scale=self.show_scale,
-            generate_microtubule_mask=self.generate_microtubule_mask,
+            generate_mt_mask=self.generate_mt_mask,
             generate_seed_mask=self.generate_seed_mask,
             albumentations=None,
             margin=self.margin,

@@ -54,6 +54,6 @@
   "show_scale": false,
   "um_per_pixel": 0.48969631347432285,
   "scale_bar_um": 10.973869843098672,
-  "generate_microtubule_mask": true,
+  "generate_mt_mask": true,
   "generate_seed_mask": true
 }

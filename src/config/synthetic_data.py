@@ -80,7 +80,7 @@ class SyntheticDataConfig(BaseConfig):
     scale_bar_um: float = 5.0
     show_time: bool = False
     show_scale: bool = False
-    generate_microtubule_mask: bool = True
+    generate_mt_mask: bool = True
     generate_seed_mask: bool = False
     albumentations: Optional[dict] = None
 

@@ -1,6 +1,7 @@
+import json
 import logging
 import os
-from typing import Optional
+from typing import Optional, Any
 
 import cv2
 import imageio
@@ -8,11 +9,12 @@ import numpy as np
 from skimage.color import label2rgb
 
 from config.synthetic_data import SyntheticDataConfig
+from file_io.utils import CustomJsonEncoder
 
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-class VideoOutputManager:
+class OutputManager:
     """
     Manages the creation and writing process for all video/image sequence outputs.
 
@@ -34,11 +36,12 @@ class VideoOutputManager:
         write_video_pngs: bool = True,
         write_masks_pngs: bool = True,
         write_config: bool = True,
+        write_gt: bool = True,
     ):
         """
         Initializes all file paths and writer objects based on the config.
         """
-        logger.debug(f"Initializing VideoOutputManager for series ID: {cfg.id}, output directory: '{base_output_dir}'")
+        logger.debug(f"Initializing OutputManager for series ID: {cfg.id}, output directory: '{base_output_dir}'")
         self.cfg = cfg
         self.base_output_dir = base_output_dir
         self.frame_count = 0
@@ -53,6 +56,8 @@ class VideoOutputManager:
         self.write_video_pngs = write_video_pngs
         self.write_masks_pngs = write_masks_pngs
         self.write_config = write_config
+        self.write_gt = write_gt
+        self.all_gt = []  # Store ground truth data if needed
 
         try:
             os.makedirs(base_output_dir, exist_ok=True)
@@ -63,7 +68,7 @@ class VideoOutputManager:
 
         self._initialize_paths()
         self._initialize_writers()
-        logger.debug("VideoOutputManager initialization complete.")
+        logger.debug("OutputManager initialization complete.")
 
     def _initialize_paths(self):
         """Defines all output paths based on configuration."""
@@ -73,21 +78,21 @@ class VideoOutputManager:
         # Sequence file paths
         if self.write_video_tiff:
             self.paths['video_tiff'] = os.path.join(self.base_output_dir, "video", f"{base_name}_video.tif")
-        if self.write_masks_tiff and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_masks_tiff'] = os.path.join(self.base_output_dir, "video", f"{base_name}_masks.tif")
+        if self.write_masks_tiff and self.cfg.generate_mt_mask:
+            self.paths['mt_masks_tiff'] = os.path.join(self.base_output_dir, "video", f"{base_name}_masks.tif")
         if self.write_masks_tiff and self.cfg.generate_seed_mask:
             self.paths['seed_masks_tiff'] = os.path.join(self.base_output_dir, "video", f"{base_name}_seed_masks.tif")
 
         if self.write_video_mp4:
             self.paths['video_mp4'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_video_preview.mp4")
-        if self.write_masks_mp4 and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_masks_mp4'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_masks_preview.mp4")
+        if self.write_masks_mp4 and self.cfg.generate_mt_mask:
+            self.paths['mt_masks_mp4'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_masks_preview.mp4")
         if self.write_masks_mp4 and self.cfg.generate_seed_mask:
             self.paths['seed_masks_mp4'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_seed_masks_preview.mp4")
         if self.write_video_gif:
             self.paths['video_gif'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_video_preview.gif")
-        if self.write_masks_gif and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_masks_gif'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_masks_preview.gif")
+        if self.write_masks_gif and self.cfg.generate_mt_mask:
+            self.paths['mt_masks_gif'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_masks_preview.gif")
         if self.write_masks_gif and self.cfg.generate_seed_mask:
             self.paths['seed_masks_gif'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_seed_masks_preview.gif")
 
@@ -96,9 +101,9 @@ class VideoOutputManager:
             # self.paths['video_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_video_frames")
             self.paths['video_png_dir'] = os.path.join(self.base_output_dir, "images")
             os.makedirs(self.paths['video_png_dir'], exist_ok=True)
-        if self.write_masks_pngs and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_mask_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_mask_frames")
-            os.makedirs(self.paths['microtubule_mask_png_dir'], exist_ok=True)
+        if self.write_masks_pngs and self.cfg.generate_mt_mask:
+            self.paths['mt_mask_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_mask_frames")
+            os.makedirs(self.paths['mt_mask_png_dir'], exist_ok=True)
         if self.write_masks_pngs and self.cfg.generate_seed_mask:
             self.paths['seed_mask_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_seed_mask_frames")
             os.makedirs(self.paths['seed_mask_png_dir'], exist_ok=True)
@@ -109,6 +114,13 @@ class VideoOutputManager:
                 logger.debug(f"Configuration saved to {self.paths['config_file']}")
             except Exception as e:
                 logger.error(f"Failed to save configuration file: {e}", exc_info=True)
+        if self.write_gt:
+            self.paths['ground_truth_file'] = os.path.join(self.base_output_dir, "gt", f"{base_name}_ground_truth.json")
+            try:
+                self.cfg.save_ground_truth(self.paths['ground_truth_file'])
+                logger.debug(f"Ground truth saved to {self.paths['ground_truth_file']}")
+            except Exception as e:
+                logger.error(f"Failed to save ground truth file: {e}", exc_info=True)
         logger.debug(f"Output paths defined: {self.paths}")
 
     def _initialize_writers(self):
@@ -139,13 +151,13 @@ class VideoOutputManager:
         if self.write_video_gif:
             self.writers['video_gif'] = _create_writer('gif', 'video_gif')
 
-        if self.cfg.generate_microtubule_mask:
+        if self.cfg.generate_mt_mask:
             if self.write_masks_tiff:
-                self.writers['microtubule_mask_tiff'] = _create_writer('tiff', 'microtubule_masks_tiff')
+                self.writers['mt_mask_tiff'] = _create_writer('tiff', 'mt_masks_tiff')
             if self.write_masks_mp4:
-                self.writers['microtubule_mask_mp4'] = _create_writer('mp4', 'microtubule_masks_mp4')
+                self.writers['mt_mask_mp4'] = _create_writer('mp4', 'mt_masks_mp4')
             if self.write_masks_gif:
-                self.writers['microtubule_mask_gif'] = _create_writer('gif', 'microtubule_masks_gif')
+                self.writers['mt_mask_gif'] = _create_writer('gif', 'mt_masks_gif')
 
         if self.cfg.generate_seed_mask:
             if self.write_masks_tiff:
@@ -156,9 +168,12 @@ class VideoOutputManager:
                 self.writers['seed_mask_gif'] = _create_writer('gif', 'seed_masks_gif')
 
     def append(
-        self, frame_img_rgb: np.ndarray, microtubule_mask_img: Optional[np.ndarray], seed_mask_img: Optional[np.ndarray]
+            self,
+            frame_img_rgb: np.ndarray,
+            mt_mask_img: Optional[np.ndarray],
+            seed_mask_img: Optional[np.ndarray],
+            frame_gt: Optional[list[dict[str, Any]]] = None,
     ):
-        """Appends a new frame and its masks to all configured outputs."""
         logger.debug(f"Appending frame {self.frame_count} to output writers...")
         frame_bgr = cv2.cvtColor(frame_img_rgb, cv2.COLOR_RGB2BGR)
 
@@ -175,17 +190,17 @@ class VideoOutputManager:
             cv2.imwrite(path, frame_bgr)
 
         # B. Write microtubule mask frame
-        if self.cfg.generate_microtubule_mask and microtubule_mask_img is not None:
-            if self.writers.get('microtubule_mask_tiff'): self.writers['microtubule_mask_tiff'].append_data(microtubule_mask_img)
+        if self.cfg.generate_mt_mask and mt_mask_img is not None:
+            if self.writers.get('mt_mask_tiff'): self.writers['mt_mask_tiff'].append_data(mt_mask_img)
             if self.write_masks_pngs:
-                path = os.path.join(self.paths['microtubule_mask_png_dir'], f"mask_{self.frame_count:04d}.png")
-                imageio.imwrite(path, microtubule_mask_img)
-            if self.writers.get('microtubule_mask_mp4') or self.writers.get('microtubule_mask_gif'):
-                mask_vis_rgb = (label2rgb(microtubule_mask_img, bg_label=0) * 255).astype(np.uint8)
-                if self.writers.get('microtubule_mask_mp4'):
-                    self.writers['microtubule_mask_mp4'].write(cv2.cvtColor(mask_vis_rgb, cv2.COLOR_RGB2BGR))
-                if self.writers.get('microtubule_mask_gif'):
-                    self.writers['microtubule_mask_gif'].append_data(mask_vis_rgb)
+                path = os.path.join(self.paths['mt_mask_png_dir'], f"mask_{self.frame_count:04d}.png")
+                imageio.imwrite(path, mt_mask_img)
+            if self.writers.get('mt_mask_mp4') or self.writers.get('mt_mask_gif'):
+                mask_vis_rgb = (label2rgb(mt_mask_img, bg_label=0) * 255).astype(np.uint8)
+                if self.writers.get('mt_mask_mp4'):
+                    self.writers['mt_mask_mp4'].write(cv2.cvtColor(mask_vis_rgb, cv2.COLOR_RGB2BGR))
+                if self.writers.get('mt_mask_gif'):
+                    self.writers['mt_mask_gif'].append_data(mask_vis_rgb)
 
         # C. Write seed mask frame
         if self.cfg.generate_seed_mask and seed_mask_img is not None:
@@ -200,11 +215,19 @@ class VideoOutputManager:
                 if self.writers.get('seed_mask_gif'):
                     self.writers['seed_mask_gif'].append_data(mask_vis_rgb)
 
+        # D. Write ground truth data if available
+        if self.write_gt and frame_gt is not None:
+            self.all_gt.append(frame_gt)
+
         self.frame_count += 1
         logger.debug(f"Finished appending frame {self.frame_count - 1}.")
 
     def close(self):
         """Closes all writer objects to finalize files."""
+
+        if self.write_gt:
+            self.save_ground_truth()
+
         logger.debug("Closing all file writers...")
         for name, writer in self.writers.items():
             if writer:
@@ -217,3 +240,17 @@ class VideoOutputManager:
                 except Exception as e:
                     logger.error(f"Error closing {name} writer: {e}", exc_info=True)
         logger.debug("All file writers have been processed.")
+
+    def save_ground_truth(self):
+        logger.debug(f"Attempting to save JSON ground truth to: {self.paths['ground_truth_file']}")
+        try:
+            output_dir = os.path.dirname(self.paths['ground_truth_file'])
+            os.makedirs(output_dir, exist_ok=True)
+
+            with open(self.paths['ground_truth_file'], "w") as fh:
+                # Pass the custom encoder class to json.dump using the `cls` argument.
+                json.dump(self.all_gt, fh, indent=2, cls=CustomJsonEncoder)
+            logger.debug(f"Successfully saved JSON ground truth to: {self.paths['ground_truth_file']}")
+        except Exception as e:
+            logger.error(f"Failed to save JSON ground truth to {self.paths['ground_truth_file']}: {e}", exc_info=True)
+            raise

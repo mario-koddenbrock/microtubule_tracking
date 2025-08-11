@@ -93,7 +93,7 @@
   "scale_bar_um": 5.0,
   "show_time": false,
   "show_scale": false,
-  "generate_microtubule_mask": true,
+  "generate_mt_mask": true,
   "generate_seed_mask": false,
   "albumentations": null
 }
