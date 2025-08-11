@@ -12,7 +12,7 @@ from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-def get_toy_data(embedding_extractor: ImageEmbeddingExtractor = None) -> Dict[str, Optional[Any]]:
+def get_toy_data() -> Dict[str, Optional[Any]]:
     """
     Downloads toy images, standardizes them to a 512x512 square, and returns them.
 
@@ -24,7 +24,7 @@ def get_toy_data(embedding_extractor: ImageEmbeddingExtractor = None) -> Dict[st
         Dict[str, Optional[Any]]: A dictionary containing the list of processed toy images
                                   and their corresponding labels.
     """
-    logger.info("\n--- Loading and processing toy images for comparison ---")
+    logger.debug("\n--- Loading and processing toy images for comparison ---")
     toy_image_urls = [
         "https://upload.wikimedia.org/wikipedia/commons/1/18/Dog_Breeds.jpg",
         "https://upload.wikimedia.org/wikipedia/en/2/2e/Donald_Duck_-_temper.png",
@@ -62,10 +62,4 @@ def get_toy_data(embedding_extractor: ImageEmbeddingExtractor = None) -> Dict[st
             logger.error(f"Error processing toy image from {url}: {e}")
 
     logger.info(f"Loaded and processed {len(toy_images)} toy images.")
-
-    # The embedding extractor is not used here, but the structure is maintained
-    # for potential future use or consistency with other data loading functions.
-    if embedding_extractor and toy_images:
-        logger.info("Note: embedding_extractor was passed but is not used for image processing in get_toy_data.")
-
     return {"images": toy_images, "labels": toy_labels}

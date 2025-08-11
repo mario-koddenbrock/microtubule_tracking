@@ -31,7 +31,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     # Initialize the ImageEmbeddingExtractor to extract embeddings from images
     embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
     reference_vecs = embedding_extractor.extract_from_references()
-    toy_data: Dict[str, Any] = get_toy_data(embedding_extractor)
+    toy_data: Dict[str, Any] = get_toy_data()
 
     # Load the completed Optuna study from its database file
     study_db_path = os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')
@@ -80,11 +80,12 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
 
     if output_dir is None:
         frames: List[np.ndarray] = []
-        for frame_img_rgb, _, _, _ in generate_frames(cfg, cfg.num_frames,
+        frame_generator = generate_frames(cfg, cfg.num_frames,
                                 return_mt_mask=cfg.generate_mt_mask,
-                                return_seed_mask=cfg.generate_seed_mask):
+                                return_seed_mask=cfg.generate_seed_mask)
 
-            frames.append(frame_img_rgb)
+        for frame, *_ in frame_generator:
+            frames.append(frame)
     else:
         frames = generate_video(cfg, output_dir)
 
