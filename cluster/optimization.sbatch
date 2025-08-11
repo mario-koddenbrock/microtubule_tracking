@@ -1,10 +1,8 @@
 #!/bin/bash
 #SBATCH --gres=gpu:0
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
 #SBATCH --mem=24G
-#SBATCH --qos=normal
+#SBATCH --qos=high
 #SBATCH --time=3-12:00:00
 #SBATCH --output=%j_%x_out.log
 #SBATCH --error=%j_%x_err.log
