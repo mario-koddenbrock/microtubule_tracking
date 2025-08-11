@@ -36,7 +36,7 @@ fi
 IMAGE_FOLDERS=()
 while IFS= read -r -d $'\0' dir; do
     IMAGE_FOLDERS+=("$dir")
-done < <(find "$REFERENCE_DIR" -mindepth 1 -type d -exec sh -c 'ls -1 "$1"/*.{png,jpg,tif,tiff} 2>/dev/null | head -n 1 | grep -q .' {} \; -print0)
+done < <(find "$REFERENCE_DIR" -mindepth 2 \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.tif" -o -iname "*.tiff" \) -printf '%h\0' | sort -zu)
 
 TOTAL_FOLDERS=${#IMAGE_FOLDERS[@]}
 
