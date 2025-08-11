@@ -68,7 +68,7 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
     # 3. Perform dimensionality reduction and plot 2D projection
     projection_path = os.path.join(output_dir, f"projection_{projection_method.lower()}_{cfg.id}.png")
 
-    logger.info(f"Performing {projection_method} projection for 2D plot.")
+    logger.debug(f"Performing {projection_method} projection for 2D plot.")
     if projection_method.upper() == 'UMAP':
         ref_2d, synthetic_2d, toy_2d = umap_projection(ref_embeddings, synthetic_embeddings, toy_embeddings)
     elif projection_method.upper() == 'TSNE':
@@ -96,7 +96,7 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                        toy_images=toy_data.get("images") if toy_data else None,
                        toy_border_colours=toy_colour,
                        save_to=projection_path, method_name=projection_method)
-    logger.info(f"2D embedding projection plot saved to {projection_path}")
+    logger.debug(f"2D embedding projection plot saved to {projection_path}")
 
 
 def compute_plotting_colour(ref_embeddings, synthetic_embeddings, tuning_cfg):
@@ -155,21 +155,6 @@ def tsne_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray
 
 def pca_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
                    toy_embeddings: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
-    """
-    Performs PCA projection on reference, synthetic, and optional toy embeddings.
-    The PCA is fitted only on the reference embeddings.
-
-    Args:
-        ref_embeddings (np.ndarray): Embeddings from reference images.
-        synthetic_embeddings (np.ndarray): Embeddings from synthetic images.
-        toy_embeddings (Optional[np.ndarray]): Optional embeddings from toy images.
-
-    Returns:
-        Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]: 2D projected reference, synthetic, and toy embeddings.
-    """
-    logger.debug("Starting PCA projection to 2 components.")
-    logger.debug(
-        f"Ref embeddings shape: {ref_embeddings.shape}, Synthetic embeddings shape: {synthetic_embeddings.shape}.")
 
     if ref_embeddings.shape[0] < 2 or ref_embeddings.shape[1] < 2:
         logger.warning(
@@ -178,11 +163,11 @@ def pca_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray,
         return np.zeros((ref_embeddings.shape[0], 2)), np.zeros((synthetic_embeddings.shape[0], 2)), toy_result
 
     try:
-        # Fit PCA *only* on the reference embeddings
+
         pca = PCA(n_components=2, random_state=42)
         pca.fit(ref_embeddings)
         explained_variance = sum(pca.explained_variance_ratio_)
-        logger.info(f"PCA fitted on reference data. The 2 principal components explain {explained_variance:.2%} of the variance.")
+        logger.info(f"PCA fitted for visualization. 2 principal components explain {explained_variance:.2%} variance.")
 
         # Transform all datasets using the fitted PCA
         ref_2d = pca.transform(ref_embeddings)
