@@ -271,13 +271,7 @@ def generate_video(
     """
     logger.info(f"Generating and writing {cfg.num_frames} frames for Series {cfg.id} into '{base_output_dir}'...")
 
-    try:
-        output_manager = VideoOutputManager(cfg, base_output_dir)
-        logger.debug(f"VideoOutputManager initialized for output directory: {base_output_dir}")
-    except Exception as e:
-        logger.critical(f"Failed to initialize VideoOutputManager for '{base_output_dir}': {e}", exc_info=True)
-        raise  # Critical error, cannot save video
-
+    output_manager = VideoOutputManager(cfg, base_output_dir)
     gt_json_path = os.path.join(base_output_dir, f"series_{cfg.id}_gt.json")
     logger.debug(f"Ground truth JSON path: {gt_json_path}")
 

@@ -318,7 +318,7 @@ def save_ground_truth(gt_data: List[dict], json_output_path: str):
         gt_data (List[dict]): List of ground truth dictionaries.
         json_output_path (str): Full path to save the JSON file.
     """
-    logger.info(f"Attempting to save JSON ground truth to: {json_output_path}")
+    logger.debug(f"Attempting to save JSON ground truth to: {json_output_path}")
     try:
         # Ensure the output directory exists
         output_dir = os.path.dirname(json_output_path)

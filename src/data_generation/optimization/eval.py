@@ -17,9 +17,9 @@ logger = logging.getLogger(f"mt.{__name__}")
 
 
 def evaluate_results(tuning_config_path: str, output_dir: str):
-    logger.info(f"{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
+    logger.debug(f"{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
 
-    logger.info("--- Loading configurations and study results ---")
+    logger.debug("--- Loading configurations and study results ---")
     tuning_cfg = TuningConfig.load(tuning_config_path)
 
     # Ensure folders exist for output and temporary files
@@ -39,7 +39,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     logger.debug(f"Attempting to load Optuna study from: {full_study_db_uri}")
 
     study = optuna.load_study(study_name=tuning_cfg.output_config_id, storage=full_study_db_uri)
-    logger.info(f"Loaded Optuna study '{tuning_cfg.output_config_id}' from: {full_study_db_uri}")
+    logger.debug(f"Loaded Optuna study '{tuning_cfg.output_config_id}' from: {full_study_db_uri}")
 
     trials = [t for t in study.get_trials(deepcopy=False) if t.state == optuna.trial.TrialState.COMPLETE]
     sorted_trials = sorted(trials, key=lambda t: t.value, reverse=True)
@@ -63,12 +63,12 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     #     vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
     #     vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
     #     vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
-    #     logging.info("Analysis plots saved successfully.")
+    #     logging.debug("Analysis plots saved successfully.")
     #
     # except Exception as e:
     #     logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
 
-    logger.info("Evaluation complete.")
+    logger.debug("Evaluation complete.")
 
 
 def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str, plot_output_dir: str,
@@ -90,7 +90,7 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
 
     synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 
-    logger.info("\n--- Creating visualizations ---")
+    logger.debug("\n--- Creating visualizations ---")
 
     visualize_embeddings(
         cfg=cfg,
@@ -100,4 +100,4 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
         toy_data=toy_data,
         output_dir=plot_output_dir,
     )
-    logger.info(f"Embedding plot saved in {plot_output_dir}")
+    logger.debug(f"Embedding plot saved in {plot_output_dir}")

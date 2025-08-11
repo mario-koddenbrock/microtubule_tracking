@@ -265,7 +265,7 @@ def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.
         save_to (str, optional): Path to save the plot. If None, only displays.
         method_name (str): Name of the projection method (e.g., "PCA", "t-SNE").
     """
-    logger.info(f"Plotting 2D projection using {method_name}.")
+    logger.debug(f"Plotting 2D projection using {method_name}.")
     logger.debug(
         f"Ref 2D shape: {ref_2d.shape}, Synthetic 2D shape: {synthetic_2d.shape}, Color array shape: {colour.shape}.")
 
@@ -334,7 +334,7 @@ def plot_2d_projection(ref_2d: np.ndarray, synthetic_2d: np.ndarray, colour: np.
 
         if save_to:
             plt.savefig(save_to, bbox_inches='tight', dpi=300)
-            logger.info(f"2D {method_name} plot saved to {save_to}")
+            logger.debug(f"2D {method_name} plot saved to {save_to}")
         else:
             logger.debug("2D projection plot not saved (save_to is None).")
 
@@ -358,7 +358,7 @@ def plot_similarity_matrix(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray,
         max_labels (int): Maximum number of labels to display on the heatmap axes.
         save_to (str, optional): Path to save the plot.
     """
-    logger.info(f"Plotting similarity matrix using metric '{tuning_cfg.similarity_metric}'.")
+    logger.debug(f"Plotting similarity matrix using metric '{tuning_cfg.similarity_metric}'.")
     logger.debug(
         f"Ref embeddings shape: {ref_embeddings.shape}, Synthetic embeddings shape: {synthetic_embeddings.shape}.")
 
@@ -411,7 +411,7 @@ def plot_similarity_matrix(tuning_cfg: TuningConfig, ref_embeddings: np.ndarray,
 
     try:
         plot_heatmap(sim_mat, labels, step, title=tuning_cfg.similarity_metric, save_to=save_to)
-        logger.info(f"Similarity matrix heatmap saved to {save_to}")
+        logger.debug(f"Similarity matrix heatmap saved to {save_to}")
     except Exception as e:
         logger.error(f"Failed to generate similarity heatmap: {e}", exc_info=True)
 
@@ -458,7 +458,7 @@ def plot_heatmap(matrix: np.ndarray, labels: List[str], step: int, *,
         if save_to:
             try:
                 plt.savefig(save_to, bbox_inches='tight', dpi=300)
-                logger.info(f"Heat-map saved to {save_to}")
+                logger.debug(f"Heat-map saved to {save_to}")
             except Exception as e:
                 logger.error(f"Failed to save heatmap to {save_to}: {e}", exc_info=True)
         else:
@@ -507,7 +507,7 @@ def show_frame(frame: np.ndarray, title: str = "") -> None:
         frame (np.ndarray): The image frame to display, expected to be in RGB format for matplotlib.
         title (str): Title for the plot.
     """
-    logger.info(f"Displaying frame: '{title}' (shape: {frame.shape}, dtype: {frame.dtype}).")
+    logger.debug(f"Displaying frame: '{title}' (shape: {frame.shape}, dtype: {frame.dtype}).")
 
     try:
         plt.figure(figsize=(8, 6))  # Create a new figure
@@ -531,7 +531,7 @@ def show_frame(frame: np.ndarray, title: str = "") -> None:
         plt.axis('off')  # Hide axes
         plt.tight_layout()  # Adjust layout
         plt.show(block=False)
-        logger.info(f"Frame '{title}' displayed successfully.")
+        logger.debug(f"Frame '{title}' displayed successfully.")
     except Exception as e:
         logger.error(f"Error displaying frame '{title}': {e}", exc_info=True)
 
@@ -589,7 +589,7 @@ def visualize_tracked_masks(
         fps (float): Frames per second for output videos/GIF.
         alpha (float): Transparency for mask overlay.
     """
-    logger.info(f"Starting visualization of tracked masks for '{os.path.basename(video_path)}'.")
+    logger.debug(f"Starting visualization of tracked masks for '{os.path.basename(video_path)}'.")
     logger.debug(
         f"Input frames: {len(frames)}, masks: {len(tracked_masks)}. Output path: {output_path}, FPS: {fps}, Alpha: {alpha}.")
 
@@ -607,7 +607,7 @@ def visualize_tracked_masks(
             track_id for mask in tracked_masks for track_id in np.unique(mask) if track_id != 0
         }
         color_map = get_colormap(all_track_ids)
-        logger.info(f"Generated colormap for {len(all_track_ids)} unique track IDs.")
+        logger.debug(f"Generated colormap for {len(all_track_ids)} unique track IDs.")
 
         # --- 2. Prepare paths and writers ---
         base_output_path = Path(os.path.abspath(output_path))
@@ -634,7 +634,7 @@ def visualize_tracked_masks(
             frames = [cv2.cvtColor(f, cv2.COLOR_GRAY2BGR) for f in frames]  # Convert to 3-channel for overlay
 
         # --- 3. Generate all visualized frames ---
-        logger.info("Generating all visualized frames (overlaying masks, adding lengths)...")
+        logger.debug("Generating all visualized frames (overlaying masks, adding lengths)...")
         visualized_frames: List[np.ndarray] = []
         for frame_idx, (frame, mask) in enumerate(
                 tqdm(zip(frames, tracked_masks), total=len(frames), desc="Overlaying Masks")):
@@ -697,7 +697,7 @@ def visualize_tracked_masks(
                 visualized_frames.append(frame.copy())
 
         # --- 4. Save the generated frames to files ---
-        logger.info("Saving output files (MP4, GIF)...")
+        logger.debug("Saving output files (MP4, GIF)...")
 
         # Save MP4 video
         if visualized_frames:
@@ -709,7 +709,7 @@ def visualize_tracked_masks(
                 for vis_frame in tqdm(visualized_frames, desc="Saving MP4"):
                     video_writer.write(vis_frame)
                 video_writer.release()
-                logger.info(f"Successfully saved visualized video to: {video_output_path}")
+                logger.debug(f"Successfully saved visualized video to: {video_output_path}")
             except Exception as e:
                 logger.error(f"Failed to save MP4 video to {video_output_path}: {e}", exc_info=True)
         else:
@@ -728,21 +728,21 @@ def visualize_tracked_masks(
                     logger.warning(f"Adjusted GIF frame duration to {duration}s as FPS was {fps}.")
 
                 imageio.mimsave(str(gif_output_path), rgb_frames, duration=duration)
-                logger.info(f"Successfully saved visualized GIF to: {gif_output_path}")
+                logger.debug(f"Successfully saved visualized GIF to: {gif_output_path}")
             except Exception as e:
                 logger.error(f"Failed to save GIF to {gif_output_path}: {e}", exc_info=True)
         else:
             logger.warning("No visualized frames to save as GIF. Skipping GIF export.")
 
-        logger.info("Generating kymographs...")
+        logger.debug("Generating kymographs...")
         try:
             kymograph_dir.mkdir(parents=True, exist_ok=True)  # Ensure kymograph directory exists
             generate_kymographs(frames, tracked_masks, str(kymograph_dir))  # Pass original frames
-            logger.info(f"Kymographs generated and saved to: {kymograph_dir}")
+            logger.debug(f"Kymographs generated and saved to: {kymograph_dir}")
         except Exception as e:
             logger.error(f"Failed to generate kymographs: {e}", exc_info=True)
 
-        logger.info(f"Tracked masks visualization complete for '{os.path.basename(video_path)}'.")
+        logger.debug(f"Tracked masks visualization complete for '{os.path.basename(video_path)}'.")
 
     except Exception as e: # <--- THIS IS THE NEWLY ADDED EXCEPT BLOCK that balances the outer try
         logger.error(f"An unexpected error occurred in visualize_tracked_masks for '{os.path.basename(video_path)}': {e}", exc_info=True)
