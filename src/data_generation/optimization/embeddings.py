@@ -285,7 +285,6 @@ class ImageEmbeddingExtractor:
         raw_embeddings = []
         frame_generator = generate_frames(synthetic_cfg, num_compare_frames)
 
-        # for frame, *_ in tqdm(frame_generator, total=num_compare_frames, desc=f"Generating & processing frames for {synthetic_cfg.id}"):
         for frame, *_ in frame_generator:
 
             # frame is already in RGB format, no need to convert
