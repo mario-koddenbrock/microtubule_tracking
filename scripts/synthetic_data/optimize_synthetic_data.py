@@ -10,8 +10,8 @@ def main():
     run_optimization_flag, run_evaluation_flag, config_path = parse_optimization_args()
     output_dir = get_output_dir_from_config_path(config_path)
 
-    if run_optimization_flag:
-        run_optimization(config_path)
+    # if run_optimization_flag:
+    #     run_optimization(config_path)
 
     if run_evaluation_flag:
         evaluate_results(config_path, output_dir)

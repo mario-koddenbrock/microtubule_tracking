@@ -33,7 +33,7 @@ def main(folder_path: str):
             old_id = cfg.id
             for i in range(num_examples_per_config):
                 cfg.id = f"{old_id}_{i}"
-                generate_video(cfg, folder_path, export_gt_data=False)
+                generate_video(cfg, folder_path)
 
         except Exception as e:
             print(f"Error processing {cfg_path}: {e}")

@@ -81,7 +81,7 @@ def main():
     # This step calls the other script in a loop.
     for config_path in generated_configs:
         cfg = SyntheticDataConfig.from_json(config_path)
-        generate_video(cfg, str(args.output_dir), export_gt_data=False)
+        generate_video(cfg, str(args.output_dir))
 
     print("\n\nScript finished successfully. All videos have been generated.")
 

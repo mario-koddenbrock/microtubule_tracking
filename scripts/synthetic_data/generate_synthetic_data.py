@@ -33,7 +33,7 @@ def main():
             print(f"Saved specific config for this video to: {save_path}")
 
         try:
-            generate_video(current_config, str(args.output_dir), export_gt_data=False)
+            generate_video(current_config, str(args.output_dir))
         except Exception as e:
             print(f"Error: An unexpected error occurred while generating video ID {video_id}.")
             print(f"Details: {e}")
