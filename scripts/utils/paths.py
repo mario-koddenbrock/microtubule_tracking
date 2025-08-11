@@ -1,7 +1,7 @@
 import os
 
 
-def get_output_dir_from_config_path(config_path: str, base_output_dir: str = os.path.join("data", "optimization")) -> str:
+def get_output_dir_from_config_path(config_path: str, base_output_dir: str = os.path.join("data", "SynMT", "synthetic")) -> str:
     config_name = os.path.splitext(os.path.basename(config_path))[0]
     if config_name.startswith("tuning_"):
         config_name = config_name.replace("tuning_", "", 1) # remove "tuning_" prefix once
