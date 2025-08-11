@@ -7,19 +7,16 @@ import cv2
 import imageio
 import matplotlib.pyplot as plt
 import numpy as np
-import umap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from skimage.morphology import skeletonize
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from tqdm import tqdm
-from umap import UMAP
 
 from analysis.kymographs import generate_kymographs
 from config.synthetic_data import SyntheticDataConfig
 from config.tuning import TuningConfig
 from data_generation.optimization.metrics import similarity, precompute_matric_args
-
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -229,6 +226,7 @@ def umap_projection(ref_embeddings: np.ndarray, synthetic_embeddings: np.ndarray
 
     try:
 
+        from umap import UMAP
         reducer = UMAP(n_components=2, init='random', random_state=0)
         reducer.fit(ref_embeddings)
         logger.debug("UMAP fitted on reference data.")
