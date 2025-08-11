@@ -28,7 +28,7 @@ def process_all(data_path, output_path):
 
 def split_and_convert(output_path, video_path, num_crops=3, num_frames=10):
 
-    frames_list, fps = extract_frames(video_path, num_crops=num_crops, crop_size=(512, 512))
+    frames_list, fps = extract_frames(video_path, num_crops=num_crops, crop_size=(512, 512), preprocess=False)
     if not frames_list:
         print(f"  -> Skipping video, no frames were extracted.")
         return
@@ -101,9 +101,9 @@ if __name__ == "__main__":
     # Define paths relative to the script location
 
     folder_names = [
-        '250523 Exemplary IRM Images',
-        # '250801 Additional Images from Dominik',
-        'Simone'
+        # '250523 Exemplary IRM Images',
+        '250801 Additional Images from Dominik',
+        # 'Simone'
     ]
 
     for folder_name in folder_names:

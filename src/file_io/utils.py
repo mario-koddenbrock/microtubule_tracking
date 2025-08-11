@@ -107,7 +107,8 @@ def process_tiff_video(
         video_path: str,
         num_crops: int = 3,
         crop_size: Tuple[int, int] = (512, 512),
-        norm_bounds: List[Tuple[float, float]] = [(0.0, 0.75), (0.0, 0.75)]
+        norm_bounds: List[Tuple[float, float]] = [(0.0, 0.75), (0.0, 0.75)],
+        preprocess:bool = True,
 ) -> List[List[np.ndarray]]:
     """
     Reads a TIFF video, performs repeated random cropping, applies contrast-stretching
@@ -119,6 +120,7 @@ def process_tiff_video(
         crop_size (Tuple[int, int]): The (height, width) for the random crops.
         norm_bounds (Tuple[float, float]): The (t1, t2) normalization bounds.
                                            Defaults to (0.0, 0.75) from the paper.
+        preprocess (bool): If True, applies preprocessing steps like normalization.
 
     Returns:
         List[List[np.ndarray]]: List of videos (list of frames). Each frame is a
@@ -172,15 +174,26 @@ def process_tiff_video(
             else:
                 channels_to_process = [data[t, :, :]]
 
+            import matplotlib.pyplot as plt
+            test_image = normalized_channels[1]  # Assuming the first channel is the main one
+            image_float = test_image.astype(np.float32) / np.max(test_image)
+            plt.imshow(test_image)
+            plt.axis('off')
+            plt.show()
+
             # Crop each channel
             cropped_channels = [chan[top:top + crop_h, left:left + crop_w] for chan in channels_to_process]
 
-            # --- Step 4: Normalization (UPDATED) ---
-            # Apply the paper's contrast stretching method to each channel
-            normalized_channels = [
-                normalize_contrast_stretch(chan, min_vals[c_idx], max_vals[c_idx], norm_bounds[c_idx])
-                for c_idx, chan in enumerate(cropped_channels)
-            ]
+            if preprocess:
+                # --- Step 4: Normalization ---
+                # Apply the paper's contrast stretching method to each channel
+                normalized_channels = [
+                    normalize_contrast_stretch(chan, min_vals[c_idx], max_vals[c_idx], norm_bounds[c_idx])
+                    for c_idx, chan in enumerate(cropped_channels)
+                ]
+            else:
+                # If preprocess is False, just convert to float32 without normalization
+                normalized_channels = [chan.astype(np.float32) for chan in cropped_channels]
 
             # --- Step 5: Combine to RGB ---
             num_chans = len(normalized_channels)
@@ -230,7 +243,7 @@ def process_tiff_video(
     return all_cropped_videos
 
 
-def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512)) -> Tuple[List[List[np.ndarray]], int]:
+def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512), preprocess:bool=True) -> Tuple[List[List[np.ndarray]], int]:
 
     logger.debug(f"Extracting frames from: {video_path}")
 
@@ -249,14 +262,14 @@ def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512)) -> 
                 video_path=video_path,
                 num_crops=num_crops,
                 crop_size=crop_size,
-                norm_bounds=[(0.1, 100), (0.1, 95)]
+                norm_bounds=[(0.1, 100), (0.1, 95)],
+                preprocess=preprocess,
             )
-            # ndim = frames[0][0].ndim
 
-            # plt.imshow(frames[0][0])
-            # plt.axis('off')
-            # plt.title(f"First frame from {os.path.basename(video_path)}")
-            # plt.show()
+            plt.imshow(frames[0][0])
+            plt.axis('off')
+            plt.title(f"First frame from {os.path.basename(video_path)}")
+            plt.show()
 
         else:
             msg = f"Unsupported video format '{os.path.splitext(video_path)[1]}'. Only AVI, MP4, MOV, MKV and TIFF/TIF files are supported."
