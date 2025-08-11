@@ -51,6 +51,6 @@ fi
 which python
 
 # Run the evaluation script
-python scripts/synthetic_data/optimize_synthetic_data.py "$TUNING_CONFIG_PATH"
+python -m scripts.synthetic_data.optimize_synthetic_data.py "$TUNING_CONFIG_PATH"
 # Log completion time
 echo "Job finished at $(date)"
