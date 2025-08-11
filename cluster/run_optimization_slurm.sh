@@ -58,6 +58,7 @@ for FOLDER_PATH in "${IMAGE_FOLDERS[@]}"; do
         # Create a unique config for this folder
         FOLDER_BASENAME=$(basename "$FOLDER_PATH")
         OUTPUT_CONFIG="$CONFIG_DIR/tuning_config_${FOLDER_BASENAME}.json"
+        JOB_NAME="mt-opt-${INDEX}"
 
         # Create a custom config file using the template but with updated folder path
         cat "$CONFIG_TEMPLATE" | \
@@ -65,8 +66,7 @@ for FOLDER_PATH in "${IMAGE_FOLDERS[@]}"; do
             sed "s|\"output_config_id\": \".*\"|\"output_config_id\": \"${FOLDER_BASENAME}\"|g" > "$OUTPUT_CONFIG"
 
         echo "Created config: '$OUTPUT_CONFIG' for folder: '$FOLDER_PATH'"
-        echo "Submitting Slurm job..."
-        sbatch "$SBATCH_SCRIPT" "$OUTPUT_CONFIG"
+        sbatch --job-name="$JOB_NAME" "$SBATCH_SCRIPT" "$OUTPUT_CONFIG"
         echo "Job for '$FOLDER_PATH' submitted."
         echo "--------------------------------------------------"
     fi

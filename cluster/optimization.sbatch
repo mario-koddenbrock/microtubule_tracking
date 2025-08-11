@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=microtubule
 #SBATCH --gres=gpu:0
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -7,8 +6,8 @@
 #SBATCH --mem=24G
 #SBATCH --qos=normal
 #SBATCH --time=3-12:00:00
-#SBATCH --output=%j_microtubule_out.log
-#SBATCH --error=%j_microtubule_err.log
+#SBATCH --output=%j_%x_out.log
+#SBATCH --error=%j_%x_err.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=koddenb@htw-berlin.de
 
