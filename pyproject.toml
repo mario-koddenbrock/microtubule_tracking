@@ -27,7 +27,7 @@ dependencies = [
   "albumentations",
   "btrack",
   "hf_xet",
-  "umap",
+  "lpips",
   "seaborn"
 ]
 
