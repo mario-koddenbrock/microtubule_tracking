@@ -25,20 +25,20 @@ class VideoOutputManager:
         self,
         cfg: SyntheticDataConfig,
         base_output_dir: str,
-        write_video_tiff: bool = False,
-        write_masks_tiff: bool = False,
+        write_video_tiff: bool = True,
+        write_masks_tiff: bool = True,
         write_video_mp4: bool = True,
         write_masks_mp4: bool = True,
-        write_video_gif: bool = False,
-        write_masks_gif: bool = False,
+        write_video_gif: bool = True,
+        write_masks_gif: bool = True,
         write_video_pngs: bool = True,
-        write_masks_pngs: bool = False,
-        write_config: bool = False,
+        write_masks_pngs: bool = True,
+        write_config: bool = True,
     ):
         """
         Initializes all file paths and writer objects based on the config.
         """
-        logger.info(f"Initializing VideoOutputManager for series ID: {cfg.id}, output directory: '{base_output_dir}'")
+        logger.debug(f"Initializing VideoOutputManager for series ID: {cfg.id}, output directory: '{base_output_dir}'")
         self.cfg = cfg
         self.base_output_dir = base_output_dir
         self.frame_count = 0
@@ -72,37 +72,38 @@ class VideoOutputManager:
 
         # Sequence file paths
         if self.write_video_tiff:
-            self.paths['video_tiff'] = os.path.join(self.base_output_dir, f"{base_name}_video.tif")
+            self.paths['video_tiff'] = os.path.join(self.base_output_dir, "video", f"{base_name}_video.tif")
         if self.write_masks_tiff and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_masks_tiff'] = os.path.join(self.base_output_dir, f"{base_name}_masks.tif")
+            self.paths['microtubule_masks_tiff'] = os.path.join(self.base_output_dir, "video", f"{base_name}_masks.tif")
         if self.write_masks_tiff and self.cfg.generate_seed_mask:
-            self.paths['seed_masks_tiff'] = os.path.join(self.base_output_dir, f"{base_name}_seed_masks.tif")
+            self.paths['seed_masks_tiff'] = os.path.join(self.base_output_dir, "video", f"{base_name}_seed_masks.tif")
+
         if self.write_video_mp4:
-            self.paths['video_mp4'] = os.path.join(self.base_output_dir, f"{base_name}_video_preview.mp4")
+            self.paths['video_mp4'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_video_preview.mp4")
         if self.write_masks_mp4 and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_masks_mp4'] = os.path.join(self.base_output_dir, f"{base_name}_masks_preview.mp4")
+            self.paths['microtubule_masks_mp4'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_masks_preview.mp4")
         if self.write_masks_mp4 and self.cfg.generate_seed_mask:
-            self.paths['seed_masks_mp4'] = os.path.join(self.base_output_dir, f"{base_name}_seed_masks_preview.mp4")
+            self.paths['seed_masks_mp4'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_seed_masks_preview.mp4")
         if self.write_video_gif:
-            self.paths['video_gif'] = os.path.join(self.base_output_dir, f"{base_name}_video_preview.gif")
+            self.paths['video_gif'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_video_preview.gif")
         if self.write_masks_gif and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_masks_gif'] = os.path.join(self.base_output_dir, f"{base_name}_masks_preview.gif")
+            self.paths['microtubule_masks_gif'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_masks_preview.gif")
         if self.write_masks_gif and self.cfg.generate_seed_mask:
-            self.paths['seed_masks_gif'] = os.path.join(self.base_output_dir, f"{base_name}_seed_masks_preview.gif")
+            self.paths['seed_masks_gif'] = os.path.join(self.base_output_dir, "preview", f"{base_name}_seed_masks_preview.gif")
 
         # Per-frame directory paths
         if self.write_video_pngs:
-            # self.paths['video_png_dir'] = os.path.join(self.base_output_dir, f"{base_name}_video_frames")
-            self.paths['video_png_dir'] = self.base_output_dir
+            # self.paths['video_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_video_frames")
+            self.paths['video_png_dir'] = os.path.join(self.base_output_dir, "images")
             os.makedirs(self.paths['video_png_dir'], exist_ok=True)
         if self.write_masks_pngs and self.cfg.generate_microtubule_mask:
-            self.paths['microtubule_mask_png_dir'] = os.path.join(self.base_output_dir, f"{base_name}_mask_frames")
+            self.paths['microtubule_mask_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_mask_frames")
             os.makedirs(self.paths['microtubule_mask_png_dir'], exist_ok=True)
         if self.write_masks_pngs and self.cfg.generate_seed_mask:
-            self.paths['seed_mask_png_dir'] = os.path.join(self.base_output_dir, f"{base_name}_seed_mask_frames")
+            self.paths['seed_mask_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_seed_mask_frames")
             os.makedirs(self.paths['seed_mask_png_dir'], exist_ok=True)
         if self.write_config:
-            self.paths['config_file'] = os.path.join(self.base_output_dir, f"{base_name}_config.json")
+            self.paths['config_file'] = os.path.join(self.base_output_dir, "images", f"{base_name}_config.json")
             try:
                 self.cfg.save(self.paths['config_file'])
                 logger.debug(f"Configuration saved to {self.paths['config_file']}")
@@ -204,7 +205,7 @@ class VideoOutputManager:
 
     def close(self):
         """Closes all writer objects to finalize files."""
-        logger.info("Closing all file writers...")
+        logger.debug("Closing all file writers...")
         for name, writer in self.writers.items():
             if writer:
                 try:
@@ -215,4 +216,4 @@ class VideoOutputManager:
                     logger.debug(f"Closed {name} writer.")
                 except Exception as e:
                     logger.error(f"Error closing {name} writer: {e}", exc_info=True)
-        logger.info("All file writers have been processed.")
+        logger.debug("All file writers have been processed.")
