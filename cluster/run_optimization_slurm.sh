@@ -8,7 +8,7 @@ set -e
 # --- Configuration ---
 CONFIG_DIR="config"
 SBATCH_SCRIPT="cluster/optimization.sbatch"
-REFERENCE_DIR="scratch/koddenbrock/mt/SynMT/real/full"
+REFERENCE_DIR="/scratch/koddenbrock/mt/SynMT/real/full"
 CONFIG_TEMPLATE="config/tuning_config_cluster.json"
 FOLDER_START_INDEX=1  # Start index (optional)
 FOLDER_END_INDEX=10  # End index (large number for all folders)
