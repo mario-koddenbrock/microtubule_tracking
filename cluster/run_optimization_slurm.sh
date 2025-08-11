@@ -35,11 +35,8 @@ fi
 # Find all subdirectories containing image files
 IMAGE_FOLDERS=()
 while IFS= read -r -d $'\0' dir; do
-    # Check if directory contains image files
-    if ls "$dir"/*.{jpg,png,tif,tiff} &> /dev/null; then
-        IMAGE_FOLDERS+=("$dir")
-    fi
-done < <(find "$REFERENCE_DIR" -type d -print0)
+    IMAGE_FOLDERS+=("$dir")
+done < <(find "$REFERENCE_DIR" -mindepth 1 -type d -exec sh -c 'ls -1 "$1"/*.{png,jpg,tif,tiff} 2>/dev/null | head -n 1 | grep -q .' {} \; -print0)
 
 TOTAL_FOLDERS=${#IMAGE_FOLDERS[@]}
 
