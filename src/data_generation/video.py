@@ -1,5 +1,5 @@
 import logging
-import os
+import random
 from typing import List, Tuple, Optional, Dict, Any
 
 import albumentations as A
@@ -256,14 +256,14 @@ def generate_frames(
                 return_seed_mask=return_seed_mask,
             )
             logger.debug(f"Frame {frame_idx} yielded.")
-            yield frame, gt_data, mt_mask, seed_mask
+            yield frame, gt_data, mt_mask, seed_mask, frame_idx
         except Exception as e:
             logger.error(f"Error rendering frame {frame_idx}: {e}. Skipping this frame.", exc_info=True)
 
 def generate_video(
         cfg: SyntheticDataConfig,
         base_output_dir: str,
-        export_gt_data: bool = True,
+        num_png_frames: int = 10,
 ) -> List[np.ndarray]:
     """
     Generates a full synthetic video, saves it, and optionally exports ground truth data.
@@ -272,16 +272,25 @@ def generate_video(
 
     output_manager = OutputManager(cfg, base_output_dir)
 
+    export_all_frames = (0 == num_png_frames) or (num_png_frames >= cfg.num_frames)
+    export_current = True
+    frame_idx_export = []
+
+    if not export_all_frames:
+        frame_idx_export = random.sample(range(cfg.num_frames), num_png_frames)
+
     frames: List[np.ndarray] = []
-    for frame_rgb, frame_gt, mt_mask, mt_seed_mask in tqdm(
-            generate_frames(cfg, cfg.num_frames,
-                            return_mt_mask=cfg.generate_mt_mask,
-                            return_seed_mask=cfg.generate_seed_mask),
-            total=cfg.num_frames,
-            desc=f"Series {cfg.id} frames"):
+    frame_generator = generate_frames(cfg, cfg.num_frames,
+                                      return_mt_mask=cfg.generate_mt_mask,
+                                      return_seed_mask=cfg.generate_seed_mask)
+
+    for frame_rgb, frame_gt, mt_mask, mt_seed_mask, frame_idx in tqdm(frame_generator,
+            total=cfg.num_frames, desc=f"Series {cfg.id} frames"):
 
         frames.append(frame_rgb)
-        output_manager.append(frame_rgb, mt_mask, mt_seed_mask, frame_gt)
+        if not export_all_frames:
+            export_current = frame_idx in frame_idx_export
+        output_manager.append(frame_idx, frame_rgb, mt_mask, mt_seed_mask, frame_gt, export_current)
 
     if output_manager:
         output_manager.close()
