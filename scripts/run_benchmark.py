@@ -1,4 +1,3 @@
-# scripts/run_benchmark.py
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -31,8 +30,15 @@ def run_benchmark(dataset_path: str, results_dir: str):
     dataset = BenchmarkDataset(dataset_path)
 
     models = [
-        FIESTA(), SOAX(), SIFINE(), DRIFT(), CellSAM(),
-        AnyStar(), MuSAM(), CellposeSAM(), StarDist()
+        # FIESTA(),
+        # SOAX(),
+        # SIFINE(),
+        # DRIFT(),
+        CellSAM(),
+        AnyStar(),
+        MuSAM(),
+        CellposeSAM(),
+        StarDist(),
     ]
 
     results = []
@@ -43,20 +49,28 @@ def run_benchmark(dataset_path: str, results_dir: str):
         all_downstream_metrics = []
 
         for image, gt_mask, _ in tqdm(dataset, desc=f"Evaluating {model.model_name}"):
+
             # Predict
-            pred_mask_instances = model.predict(image)
+            pred_mask = model.predict(image)
 
-            # Convert labeled GT mask to a stack of binary instance masks
-            instance_labels = np.unique(gt_mask)
-            instance_labels = instance_labels[instance_labels != 0]
-            gt_mask_instances = np.array([gt_mask == i for i in instance_labels])
+            # import matplotlib.pyplot as plt
+            # plt.imshow(pred_mask)
+            # plt.title(f"Predicted Mask - {model.model_name}")
+            # plt.axis('off')
+            # plt.show()
 
-            # Calculate metrics for the current image
-            if pred_mask_instances.size > 0 and gt_mask_instances.size > 0:
-                seg_metrics = calculate_segmentation_metrics(pred_mask_instances, gt_mask_instances)
-                downstream_metrics = calculate_downstream_metrics(pred_mask_instances, gt_mask_instances)
-                all_seg_metrics.append(seg_metrics)
-                all_downstream_metrics.append(downstream_metrics)
+
+            if pred_mask is None or gt_mask is None:
+                raise ValueError(
+                    f"Model {model.model_name} returned None for prediction or ground truth mask."
+                )
+
+            seg_metrics = calculate_segmentation_metrics(pred_mask, gt_mask)
+            down_metrics = calculate_downstream_metrics(pred_mask, gt_mask)
+
+            all_seg_metrics.append(seg_metrics)
+            all_downstream_metrics.append(down_metrics)
+
 
         # Average metrics over the entire dataset
         if all_seg_metrics:
@@ -66,18 +80,33 @@ def run_benchmark(dataset_path: str, results_dir: str):
             model_results = {
                 "Model": model.model_name,
                 "AP": avg_seg_metrics.get('AP', 0),
+                "AP50-95": avg_seg_metrics.get('AP50-95', 0),
+                "AP@.50": avg_seg_metrics.get('AP@0.50', 0),
+                "AP@.75": avg_seg_metrics.get('AP@0.75', 0),
+                "AP@.90": avg_seg_metrics.get('AP@0.90', 0),
                 "F1@.50": avg_seg_metrics.get('F1@0.50', 0),
                 "F1@.75": avg_seg_metrics.get('F1@0.75', 0),
-                "Boundary F1@.50": avg_seg_metrics.get('BF1@0.50', 0),
-                "Boundary F1@.75": avg_seg_metrics.get('BF1@0.75', 0),
+                "Dice@.50": avg_seg_metrics.get('Dice@0.50', 0),
+                "Dice@.75": avg_seg_metrics.get('Dice@0.75', 0),
+                "BF1@.50": avg_seg_metrics.get('BF1@0.50', 0),
+                "BF1@.75": avg_seg_metrics.get('BF1@0.75', 0),
+                "PQ@.50": avg_seg_metrics.get('PQ@0.50', 0),
+                "SQ@.50": avg_seg_metrics.get('SQ@0.50', 0),
+                "DQ@.50": avg_seg_metrics.get('DQ@0.50', 0),
+                "Hausdorff@.50": avg_seg_metrics.get('Hausdorff@0.50', np.nan),
+                "Hausdorff@.75": avg_seg_metrics.get('Hausdorff@0.75', np.nan),
+                "ASSD@.50": avg_seg_metrics.get('ASSD@0.50', np.nan),
+                "ASSD@.75": avg_seg_metrics.get('ASSD@0.75', np.nan),
+                "Count AbsErr": avg_seg_metrics.get('CountAbsErr', np.nan),
+                "Count RelErr": avg_seg_metrics.get('CountRelErr', np.nan),
+
                 "Length KS": avg_downstream_metrics.get('Length_KS', np.nan),
                 "Length KL": avg_downstream_metrics.get('Length_KL', np.nan),
-                # Velocity metrics are removed as requested
+                "Length EMD": avg_downstream_metrics.get('Length_EMD', np.nan),
             }
             results.append(model_results)
         else:
             logger.warning(f"No valid predictions made by {model.model_name} across the dataset. Skipping.")
-
 
     # Save results to CSV
     results_df = pd.DataFrame(results)

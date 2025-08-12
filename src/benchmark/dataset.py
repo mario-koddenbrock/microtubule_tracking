@@ -12,16 +12,10 @@ class BenchmarkDataset:
     def __init__(self, data_path: str):
         self.data_path = data_path
         self.image_files = sorted(glob(os.path.join(self.data_path, "images", "*.png")))
-        self.mask_files = sorted(glob(os.path.join(self.data_path, "image_masks", "*.png")))
-        gt_file = glob(os.path.join(self.data_path, "gt", "*.json"))
 
-        if not self.image_files or not self.mask_files or not gt_file:
+        if not self.image_files:
             raise FileNotFoundError(f"Dataset not found or incomplete in {data_path}")
 
-        with open(gt_file[0], 'r') as f:
-            self.gt_data = json.load(f)
-
-        assert len(self.image_files) == len(self.mask_files), "Mismatch between images and masks"
 
     def __len__(self) -> int:
         return len(self.image_files)
@@ -31,12 +25,29 @@ class BenchmarkDataset:
         Returns:
             - image: (H, W, C)
             - gt_mask: (H, W) with instance labels
-            - gt_frame_data: list of dicts for the frame
+            - gt_data: dicts for the frame
         """
-        image = imageio.imread(self.image_files[idx])
-        gt_mask = imageio.imread(self.mask_files[idx])
+        image_path = self.image_files[idx]
+        mask_path = image_path.replace('images', 'image_masks')
+        gt_path = image_path.replace('images', 'gt')
 
-        # The gt_data is a list of lists of dicts, one list per frame
-        gt_frame_data = self.gt_data[idx]
+        if not os.path.exists(mask_path):
+            raise FileNotFoundError(f"Mask not found for image: {image_path}")
 
-        return image, gt_mask, gt_frame_data
+        try:
+            frame_idx_str = os.path.basename(image_path).split('_')[-1].split('.')[0]
+            frame_idx = int(frame_idx_str)
+        except ValueError:
+            raise ValueError(f"Could not extract frame index from image filename: {image_path}")
+
+        gt_path = gt_path.replace('png', 'json')
+        gt_path = gt_path.replace('frame', 'ground')
+        gt_path = gt_path.replace(frame_idx_str, 'truth')
+
+        image = imageio.imread(image_path)
+        mask = imageio.imread(mask_path)
+
+        with open(gt_path, 'r') as f:
+            gt_data = json.load(f)
+
+        return image, mask, gt_data[frame_idx]
