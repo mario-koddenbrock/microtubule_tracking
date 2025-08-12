@@ -1,6 +1,9 @@
 from __future__ import annotations
 import numpy as np
 from typing import Optional
+
+from cellpose import models
+
 from .base import BaseModel
 
 def _labels_to_mask_stack(labels: np.ndarray) -> np.ndarray:
@@ -50,13 +53,7 @@ class CellposeSAM(BaseModel):
     def _load_model(self):
         if self._model is not None:
             return
-        try:
-            from cellpose import models  # type: ignore
-        except Exception as e:
-            raise ImportError(
-                "Cellpose is required. Install with: pip install cellpose"
-            ) from e
-        # CPSAM is the default pretrained model in recent versions
+
         self._model = models.CellposeModel(gpu=self.use_gpu, pretrained_model="cpsam")
 
     def predict(self, image: np.ndarray) -> np.ndarray:
