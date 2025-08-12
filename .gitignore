@@ -189,3 +189,4 @@ cython_debug/
 *.pt
 /.logs/
 /config/optimal_configs/
+/models/
