@@ -4,23 +4,15 @@ from tqdm import tqdm
 import logging
 import numpy as np
 
-from microtubule_tracking.benchmark.dataset import BenchmarkDataset
-from microtubule_tracking.benchmark.metrics import calculate_segmentation_metrics, calculate_downstream_metrics
-from microtubule_tracking.benchmark.models.anystar import AnyStar
-from microtubule_tracking.benchmark.models.cellsam import CellSAM
-from microtubule_tracking.benchmark.models.cellpose_sam import CellposeSAM
-from microtubule_tracking.benchmark.models.drift import DRIFT
-from microtubule_tracking.benchmark.models.fiesta import FIESTA
-from microtubule_tracking.benchmark.models.musam import MuSAM
-from microtubule_tracking.benchmark.models.sifine import SIFINE
-from microtubule_tracking.benchmark.models.soax import SOAX
-from microtubule_tracking.benchmark.models.stardist import StarDist
+from mt.benchmark.dataset import BenchmarkDataset
+from mt.benchmark import metrics
+from mt.benchmark.models.factory import setup_model_factory
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def run_benchmark(dataset_path: str, results_dir: str):
+def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str]):
     """
     Runs the full benchmark on all models and saves the results.
     """
@@ -29,17 +21,18 @@ def run_benchmark(dataset_path: str, results_dir: str):
     logger.info(f"Loading dataset from: {dataset_path}")
     dataset = BenchmarkDataset(dataset_path)
 
-    models = [
-        # FIESTA(),
-        # SOAX(),
-        # SIFINE(),
-        # DRIFT(),
-        # CellSAM(),
-        AnyStar(),
-        # MuSAM(),
-        # CellposeSAM(),
-        # StarDist(),
-    ]
+    factory = setup_model_factory()
+    available_models = factory.get_available_models()
+    logger.info(f"Available models: {available_models}")
+
+    # Filter models to run based on user input and availability
+    models_to_run_filtered = [m for m in models_to_run if m in available_models]
+    if not models_to_run_filtered:
+        logger.error("None of the specified models are available. Exiting.")
+        return
+
+    logger.info(f"Models to run: {models_to_run_filtered}")
+    models = [factory.create_model(name) for name in models_to_run_filtered]
 
     results = []
 
@@ -49,30 +42,20 @@ def run_benchmark(dataset_path: str, results_dir: str):
         all_downstream_metrics = []
 
         for image, gt_mask, _ in tqdm(dataset, desc=f"Evaluating {model.model_name}"):
-
-            # Predict
             pred_mask = model.predict(image)
 
-            # import matplotlib.pyplot as plt
-            # plt.imshow(pred_mask)
-            # plt.title(f"Predicted Mask - {model.model_name}")
-            # plt.axis('off')
-            # plt.show()
-
-
             if pred_mask is None or gt_mask is None:
-                raise ValueError(
-                    f"Model {model.model_name} returned None for prediction or ground truth mask."
+                logger.warning(
+                    f"Model {model.model_name} returned None for prediction or ground truth mask. Skipping image."
                 )
+                continue
 
-            seg_metrics = calculate_segmentation_metrics(pred_mask, gt_mask)
-            down_metrics = calculate_downstream_metrics(pred_mask, gt_mask)
+            seg_metrics = metrics.calculate_segmentation_metrics(pred_mask, gt_mask)
+            down_metrics = metrics.calculate_downstream_metrics(pred_mask, gt_mask)
 
             all_seg_metrics.append(seg_metrics)
             all_downstream_metrics.append(down_metrics)
 
-
-        # Average metrics over the entire dataset
         if all_seg_metrics:
             avg_seg_metrics = pd.DataFrame(all_seg_metrics).mean().to_dict()
             avg_downstream_metrics = pd.DataFrame(all_downstream_metrics).mean().to_dict()
@@ -99,7 +82,6 @@ def run_benchmark(dataset_path: str, results_dir: str):
                 "ASSD@.75": avg_seg_metrics.get('ASSD@0.75', np.nan),
                 "Count AbsErr": avg_seg_metrics.get('CountAbsErr', np.nan),
                 "Count RelErr": avg_seg_metrics.get('CountRelErr', np.nan),
-
                 "Length KS": avg_downstream_metrics.get('Length_KS', np.nan),
                 "Length KL": avg_downstream_metrics.get('Length_KL', np.nan),
                 "Length EMD": avg_downstream_metrics.get('Length_EMD', np.nan),
@@ -108,19 +90,36 @@ def run_benchmark(dataset_path: str, results_dir: str):
         else:
             logger.warning(f"No valid predictions made by {model.model_name} across the dataset. Skipping.")
 
-    # Save results to CSV
     results_df = pd.DataFrame(results)
-    output_path = os.path.join(results_dir, "benchmark_results.csv")
-    results_df.to_csv(output_path, index=False, float_format='%.2f')
-
-    logger.info(f"Benchmark complete. Results saved to {output_path}")
-    print("\nBenchmark Results:")
-    print(results_df.to_string(index=False))
+    if not results_df.empty:
+        output_path = os.path.join(results_dir, "benchmark_results.csv")
+        results_df.to_csv(output_path, index=False, float_format='%.2f')
+        logger.info(f"Benchmark complete. Results saved to {output_path}")
+        print("\nBenchmark Results:")
+        print(results_df.to_string(index=False))
+    else:
+        logger.info("Benchmark finished, but no results were generated.")
 
 
 if __name__ == "__main__":
-
     DATASET_PATH = "data/SynMT/synthetic/full"
     RESULTS_DIR = "results"
 
-    run_benchmark(dataset_path=DATASET_PATH, results_dir=RESULTS_DIR)
+    # Define which models to run here
+    MODELS_TO_RUN = [
+        # "AnyStar",
+        # "CellSAM",
+        "Cellpose-SAM",
+        # "DRIFT",
+        # "FIESTA",
+        "MuSAM",
+        # "SIFINE",
+        # "SOAX",
+        "StarDist",
+    ]
+
+    run_benchmark(
+        dataset_path=DATASET_PATH,
+        results_dir=RESULTS_DIR,
+        models_to_run=MODELS_TO_RUN
+    )

@@ -1,8 +1,8 @@
 import os
 
-from microtubule_tracking.config.synthetic_data import SyntheticDataConfig
-from microtubule_tracking.config.tuning import TuningConfig
-from microtubule_tracking.data_generation.optimization.eval import eval_config
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.config.tuning import TuningConfig
+from mt.data_generation.optimization.eval import eval_config
 
 
 def main(cfg_path: str, tuning_config_path: str, output_dir: str):

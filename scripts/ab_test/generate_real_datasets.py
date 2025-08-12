@@ -6,7 +6,7 @@ from random import shuffle, seed, randrange
 import cv2
 from tqdm import tqdm
 
-from microtubule_tracking.file_io.utils import extract_frames
+from mt.file_io.utils import extract_frames
 
 seed(42)
 

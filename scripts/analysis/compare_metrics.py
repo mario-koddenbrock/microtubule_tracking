@@ -2,7 +2,7 @@ import logging
 import sys
 from pathlib import Path
 
-from microtubule_tracking.config.tuning import TuningConfig
+from mt.config.tuning import TuningConfig
 from scripts.utils.cli import parse_optimization_args
 from scripts.utils.metric_visualization import load_all_data, process_model_evaluation
 

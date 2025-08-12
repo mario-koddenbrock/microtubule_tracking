@@ -34,7 +34,7 @@ def get_toy_data() -> Dict[str, Optional[Any]]:
     toy_labels = ["dog", "donald duck", "pink noise", "micrograph"]
     toy_images = []
     headers = {
-        'User-Agent': 'Microtubule Tracking Reasearch (https://github.com/mario-koddenbrock/microtubule_tracking; mario.koddenbrock@htw-berlin.de)'
+        'User-Agent': 'Microtubule Tracking Reasearch (https://github.com/mario-koddenbrock/mt; mario.koddenbrock@htw-berlin.de)'
     }
     for url in toy_image_urls:
         try:
