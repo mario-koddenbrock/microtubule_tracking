@@ -57,7 +57,16 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         current_cfg.generate_mt_mask = True
         current_cfg.generate_seed_mask = False
 
-        eval_config(current_cfg, tuning_cfg, output_dir, plot_output_dir, embedding_extractor, reference_vecs, toy_data)
+        eval_config(
+            cfg=current_cfg,
+            tuning_cfg=tuning_cfg,
+            output_dir=output_dir,
+            plot_output_dir=plot_output_dir,
+            embedding_extractor=embedding_extractor,
+            reference_vecs=reference_vecs,
+            toy_data=toy_data,
+            is_for_expert_validation=(i == 0),  # Only the first trial is for expert validation
+        )
 
     # try:
     #     # Optimization history plot
@@ -74,7 +83,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
 
 def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str, plot_output_dir: str,
                 embedding_extractor: ImageEmbeddingExtractor, reference_vecs: np.ndarray,
-                toy_data: Dict[str, Any]):
+                toy_data: Dict[str, Any], is_for_expert_validation:bool = True) -> None:
     """
     Evaluates a specific SyntheticDataConfig against reference data.
     """
@@ -88,7 +97,7 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
         for frame, *_ in frame_generator:
             frames.append(frame)
     else:
-        frames = generate_video(cfg, output_dir)
+        frames = generate_video(cfg, output_dir, is_for_expert_validation=is_for_expert_validation)
 
     synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 

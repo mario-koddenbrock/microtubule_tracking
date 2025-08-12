@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 from typing import List, Tuple, Optional, Dict, Any
 
@@ -264,13 +265,21 @@ def generate_video(
         cfg: SyntheticDataConfig,
         base_output_dir: str,
         num_png_frames: int = 10,
+        is_for_expert_validation: bool = True,
 ) -> List[np.ndarray]:
     """
     Generates a full synthetic video, saves it, and optionally exports ground truth data.
     """
     logger.info(f"Generating and writing {cfg.num_frames} frames for Series {cfg.id} into '{base_output_dir}'...")
 
-    output_manager = OutputManager(cfg, base_output_dir)
+    output_manager_main = OutputManager(cfg, os.path.join(base_output_dir, "full"))
+
+    if is_for_expert_validation:
+        output_manager_validation_set = OutputManager(cfg, os.path.join(base_output_dir, "validation"))
+        validation_image_idx = random.randint(0, cfg.num_frames - 1)
+    else:
+        output_manager_validation_set = None
+        validation_image_idx = -1  # No validation image for non-expert validation
 
     export_all_frames = (0 == num_png_frames) or (num_png_frames >= cfg.num_frames)
     export_current = True
@@ -290,9 +299,16 @@ def generate_video(
         frames.append(frame_rgb)
         if not export_all_frames:
             export_current = frame_idx in frame_idx_export
-        output_manager.append(frame_idx, frame_rgb, mt_mask, mt_seed_mask, frame_gt, export_current)
+        output_manager_main.append(frame_idx, frame_rgb, mt_mask, mt_seed_mask, frame_gt, export_current)
 
-    if output_manager:
-        output_manager.close()
+        if is_for_expert_validation:
+            export_png = (frame_idx == validation_image_idx)
+            output_manager_validation_set.append(frame_idx, frame_rgb, mt_mask, mt_seed_mask, frame_gt, export_png)
+
+    if output_manager_main:
+        output_manager_main.close()
+
+    if output_manager_validation_set:
+        output_manager_validation_set.close()
 
     return frames
