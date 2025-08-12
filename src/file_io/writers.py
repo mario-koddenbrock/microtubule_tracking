@@ -220,7 +220,7 @@ class OutputManager:
             path = os.path.join(self.paths['video_png_dir'], frame_name)
             cv2.imwrite(path, frame_bgr)
 
-        # B. Write microtubule mask frame
+        # B. Write mt mask frame
         if self.cfg.generate_mt_mask and mt_mask_img is not None:
             if self.writers.get('mt_mask_tiff'): self.writers['mt_mask_tiff'].append_data(mt_mask_img)
             if self.write_masks_pngs and export_current_png:
