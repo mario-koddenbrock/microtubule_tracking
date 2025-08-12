@@ -54,7 +54,8 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         current_cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
         current_cfg.num_frames = tuning_cfg.output_config_num_frames
         current_cfg.id = f"{tuning_cfg.output_config_id}_rank_{i + 1}"
-        current_cfg.generate_mt_mask = False
+        current_cfg.generate_mt_mask = True
+        current_cfg.generate_seed_mask = False
 
         eval_config(current_cfg, tuning_cfg, output_dir, plot_output_dir, embedding_extractor, reference_vecs, toy_data)
 
