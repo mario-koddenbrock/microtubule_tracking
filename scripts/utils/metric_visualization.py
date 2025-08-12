@@ -10,10 +10,10 @@ import seaborn as sns
 from PIL import Image
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-from config.tuning import TuningConfig
-from data_generation.optimization.embeddings import ImageEmbeddingExtractor
-from data_generation.optimization.metrics import precompute_matric_args, similarity
-from data_generation.optimization.toy_data import get_toy_data
+from microtubule_tracking.config.tuning import TuningConfig
+from microtubule_tracking.data_generation.optimization.embeddings import ImageEmbeddingExtractor
+from microtubule_tracking.data_generation.optimization.metrics import precompute_matric_args, similarity
+from microtubule_tracking.data_generation.optimization.toy_data import get_toy_data
 
 logger = logging.getLogger(__name__)
 

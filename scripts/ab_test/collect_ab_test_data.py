@@ -5,7 +5,7 @@ from random import shuffle
 
 import cv2
 
-from file_io.utils import extract_frames
+from microtubule_tracking.file_io.utils import extract_frames
 
 
 def main(data_path: str, output_path: str, num_frames: int = 10):

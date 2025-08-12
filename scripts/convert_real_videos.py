@@ -6,7 +6,7 @@ from random import shuffle
 import cv2
 import numpy as np
 
-from file_io.utils import extract_frames
+from microtubule_tracking.file_io.utils import extract_frames
 
 
 def process_all(data_path, output_path):

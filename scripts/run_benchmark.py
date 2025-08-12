@@ -4,17 +4,17 @@ from tqdm import tqdm
 import logging
 import numpy as np
 
-from benchmark.dataset import BenchmarkDataset
-from benchmark.metrics import calculate_segmentation_metrics, calculate_downstream_metrics
-from benchmark.models.anystar import AnyStar
-from benchmark.models.cellsam import CellSAM
-from benchmark.models.cellpose_sam import CellposeSAM
-from benchmark.models.drift import DRIFT
-from benchmark.models.fiesta import FIESTA
-from benchmark.models.musam import MuSAM
-from benchmark.models.sifine import SIFINE
-from benchmark.models.soax import SOAX
-from benchmark.models.stardist import StarDist
+from microtubule_tracking.benchmark.dataset import BenchmarkDataset
+from microtubule_tracking.benchmark.metrics import calculate_segmentation_metrics, calculate_downstream_metrics
+from microtubule_tracking.benchmark.models.anystar import AnyStar
+from microtubule_tracking.benchmark.models.cellsam import CellSAM
+from microtubule_tracking.benchmark.models.cellpose_sam import CellposeSAM
+from microtubule_tracking.benchmark.models.drift import DRIFT
+from microtubule_tracking.benchmark.models.fiesta import FIESTA
+from microtubule_tracking.benchmark.models.musam import MuSAM
+from microtubule_tracking.benchmark.models.sifine import SIFINE
+from microtubule_tracking.benchmark.models.soax import SOAX
+from microtubule_tracking.benchmark.models.stardist import StarDist
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,11 +34,11 @@ def run_benchmark(dataset_path: str, results_dir: str):
         # SOAX(),
         # SIFINE(),
         # DRIFT(),
-        CellSAM(),
+        # CellSAM(),
         AnyStar(),
-        MuSAM(),
-        CellposeSAM(),
-        StarDist(),
+        # MuSAM(),
+        # CellposeSAM(),
+        # StarDist(),
     ]
 
     results = []

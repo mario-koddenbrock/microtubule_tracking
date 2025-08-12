@@ -7,7 +7,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
 
-from file_io.utils import extract_frames
+from microtubule_tracking.file_io.utils import extract_frames
 
 # --- Parameters ---
 MIN_LINE_LENGTH = 20
