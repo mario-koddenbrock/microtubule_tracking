@@ -1,34 +1,22 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "microtubule_tracking"
-version = "0.1.0"
-authors = [{name = "Mario Koddenbrock", email = "mario.koddenbrock@htw-berlin.de"}]
+version = "0.8.12"
+authors = [
+    { name = "Mario Koddenbrock", email = "mario.koddenbrock@htw-berlin.de" }
+]
 description = "Microtubule Tracking"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-  "numpy",
-  "scipy",
-  "matplotlib",
-  "pyyaml",
-  "torch",
-  "scikit-learn",
-  "matplotlib",
-  "opencv-python",
-  "tifffile",
-  "optuna",
-  "imageio",
-  "scikit-image",
-  "transformers",
-  "albumentations",
-  "btrack",
-  "hf_xet",
-  "lpips",
-  "seaborn"
-]
 
 [project.urls]
 source = "https://github.com/mario-koddenbrock/microtubule_tracking"
+
+[tool.setuptools]
+packages = ["mt"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
