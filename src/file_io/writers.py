@@ -76,36 +76,49 @@ class OutputManager:
 
         # Sequence file paths
         if self.write_video_tiff:
-            self.paths['video_tiff'] = os.path.join(self.base_output_dir, "videos", f"{base_name}_video.tif")
+            self.paths['video_tiff'] = os.path.join(self.base_output_dir, "videos",
+                                                    f"{base_name}_video.tif")
         if self.write_masks_tiff and self.cfg.generate_mt_mask:
-            self.paths['mt_masks_tiff'] = os.path.join(self.base_output_dir, "videos", f"{base_name}_masks.tif")
-        if self.write_masks_tiff and self.cfg.generate_seed_mask:
-            self.paths['seed_masks_tiff'] = os.path.join(self.base_output_dir, "videos", f"{base_name}_seed_masks.tif")
+            self.paths['mt_masks_tiff'] = os.path.join(self.base_output_dir, "video_masks",
+                                                       f"{base_name}_masks.tif")
 
+        # Preview MP4
         if self.write_video_mp4:
-            self.paths['video_mp4'] = os.path.join(self.base_output_dir, "previews", f"{base_name}_video_preview.mp4")
+            self.paths['video_mp4'] = os.path.join(self.base_output_dir, "previews",
+                                                   f"{base_name}_video_preview.mp4")
         if self.write_masks_mp4 and self.cfg.generate_mt_mask:
-            self.paths['mt_masks_mp4'] = os.path.join(self.base_output_dir, "previews", f"{base_name}_masks_preview.mp4")
-        if self.write_masks_mp4 and self.cfg.generate_seed_mask:
-            self.paths['seed_masks_mp4'] = os.path.join(self.base_output_dir, "previews", f"{base_name}_seed_masks_preview.mp4")
-        if self.write_video_gif:
-            self.paths['video_gif'] = os.path.join(self.base_output_dir, "previews", f"{base_name}_video_preview.gif")
-        if self.write_masks_gif and self.cfg.generate_mt_mask:
-            self.paths['mt_masks_gif'] = os.path.join(self.base_output_dir, "previews", f"{base_name}_masks_preview.gif")
-        if self.write_masks_gif and self.cfg.generate_seed_mask:
-            self.paths['seed_masks_gif'] = os.path.join(self.base_output_dir, "previews", f"{base_name}_seed_masks_preview.gif")
+            self.paths['mt_masks_mp4'] = os.path.join(self.base_output_dir, "previews",
+                                                      f"{base_name}_masks_preview.mp4")
 
-        # Per-frame directory paths
+        # Preview GIFs
+        if self.write_video_gif:
+            self.paths['video_gif'] = os.path.join(self.base_output_dir, "previews",
+                                                   f"{base_name}_video_preview.gif")
+        if self.write_masks_gif and self.cfg.generate_mt_mask:
+            self.paths['mt_masks_gif'] = os.path.join(self.base_output_dir, "previews",
+                                                      f"{base_name}_masks_preview.gif")
+
+        # Seed masks
+        if self.cfg.generate_seed_mask:
+            if self.write_masks_tiff:
+                self.paths['seed_masks_tiff'] = os.path.join(self.base_output_dir, "video_masks",
+                                                             f"{base_name}_seed_masks.tif")
+            if self.write_masks_mp4:
+                self.paths['seed_masks_mp4'] = os.path.join(self.base_output_dir, "previews",
+                                                            f"{base_name}_seed_masks_preview.mp4")
+            if self.write_masks_gif:
+                self.paths['seed_masks_gif'] = os.path.join(self.base_output_dir, "previews",
+                                                            f"{base_name}_seed_masks_preview.gif")
+
+        # Single-frame PNGs
         if self.write_video_pngs:
-            # self.paths['video_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_video_frames")
             self.paths['video_png_dir'] = os.path.join(self.base_output_dir, "images")
-            os.makedirs(self.paths['video_png_dir'], exist_ok=True)
         if self.write_masks_pngs and self.cfg.generate_mt_mask:
-            self.paths['mt_mask_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_mask_frames")
-            os.makedirs(self.paths['mt_mask_png_dir'], exist_ok=True)
+            self.paths['mt_mask_png_dir'] = os.path.join(self.base_output_dir, "image_masks")
         if self.write_masks_pngs and self.cfg.generate_seed_mask:
-            self.paths['seed_mask_png_dir'] = os.path.join(self.base_output_dir, "images", f"{base_name}_seed_mask_frames")
-            os.makedirs(self.paths['seed_mask_png_dir'], exist_ok=True)
+            self.paths['seed_mask_png_dir'] = os.path.join(self.base_output_dir, "image_masks")
+
+        # Config
         if self.write_config:
             self.paths['config_file'] = os.path.join(self.base_output_dir, "configs", f"{base_name}_config.json")
             try:
@@ -113,6 +126,8 @@ class OutputManager:
                 logger.debug(f"Configuration saved to {self.paths['config_file']}")
             except Exception as e:
                 logger.error(f"Failed to save configuration file: {e}", exc_info=True)
+
+        # Ground truth file
         if self.write_gt:
             self.paths['ground_truth_file'] = os.path.join(self.base_output_dir, "gt", f"{base_name}_ground_truth.json")
 
@@ -191,23 +206,25 @@ class OutputManager:
         logger.debug(f"Appending frame {frame_idx} to output writers...")
         frame_bgr = cv2.cvtColor(frame_img_rgb, cv2.COLOR_RGB2BGR)
 
+        base_name = f"series_{self.cfg.id}"
+        if self.cfg.num_frames > 1:
+            frame_name = f"{base_name}_frame_{frame_idx:04d}.png"
+        else:
+            frame_name = f"{base_name}.png"
+
         # A. Write main video frame
         if self.writers.get('video_tiff'): self.writers['video_tiff'].append_data(frame_img_rgb)
         if self.writers.get('video_mp4'): self.writers['video_mp4'].write(frame_bgr)
         if self.writers.get('video_gif'): self.writers['video_gif'].append_data(frame_img_rgb)
         if self.write_video_pngs and export_current_png:
-            base_name = f"series_{self.cfg.id}"
-            if self.cfg.num_frames > 1:
-                path = os.path.join(self.paths['video_png_dir'], f"{base_name}_frame_{frame_idx:04d}.png")
-            else:
-                path = os.path.join(self.paths['video_png_dir'], f"{base_name}.png")
+            path = os.path.join(self.paths['video_png_dir'], frame_name)
             cv2.imwrite(path, frame_bgr)
 
         # B. Write microtubule mask frame
         if self.cfg.generate_mt_mask and mt_mask_img is not None:
             if self.writers.get('mt_mask_tiff'): self.writers['mt_mask_tiff'].append_data(mt_mask_img)
             if self.write_masks_pngs and export_current_png:
-                path = os.path.join(self.paths['mt_mask_png_dir'], f"mask_{frame_idx:04d}.png")
+                path = os.path.join(self.paths['mt_mask_png_dir'], frame_name)
                 imageio.imwrite(path, mt_mask_img)
             if self.writers.get('mt_mask_mp4') or self.writers.get('mt_mask_gif'):
                 mask_vis_rgb = (label2rgb(mt_mask_img, bg_label=0) * 255).astype(np.uint8)
@@ -220,7 +237,7 @@ class OutputManager:
         if self.cfg.generate_seed_mask and seed_mask_img is not None:
             if self.writers.get('seed_mask_tiff'): self.writers['seed_mask_tiff'].append_data(seed_mask_img)
             if self.write_masks_pngs and export_current_png:
-                path = os.path.join(self.paths['seed_mask_png_dir'], f"seed_mask_{frame_idx:04d}.png")
+                path = os.path.join(self.paths['seed_mask_png_dir'], frame_name)
                 imageio.imwrite(path, seed_mask_img)
             if self.writers.get('seed_mask_mp4') or self.writers.get('seed_mask_gif'):
                 mask_vis_rgb = (label2rgb(seed_mask_img, bg_label=0) * 255).astype(np.uint8)
