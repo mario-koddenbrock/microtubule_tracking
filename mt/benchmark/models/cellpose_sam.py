@@ -6,16 +6,6 @@ from cellpose import models
 
 from .base import BaseModel
 
-def _labels_to_mask_stack(labels: np.ndarray) -> np.ndarray:
-    if labels.ndim != 2:
-        raise ValueError("labels must be 2D (H, W)")
-    ids = np.unique(labels)
-    ids = ids[ids != 0]
-    if ids.size == 0:
-        h, w = labels.shape
-        return np.empty((0, h, w), dtype=np.uint16)
-    masks = [(labels == i).astype(np.uint16) for i in ids]
-    return np.stack(masks, axis=0).astype(np.uint16)
 
 class CellposeSAM(BaseModel):
     """
@@ -31,13 +21,12 @@ class CellposeSAM(BaseModel):
     def __init__(
         self,
         use_gpu: bool = True,
-        diameter: Optional[float] = None,          # can be None for CPSAM
-        flow_threshold: float = 0.4,
-        cellprob_threshold: float = 0.0,
-        min_size: int = 5,
+        diameter: Optional[float] = 15.7, # can be None for CPSAM
+        flow_threshold: float = 0.643,
+        cellprob_threshold: float = -0.22,
+        min_size: int = 22,
         tile_overlap: float = 0.1,
         batch_size: int = 8,
-        compute_masks: bool = True,
     ):
         super().__init__("Cellpose-SAM")
         self.use_gpu = use_gpu
@@ -47,7 +36,6 @@ class CellposeSAM(BaseModel):
         self.min_size = min_size
         self.tile_overlap = tile_overlap
         self.batch_size = batch_size
-        self.compute_masks = compute_masks
         self._model = None
 
     def _load_model(self):
@@ -81,16 +69,39 @@ class CellposeSAM(BaseModel):
 
         self._load_model()
 
-        # Call eval; CPSAM ignores channels and uses first 3 channels if present
+        normalization_params = {
+            "normalize": True,
+            "norm3D": False,
+            "invert": True,
+            "percentile": (2.03, 91.85),
+            "sharpen_radius": 0.278,
+            "smooth_radius": 0.762,
+            "tile_norm_blocksize": 0,
+            "tile_norm_smooth3D": 0,
+        }
+
         masks, flows, styles = self._model.eval(
-            img,
+            x=img,
             batch_size=self.batch_size,
             diameter=self.diameter,
             flow_threshold=self.flow_threshold,
             cellprob_threshold=self.cellprob_threshold,
             min_size=self.min_size,
+            niter=200,
             tile_overlap=self.tile_overlap,
-            compute_masks=self.compute_masks,
+            compute_masks=True,
+            max_size_fraction=1.5,
+            stitch_threshold=0.0,
+            anisotropy=None,
+            augment=False,
+            bsize=256,
+            channel_axis=None,
+            do_3D=False,
+            flow3D_smooth=0,
+            normalize=normalization_params,
+            resample=True,
+            rescale=None,
+            z_axis=None,
         )
 
         if masks is None:
@@ -100,5 +111,4 @@ class CellposeSAM(BaseModel):
         if masks.dtype != np.uint16:
             masks = masks.astype(np.uint16, copy=False)
 
-        # return _labels_to_mask_stack(masks)
         return masks

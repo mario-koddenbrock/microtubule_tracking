@@ -10,19 +10,6 @@ import numpy as np
 from .base import BaseModel
 
 
-def _labels_to_mask_stack(labels: np.ndarray) -> np.ndarray:
-    """Convert a 2D labeled mask (H,W) -> (N,H,W) uint16 stack (background=0 ignored)."""
-    if labels.ndim != 2:
-        raise ValueError(f"labels must be 2D (H,W), got {labels.shape}")
-    ids = np.unique(labels)
-    ids = ids[ids != 0]
-    if ids.size == 0:
-        h, w = labels.shape
-        return np.empty((0, h, w), dtype=np.uint16)
-    # Keep deterministic order: ascending by id
-    masks = [(labels == int(i)).astype(np.uint16, copy=False) for i in ids]
-    return np.stack(masks, axis=0).astype(np.uint16, copy=False)
-
 
 class MuSAM(BaseModel):
     """
@@ -148,4 +135,4 @@ class MuSAM(BaseModel):
         if instances.ndim != 2:
             raise RuntimeError(f"μSAM returned unexpected shape {instances.shape}; expected 2D label image.")
 
-        return _labels_to_mask_stack(instances).astype(np.uint16, copy=False)
+        return instances.astype(np.uint16, copy=False)
