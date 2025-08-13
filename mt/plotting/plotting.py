@@ -13,10 +13,10 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from tqdm import tqdm
 
-from analysis.kymographs import generate_kymographs
-from config.synthetic_data import SyntheticDataConfig
-from config.tuning import TuningConfig
-from data_generation.optimization.metrics import similarity, precompute_matric_args
+from mt.analysis.kymographs import generate_kymographs
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.config.tuning import TuningConfig
+from mt.data_generation.optimization.metrics import precompute_matric_args, similarity
 
 logger = logging.getLogger(f"mt.{__name__}")
 
