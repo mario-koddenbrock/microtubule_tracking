@@ -45,9 +45,7 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
             pred_mask = model.predict(image)
 
             if pred_mask is None or gt_mask is None:
-                logger.warning(
-                    f"Model {model.model_name} returned None for prediction or ground truth mask. Skipping image."
-                )
+                logger.warning(f"Model {model.model_name} returned None - Skipping image.")
                 continue
 
             seg_metrics = metrics.calculate_segmentation_metrics(pred_mask, gt_mask)
@@ -62,7 +60,8 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
 
             model_results = {
                 "Model": model.model_name,
-                "AP": avg_seg_metrics.get('AP', 0),
+                "IoU_mean": avg_seg_metrics.get('IoU_mean', 0),
+                "IoU_median": avg_seg_metrics.get('IoU_median', 0),
                 "AP50-95": avg_seg_metrics.get('AP50-95', 0),
                 "AP@.50": avg_seg_metrics.get('AP@0.50', 0),
                 "AP@.75": avg_seg_metrics.get('AP@0.75', 0),
