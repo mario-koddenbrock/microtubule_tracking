@@ -7,6 +7,7 @@ import numpy as np
 from mt.benchmark.dataset import BenchmarkDataset
 from mt.benchmark import metrics
 from mt.benchmark.models.factory import setup_model_factory
+from mt.plotting.debugging import plot_gt_pred_overlays
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,13 +42,19 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
         all_seg_metrics = []
         all_downstream_metrics = []
 
-        for image, gt_mask, _ in tqdm(dataset, desc=f"Evaluating {model.model_name}"):
+        for idx, (image, gt_mask, _) in enumerate(tqdm(dataset, desc=f"Evaluating {model.model_name}")):
             pred_mask = model.predict(image)
             # pred_mask = gt_mask # For sanity check
 
             if pred_mask is None or gt_mask is None:
                 logger.warning(f"Model {model.model_name} returned None - Skipping image.")
                 continue
+
+            save_to_path = os.path.join("plots", "benchmark", f"{model.model_name}")
+            os.makedirs(save_to_path, exist_ok=True)
+            image_name = os.path.basename(dataset.get_image_path(idx))
+            save_path = os.path.join(save_to_path, f"{image_name}_overlay.png")
+            plot_gt_pred_overlays(image, gt_mask, pred_mask, boundary=True, thickness=2, alpha=0.6, save_path=save_path)
 
             seg_metrics = metrics.calculate_segmentation_metrics(pred_mask, gt_mask)
             down_metrics = metrics.calculate_downstream_metrics(pred_mask, gt_mask)
@@ -109,13 +116,13 @@ if __name__ == "__main__":
     MODELS_TO_RUN = [
         # "AnyStar",
         # "CellSAM",
-        "Cellpose-SAM",
+        # "Cellpose-SAM",
         # "DRIFT",
         # "FIESTA",
         "MuSAM",
         # "SIFINE",
         # "SOAX",
-        "StarDist",
+        # "StarDist",
     ]
 
     run_benchmark(
