@@ -176,7 +176,6 @@ def calculate_segmentation_metrics(
     Notes:
       - 'AP50-95' here is NOT true Average Precision (no score ranking). It is the
         mean of precision = TP/(TP+FP) measured at IoU thresholds 0.50:0.05:0.95.
-        Kept for backward compatibility.
     """
     pred_masks = _as_instance_stack(pred_masks)
     gt_masks = _as_instance_stack(gt_masks)
@@ -228,6 +227,15 @@ def calculate_segmentation_metrics(
     abs_err, rel_err = _count_error(gt_masks, pred_masks)
     metrics["CountAbsErr"] = float(abs_err)
     metrics["CountRelErr"] = float(rel_err)
+
+    # IoU
+    if gt_masks.shape[0] > 0 and pred_masks.shape[0] > 0:
+        ious = iou_matrix.max(axis=1)  # best IoU for each GT
+        metrics["IoU_mean"] = float(np.mean(ious))
+        metrics["IoU_median"] = float(np.median(ious))
+    else:
+        metrics["IoU_mean"] = np.nan
+        metrics["IoU_median"] = np.nan
 
     return metrics
 
