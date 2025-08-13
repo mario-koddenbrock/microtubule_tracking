@@ -30,7 +30,7 @@ class CellposeSAM(BaseModel):
         if self._model is not None:
             return
 
-        self._model = models.CellposeModel(gpu=self.use_gpu, pretrained_model="cpsam")
+        self._model = models.CellposeModel(gpu=self.use_gpu, pretrained_model="cpsam", use_bfloat16=False)
 
     def predict(self, image: np.ndarray) -> np.ndarray:
         """
@@ -61,9 +61,9 @@ class CellposeSAM(BaseModel):
             "normalize": True,
             "norm3D": False,
             "invert": True,
-            "percentile": (5.93, 79.12),
-            "sharpen_radius": 0.946,
-            "smooth_radius": 0.412,
+            "percentile": (4.03, 67.28),
+            "sharpen_radius": 0.996,
+            "smooth_radius": 0.315,
             "tile_norm_blocksize": 0,
             "tile_norm_smooth3D": 0,
         }
@@ -74,15 +74,15 @@ class CellposeSAM(BaseModel):
             augment=False,
             batch_size=1,
             bsize=256,
-            cellprob_threshold=1.675,
+            cellprob_threshold=0.14,
             channel_axis=None,
             compute_masks=True,
-            diameter=34,
+            diameter=25.21,
             do_3D=False,
             flow3D_smooth=0,
-            flow_threshold=0.725,
-            max_size_fraction=1.92,
-            min_size=18,
+            flow_threshold=0.58,
+            max_size_fraction=1.98,
+            min_size=8,
             niter=200,
             normalize=normalization_params,
             resample=True,
