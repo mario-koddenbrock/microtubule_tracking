@@ -26,8 +26,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install pytest-mock
-        pip install -r requirements.txt
         conda install -c conda-forge micro_sam
+        pip install -r requirements.txt
         pip install .
 
     - name: Run tests
