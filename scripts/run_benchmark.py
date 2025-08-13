@@ -43,6 +43,7 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
 
         for image, gt_mask, _ in tqdm(dataset, desc=f"Evaluating {model.model_name}"):
             pred_mask = model.predict(image)
+            # pred_mask = gt_mask # For sanity check
 
             if pred_mask is None or gt_mask is None:
                 logger.warning(f"Model {model.model_name} returned None - Skipping image.")
