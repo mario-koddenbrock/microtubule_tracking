@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
-from config.spots import SpotConfig
-from data_generation.spots import SpotGenerator
+
+from mt.config.spots import SpotConfig
+from mt.data_generation.spots import SpotGenerator
 
 
 def test_spot_generator_initialization():
@@ -47,7 +48,7 @@ def test_generator_apply_calls_draw_on_rgb(mocker):
     Tests that apply calls the drawing function with the correct state on an RGB image.
     """
     # Mock the external draw_spots function
-    mock_draw = mocker.patch("data_generation.spots.SpotGenerator.apply")
+    mock_draw = mocker.patch("mt.data_generation.spots.SpotGenerator.apply")
 
     spot_cfg = SpotConfig(count=5, sigma=1.23)
     img_shape = (10, 10)

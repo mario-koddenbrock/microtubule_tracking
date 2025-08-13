@@ -1,8 +1,8 @@
 import pytest
 
-from config.spots import SpotConfig
-from config.tuning import TuningConfig
-from config.synthetic_data import SyntheticDataConfig
+from mt.config.spots import SpotConfig
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.config.tuning import TuningConfig
 
 
 # A simple mock object that simulates optuna.Trial's behavior

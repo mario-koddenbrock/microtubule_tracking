@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
-from config.tuning import TuningConfig
-from data_generation.optimization.embeddings import ImageEmbeddingExtractor
+
+from mt.config.tuning import TuningConfig
+from mt.data_generation.optimization.embeddings import ImageEmbeddingExtractor
 
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def test_no_pca(tiny_model_tuning_config, mocker):
     """Tests that if PCA is disabled, the dimension is the model's original one."""
     tiny_model_tuning_config.pca_components = None  # Disable PCA
     dummy_frame = (np.random.rand(32, 32, 3) * 255).astype(np.uint8)
-    mocker.patch("file_io.utils.extract_frames", return_value=([dummy_frame], None))
+    mocker.patch("mt.file_io.utils.extract_frames", return_value=([dummy_frame], None))
 
     extractor = ImageEmbeddingExtractor(tiny_model_tuning_config)
     ref_embeddings = extractor.extract_from_references()

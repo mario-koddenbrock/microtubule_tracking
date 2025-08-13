@@ -1,8 +1,8 @@
 import pytest
 
-from config.spots import SpotTuningConfig
-from config.synthetic_data import SyntheticDataConfig
-from config.tuning import TuningConfig
+from mt.config.spots import SpotTuningConfig
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.config.tuning import TuningConfig
 
 
 # Your existing test_yaml_io is good, keep it.
