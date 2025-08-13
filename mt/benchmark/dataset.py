@@ -1,16 +1,23 @@
-import os
 import json
+import os
 from glob import glob
 from typing import List, Tuple, Dict, Any
 
-import cv2
 import imageio
-import matplotlib.pyplot as plt
 import numpy as np
 
 
 class BenchmarkDataset:
     """Loads the synthetic dataset for benchmarking."""
+
+    def get_image_path(self, idx: int) -> str:
+        """
+        Returns the file path of the image at the given index.
+        """
+        if idx < 0 or idx >= len(self.image_files):
+            raise IndexError("Index out of bounds for dataset.")
+        return self.image_files[idx]
+
 
     def __init__(self, data_path: str):
         self.data_path = data_path
