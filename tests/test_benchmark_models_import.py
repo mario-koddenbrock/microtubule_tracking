@@ -7,7 +7,7 @@ MODEL_MODULES = [
     'mt.benchmark.models.cellpose_sam',
     'mt.benchmark.models.cellsam',
     'mt.benchmark.models.drift',
-    'mt.benchmark.models.factory',
+    # 'mt.benchmark.models.factory',
     'mt.benchmark.models.fiesta',
     'mt.benchmark.models.musam',
     'mt.benchmark.models.sifine',
