@@ -24,4 +24,4 @@ pytest~=8.3.5
 pandas~=2.2.3
 seaborn~=0.13.2
 ultralytics~=8.3.159
-numpy~=2.0.2
+numpy
