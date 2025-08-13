@@ -14,10 +14,10 @@ from transformers import (AutoModel, CLIPModel,
                           CLIPImageProcessor, PreTrainedModel,
                           FeatureExtractionMixin, AutoImageProcessor)
 
-from config.synthetic_data import SyntheticDataConfig
-from config.tuning import TuningConfig
-from data_generation.video import generate_frames
-from file_io.utils import extract_frames
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.config.tuning import TuningConfig
+from mt.data_generation.video import generate_frames
+from mt.file_io.utils import extract_frames
 
 logger = logging.getLogger(f"mt.{__name__}")
 

@@ -2,11 +2,9 @@ import logging
 from typing import Tuple, List, Union
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
 
-from config.spots import SpotConfig
+from mt.config.spots import SpotConfig
 
 logger = logging.getLogger(f"mt.{__name__}")
 

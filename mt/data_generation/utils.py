@@ -9,8 +9,8 @@ from scipy.ndimage import gaussian_filter
 from scipy.spatial import distance
 from skimage.exposure import exposure
 
-from config.album_config import AlbumentationsConfig
-from config.synthetic_data import SyntheticDataConfig
+from mt.config.album_config import AlbumentationsConfig
+from mt.config.synthetic_data import SyntheticDataConfig
 
 # Get a logger instance for this module
 logger = logging.getLogger(f"mt.{__name__}")

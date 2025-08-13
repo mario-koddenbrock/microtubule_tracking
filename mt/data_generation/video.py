@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from config.synthetic_data import SyntheticDataConfig
-from data_generation import utils
-from data_generation.microtubule import Microtubule
-from data_generation.spots import SpotGenerator
-from file_io.writers import OutputManager
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.data_generation import utils
+from mt.data_generation.microtubule import Microtubule
+from mt.data_generation.spots import SpotGenerator
+from mt.file_io.writers import OutputManager
 
 logger = logging.getLogger(f"mt.{__name__}")
 

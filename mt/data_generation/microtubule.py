@@ -1,12 +1,12 @@
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import numpy as np
 
-from config.synthetic_data import SyntheticDataConfig
-from data_generation.utils import draw_gaussian_line_rgb
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.data_generation.utils import draw_gaussian_line_rgb
 
 logger = logging.getLogger(f"mt.{__name__}")
 

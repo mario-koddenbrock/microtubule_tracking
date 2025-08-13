@@ -8,8 +8,8 @@ import imageio
 import numpy as np
 from skimage.color import label2rgb
 
-from config.synthetic_data import SyntheticDataConfig
-from file_io.utils import CustomJsonEncoder
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.file_io.utils import CustomJsonEncoder
 
 logger = logging.getLogger(f"mt.{__name__}")
 
