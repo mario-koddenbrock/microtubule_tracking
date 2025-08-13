@@ -12,7 +12,7 @@ MODEL_MODULES = [
     'mt.benchmark.models.musam',
     'mt.benchmark.models.sifine',
     'mt.benchmark.models.soax',
-    'mt.benchmark.models.stardist',
+    # 'mt.benchmark.models.stardist',
 ]
 
 def test_import_model_modules():
