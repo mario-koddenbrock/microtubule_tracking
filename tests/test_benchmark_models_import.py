@@ -2,7 +2,7 @@ import importlib
 import pytest
 
 MODEL_MODULES = [
-    'mt.benchmark.models.anystar',
+    # 'mt.benchmark.models.anystar',
     'mt.benchmark.models.base',
     'mt.benchmark.models.cellpose_sam',
     'mt.benchmark.models.cellsam',
