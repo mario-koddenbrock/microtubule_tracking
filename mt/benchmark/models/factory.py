@@ -1,4 +1,3 @@
-# mt/benchmark/models/factory.py
 from typing import Type, Dict, List
 
 from mt.benchmark.models.base import BaseModel
