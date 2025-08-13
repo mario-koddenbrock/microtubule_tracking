@@ -50,17 +50,21 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
                 logger.warning(f"Model {model.model_name} returned None - Skipping image.")
                 continue
 
-            save_to_path = os.path.join("plots", "benchmark", f"{model.model_name}")
-            os.makedirs(save_to_path, exist_ok=True)
-            image_name = os.path.basename(dataset.get_image_path(idx))
-            save_path = os.path.join(save_to_path, f"{image_name}_overlay.png")
-            plot_gt_pred_overlays(image, gt_mask, pred_mask, boundary=True, thickness=2, alpha=0.6, save_path=save_path)
-
             seg_metrics = metrics.calculate_segmentation_metrics(pred_mask, gt_mask)
             down_metrics = metrics.calculate_downstream_metrics(pred_mask, gt_mask)
 
             all_seg_metrics.append(seg_metrics)
             all_downstream_metrics.append(down_metrics)
+
+            save_to_path = os.path.join("plots", "benchmark", f"{model.model_name}")
+            os.makedirs(save_to_path, exist_ok=True)
+            image_name = os.path.basename(dataset.get_image_path(idx))
+            save_path = os.path.join(save_to_path, f"{image_name}_overlay.png")
+            # Extract mean IoU and F1@0.5 for overlay
+            iou = seg_metrics.get('IoU_mean', None)
+            f1 = seg_metrics.get('F1@0.50', None)
+            plot_gt_pred_overlays(image, gt_mask, pred_mask, boundary=True, thickness=2, alpha=0.6, save_path=save_path, iou=iou, f1=f1)
+
 
         if all_seg_metrics:
             avg_seg_metrics = pd.DataFrame(all_seg_metrics).mean().to_dict()
@@ -116,10 +120,10 @@ if __name__ == "__main__":
     MODELS_TO_RUN = [
         # "AnyStar",
         # "CellSAM",
-        # "Cellpose-SAM",
+        "Cellpose-SAM",
         # "DRIFT",
         # "FIESTA",
-        "MuSAM",
+        # "MuSAM",
         # "SIFINE",
         # "SOAX",
         # "StarDist",

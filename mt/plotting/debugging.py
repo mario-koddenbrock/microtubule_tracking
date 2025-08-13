@@ -20,6 +20,8 @@ def plot_gt_pred_overlays(
     figsize: tuple = (12, 6),
     titles: tuple = ("Image + GT overlay", "Image + Pred overlay"),
     save_path: str = None,
+    iou: float = None,
+    f1: float = None,
 ):
     """
     Show image with GT overlay (left) and prediction overlay (right).
@@ -32,6 +34,8 @@ def plot_gt_pred_overlays(
         alpha: overlay opacity.
         gt_color, pred_color: Matplotlib color strings.
         figsize, titles: figure size and per-panel titles.
+        iou: mean IoU to display (optional)
+        f1: F1@0.5 to display (optional)
 
     Returns:
         (fig, axes) for further tweaking/saving.
@@ -74,7 +78,17 @@ def plot_gt_pred_overlays(
 
     fig, axes = plt.subplots(1, 2, figsize=figsize)
     axes[0].imshow(left);  axes[0].set_title(titles[0]);  axes[0].axis("off")
-    axes[1].imshow(right); axes[1].set_title(titles[1]); axes[1].axis("off")
+    # Compose right title with metrics if provided
+    if iou is not None or f1 is not None:
+        metric_str = []
+        if iou is not None:
+            metric_str.append(f"IoU: {iou:.3f}")
+        if f1 is not None:
+            metric_str.append(f"F1@0.5: {f1:.3f}")
+        right_title = f"{titles[1]}\n" + ", ".join(metric_str)
+    else:
+        right_title = titles[1]
+    axes[1].imshow(right); axes[1].set_title(right_title); axes[1].axis("off")
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
