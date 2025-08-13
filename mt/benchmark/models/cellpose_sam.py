@@ -21,21 +21,9 @@ class CellposeSAM(BaseModel):
     def __init__(
         self,
         use_gpu: bool = True,
-        diameter: Optional[float] = 15.7, # can be None for CPSAM
-        flow_threshold: float = 0.643,
-        cellprob_threshold: float = -0.22,
-        min_size: int = 22,
-        tile_overlap: float = 0.1,
-        batch_size: int = 8,
     ):
         super().__init__("Cellpose-SAM")
         self.use_gpu = use_gpu
-        self.diameter = diameter
-        self.flow_threshold = flow_threshold
-        self.cellprob_threshold = cellprob_threshold
-        self.min_size = min_size
-        self.tile_overlap = tile_overlap
-        self.batch_size = batch_size
         self._model = None
 
     def _load_model(self):
@@ -73,34 +61,34 @@ class CellposeSAM(BaseModel):
             "normalize": True,
             "norm3D": False,
             "invert": True,
-            "percentile": (2.03, 91.85),
-            "sharpen_radius": 0.278,
-            "smooth_radius": 0.762,
+            "percentile": (5.93, 79.12),
+            "sharpen_radius": 0.946,
+            "smooth_radius": 0.412,
             "tile_norm_blocksize": 0,
             "tile_norm_smooth3D": 0,
         }
 
         masks, flows, styles = self._model.eval(
             x=img,
-            batch_size=self.batch_size,
-            diameter=self.diameter,
-            flow_threshold=self.flow_threshold,
-            cellprob_threshold=self.cellprob_threshold,
-            min_size=self.min_size,
-            niter=200,
-            tile_overlap=self.tile_overlap,
-            compute_masks=True,
-            max_size_fraction=1.5,
-            stitch_threshold=0.0,
             anisotropy=None,
             augment=False,
+            batch_size=1,
             bsize=256,
+            cellprob_threshold=1.675,
             channel_axis=None,
+            compute_masks=True,
+            diameter=34,
             do_3D=False,
             flow3D_smooth=0,
+            flow_threshold=0.725,
+            max_size_fraction=1.92,
+            min_size=18,
+            niter=200,
             normalize=normalization_params,
             resample=True,
             rescale=None,
+            stitch_threshold=0.0,
+            tile_overlap=0.1,
             z_axis=None,
         )
 
