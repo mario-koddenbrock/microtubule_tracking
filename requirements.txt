@@ -12,7 +12,7 @@ btrack~=0.6.2
 scipy~=1.16.1
 stardist~=0.9.1
 python-dotenv~=1.1.1
-cellsam~=0.0.dev1
+git+https://github.com/vanvalenlab/cellSAM.git
 csbdeep~=0.8.1
 cellpose~=4.0.6
 albumentations~=2.0.8
