@@ -17,5 +17,6 @@ MODEL_MODULES = [
 
 def test_import_model_modules():
     for module in MODEL_MODULES:
+        print(f"Testing import of module: {module}")
         importlib.import_module(module)
 
