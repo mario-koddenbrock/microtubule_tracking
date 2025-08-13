@@ -29,7 +29,6 @@ def _as_instance_stack(mask_or_stack: np.ndarray) -> np.ndarray:
 def _compute_iou_matrix(gt_masks: np.ndarray, pred_masks: np.ndarray) -> np.ndarray:
     """
     Compute IoU matrix between GT and predicted instance masks.
-
     Args:
         gt_masks  : (M, H, W) bool
         pred_masks: (N, H, W) bool
@@ -40,15 +39,20 @@ def _compute_iou_matrix(gt_masks: np.ndarray, pred_masks: np.ndarray) -> np.ndar
     if M == 0 or N == 0:
         return np.zeros((M, N), dtype=float)
 
-    gm = gt_masks.astype(np.uint8)
-    pm = pred_masks.astype(np.uint8)
+    # Ensure boolean, then use int64 accumulation to avoid overflow
+    gm = gt_masks.astype(bool)
+    pm = pred_masks.astype(bool)
 
     # intersections: (M, N)
-    inter = np.einsum('mhw,nhw->mn', gm, pm)
-    gt_areas = gm.sum(axis=(1, 2))[:, None]   # (M, 1)
-    pr_areas = pm.sum(axis=(1, 2))[None, :]   # (1, N)
+    inter = (gm[:, None, :, :] & pm[None, :, :, :]).sum(axis=(2, 3), dtype=np.int64)
+
+    gt_areas = gm.sum(axis=(1, 2), dtype=np.int64)[:, None]   # (M, 1)
+    pr_areas = pm.sum(axis=(1, 2), dtype=np.int64)[None, :]   # (1, N)
     union = gt_areas + pr_areas - inter
-    return inter / np.maximum(union, 1e-6)
+
+    # Safe division to float
+    return inter / np.maximum(union, 1)
+
 
 
 def _get_matches(iou_matrix: np.ndarray, iou_threshold: float) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
@@ -168,7 +172,7 @@ def _get_length_distribution(masks: np.ndarray) -> np.ndarray:
 def calculate_segmentation_metrics(
     pred_masks: np.ndarray,
     gt_masks: np.ndarray,
-    iou_thresholds: Tuple[float, ...] = (0.5, 0.75),
+    iou_thresholds: Tuple[float, ...] = (0.5, 0.75, 0.9),
 ) -> Dict[str, float]:
     """
     Compute instance segmentation metrics.
@@ -189,7 +193,11 @@ def calculate_segmentation_metrics(
         matches, unmatched_preds, _ = _get_matches(iou_matrix, float(t))
         tp = len(matches)
         fp = len(unmatched_preds)
-        precisions.append(tp / (tp + fp) if (tp + fp) > 0 else 0.0)
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        precisions.append(precision)
+        if np.isclose(t, 0.5) or np.isclose(t, 0.75) or np.isclose(t, 0.9):
+            metrics[f"AP@{t:.2f}"] = float(precision)
+
     metrics["AP50-95"] = float(np.mean(precisions) if precisions else 0.0)
     metrics["AP"] = metrics["AP50-95"]  # alias for compatibility
 
