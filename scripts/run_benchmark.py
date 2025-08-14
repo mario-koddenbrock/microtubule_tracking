@@ -123,7 +123,7 @@ if __name__ == "__main__":
         "Cellpose-SAM",
         # "DRIFT",
         # "FIESTA",
-        # "MuSAM",
+        # "MicroSAM",
         # "SIFINE",
         # "SOAX",
         # "StarDist",

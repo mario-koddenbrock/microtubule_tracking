@@ -7,7 +7,7 @@ from .cellsam import CellSAM
 from .cellpose_sam import CellposeSAM
 from .drift import DRIFT
 from .fiesta import FIESTA
-from .musam import MuSAM
+from .micro_sam import MicroSAM
 from .sifine import SIFINE
 from .soax import SOAX
 from .stardist import StarDist
@@ -55,7 +55,7 @@ def setup_model_factory() -> ModelFactory:
     factory = ModelFactory()
     model_classes = [
         FIESTA, SOAX, SIFINE, DRIFT, CellSAM, AnyStar,
-        MuSAM, CellposeSAM, StarDist
+        MicroSAM, CellposeSAM, StarDist
     ]
     for model_class in model_classes:
         factory.register_model(model_class)

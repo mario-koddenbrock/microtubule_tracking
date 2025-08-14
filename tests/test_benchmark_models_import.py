@@ -9,7 +9,7 @@ MODEL_MODULES = [
     'mt.benchmark.models.drift',
     # 'mt.benchmark.models.factory',
     'mt.benchmark.models.fiesta',
-    'mt.benchmark.models.musam',
+    # 'mt.benchmark.models.micro_sam',
     'mt.benchmark.models.sifine',
     'mt.benchmark.models.soax',
     # 'mt.benchmark.models.stardist',

@@ -11,7 +11,7 @@ from micro_sam.automatic_segmentation import get_predictor_and_segmenter, Instan
 from .base import BaseModel
 
 
-class MuSAM(BaseModel):
+class MicroSAM(BaseModel):
     """μSAM automatic instance segmentation (AIS) for 2D images, tuned for microtubules."""
 
     def __init__(
@@ -24,7 +24,7 @@ class MuSAM(BaseModel):
         batch_size: int = 1,
         model_dir: Union[str, Path] = "models/muSAM",
     ):
-        super().__init__("MuSAM")
+        super().__init__("MicroSAM")
         self.model_type = model_type
         self.checkpoint = str(checkpoint) if checkpoint is not None else None
         self.tile_shape = tile_shape
@@ -59,7 +59,7 @@ class MuSAM(BaseModel):
 
     def predict(self, image: np.ndarray) -> np.ndarray:
         if image.ndim not in (2, 3):
-            raise ValueError(f"MuSAM expects (H,W) or (H,W,C); got {image.shape}")
+            raise ValueError(f"MicroSAM expects (H,W) or (H,W,C); got {image.shape}")
 
         self._load_model()
 
