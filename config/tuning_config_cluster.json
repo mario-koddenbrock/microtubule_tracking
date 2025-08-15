@@ -14,7 +14,7 @@
   "similarity_metric": "cosine",
   "num_trials": 20000,
   "pca_components": 0,
-  "load_if_exists": true,
+  "load_if_exists": false,
   "img_size": [
     512,
     512
