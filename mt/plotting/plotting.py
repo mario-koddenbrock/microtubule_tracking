@@ -27,7 +27,7 @@ def visualize_embeddings(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig,
                          output_dir: str = "plots/",
                          projection_method: str = "PCA"):
 
-    logger.info(f"Starting visualization of embeddings for config ID: {cfg.id}...")
+    logger.debug(f"Starting visualization of embeddings for config ID: {cfg.id}...")
 
     toy_embeddings = None
     if toy_data and toy_data.get("embeddings") is not None:

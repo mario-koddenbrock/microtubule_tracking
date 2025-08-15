@@ -273,7 +273,7 @@ def generate_video(
     """
     Generates a full synthetic video, saves it, and optionally exports ground truth data.
     """
-    logger.info(f"Generating and writing {cfg.num_frames} frames for Series {cfg.id} into '{base_output_dir}'...")
+    logger.debug(f"Generating and writing {cfg.num_frames} frames for Series {cfg.id} into '{base_output_dir}'...")
 
     output_manager_main = OutputManager(cfg, os.path.join(base_output_dir, "full"))
 
