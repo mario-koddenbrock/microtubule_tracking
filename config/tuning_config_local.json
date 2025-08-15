@@ -1,5 +1,5 @@
 {
-  "model_name": "facebook/dinov2-large",
+  "model_name": "facebook/dinov2-small",
   "embedding_layer": 5,
   "hf_cache_dir": null,
   "reference_video_path": "",
