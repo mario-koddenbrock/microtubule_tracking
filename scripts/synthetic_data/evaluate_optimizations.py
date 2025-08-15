@@ -20,8 +20,8 @@ def evaluate_all_configs():
     output_dir = "data/SynMT/synthetic"
 
     # Find all generated tuning config files
-    config_dir = "config"
-    config_pattern = os.path.join(config_dir, "tuning_config_250123*.json")
+    config_dir = "config/optimization"
+    config_pattern = os.path.join(config_dir, "tuning_config_*.json")
     config_files = sorted(glob.glob(config_pattern))
 
     total_configs = len(config_files)
