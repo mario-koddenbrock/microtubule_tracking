@@ -2,6 +2,7 @@ import datetime
 import logging
 import logging.handlers
 import os
+import multiprocessing
 
 
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -9,6 +10,9 @@ LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 # --- Setup ---
 def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), log_level_console: int = "INFO", log_level: int = logging.DEBUG):
     """Configures the application's logging."""
+    # Only configure logging in the main process
+    if multiprocessing.current_process().name != "MainProcess":
+        return logging.getLogger(logger_name)
 
     os.makedirs(log_dir, exist_ok=True)
 
@@ -53,4 +57,3 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), lo
     logger.info("Logging has been configured successfully. Console level: %s", console_log_level_str)
 
     return logger
-
