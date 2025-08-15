@@ -4,14 +4,13 @@ from typing import Dict, Any, List
 
 import numpy as np
 import optuna
-import optuna.visualization as vis
 
-from config.synthetic_data import SyntheticDataConfig
-from config.tuning import TuningConfig
 from .embeddings import ImageEmbeddingExtractor
 from ..video import generate_video, generate_frames
-from plotting.plotting import visualize_embeddings
 from .toy_data import get_toy_data
+from ...config.synthetic_data import SyntheticDataConfig
+from ...config.tuning import TuningConfig
+from ...plotting.plotting import visualize_embeddings
 
 logger = logging.getLogger(f"mt.{__name__}")
 

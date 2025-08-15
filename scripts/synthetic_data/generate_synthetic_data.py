@@ -1,7 +1,7 @@
 import sys
 
-from config.synthetic_data import SyntheticDataConfig
-from data_generation.video import generate_video
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.data_generation.video import generate_video
 from scripts.utils.cli import parse_gen_args, get_run_ids
 
 

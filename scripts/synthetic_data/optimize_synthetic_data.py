@@ -1,8 +1,9 @@
-from data_generation.optimization.eval import evaluate_results
-from data_generation.optimization.optimization import run_optimization
+from mt.data_generation.optimization.eval import evaluate_results
+from mt.data_generation.optimization.optimization import run_optimization
+from mt.utils.logger import setup_logging
 from scripts.utils.cli import parse_optimization_args
 from scripts.utils.paths import get_output_dir_from_config_path
-from utils.logger import setup_logging
+
 
 logger = setup_logging()
 
