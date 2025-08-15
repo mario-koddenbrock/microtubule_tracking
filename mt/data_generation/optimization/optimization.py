@@ -69,6 +69,12 @@ def run_optimization(tuning_config_path: str):
 
     sampler = optuna.samplers.RandomSampler()
 
+    # Ensure a clean study if requested
+    if not tuning_cfg.load_if_exists:
+        if os.path.exists(db_filepath):
+            logger.info(f"Deleting existing Optuna study database: {db_filepath}")
+            os.remove(db_filepath)
+
     try:
         study = optuna.create_study(
             sampler=sampler,
