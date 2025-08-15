@@ -1,9 +1,13 @@
+import logging
 import sys
 
 from mt.config.synthetic_data import SyntheticDataConfig
 from mt.data_generation.video import generate_video
+from mt.utils.logger import setup_logging
 from scripts.utils.cli import parse_gen_args, get_run_ids
 
+setup_logging(log_level_console="INFO")
+logger = logging.getLogger(__name__)
 
 def main():
     args = parse_gen_args()
