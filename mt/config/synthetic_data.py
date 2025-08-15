@@ -101,8 +101,6 @@ class SyntheticDataConfig(BaseConfig):
             errors.append("base_wagon_length_min cannot be greater than base_wagon_length_max.")
         if self.microtubule_length_min > self.microtubule_length_max:
             errors.append("microtubule_length_min cannot be greater than microtubule_length_max.")
-        if self.base_wagon_length_max > self.microtubule_length_min:
-            errors.append("base_wagon_length_max should not be greater than microtubule_length_min.")
         if self.psf_sigma_h <= 0 or self.psf_sigma_v <= 0:
             errors.append("PSF sigmas must be positive.")
         if self.fps <= 0:
