@@ -181,8 +181,7 @@ class SpotGenerator:
                     radii: List[int], kernel_sizes: List[int], sigma: float,
                     shapes: List[str], polygon_vertices: dict) -> np.ndarray:
         """
-        Draws spots onto an image. Can handle grayscale or RGB, circles or polygons,
-        and can add or subtract the spots from the image.
+        Optimized: Draws all spots in batch (circles and polygons), then blurs and adds to image in one step.
         """
         if not spot_coords:
             return img
@@ -197,56 +196,42 @@ class SpotGenerator:
         if isinstance(intensities, float):
             intensities = [intensities] * len(spot_coords)
 
-        for idx, (y, x) in enumerate(spot_coords):
+        # Create a single mask for all spots
+        mask = np.zeros((h, w), dtype=np.float32)
+        circle_indices = [i for i, s in enumerate(shapes) if s == 'circle']
+        polygon_indices = [i for i, s in enumerate(shapes) if s == 'polygon']
 
-            try:
-                mask = np.zeros((h, w), dtype=np.float32)
-                intensity = intensities[idx]
-                shape = shapes[idx]
+        # Draw all circles in batch
+        for i in circle_indices:
+            y, x = spot_coords[i]
+            radius = radii[i]
+            intensity = intensities[i]
+            cv2.circle(mask, (int(x), int(y)), radius, intensity, -1)
 
-                if shape == 'polygon':
-                    verts = polygon_vertices[idx]
-                    cv2.fillPoly(mask, [verts], intensity)
-                else:  # 'circle'
-                    radius = radii[idx]
-                    cv2.circle(mask, (int(x), int(y)), radius, intensity, -1)
+        # Draw all polygons in batch
+        if polygon_indices:
+            polys = [polygon_vertices[i] for i in polygon_indices]
+            poly_intensities = [intensities[i] for i in polygon_indices]
+            for verts, intensity in zip(polys, poly_intensities):
+                cv2.fillPoly(mask, [verts], intensity)
 
-                # plt.imshow(mask, cmap='viridis')
-                # plt.axis('off')
-                # plt.title(f"Initial mask for spot {idx} at ({y},{x}) with shape {shape}")
-                # plt.show()
+        # Use the largest kernel size for all spots (for speed)
+        if kernel_sizes:
+            kernel = 2 * max(kernel_sizes) + 1
+        else:
+            kernel = 3
+        if kernel <= 0:
+            kernel = 1
+        elif kernel % 2 == 0:
+            kernel += 1
 
-                kernel_size = kernel_sizes[idx]
-                kernel = 2 * kernel_size + 1
-                if kernel <= 0:
-                    logger.warning(f"Kernel size for spot {idx} is non-positive ({kernel_size}). Forcing to 1.")
-                    kernel = 1
-                elif kernel % 2 == 0:
-                    kernel += 1
+        if sigma > 0 and kernel > 1:
+            mask = cv2.GaussianBlur(mask, (kernel, kernel), sigma)
 
-                if sigma > 0 and kernel > 1:
-                    mask = cv2.GaussianBlur(mask, (kernel, kernel), sigma)
+        if is_rgb:
+            mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
 
-                    # plt.imshow(mask, cmap='viridis')
-                    # plt.axis('off')
-                    # plt.title(f"Blurred mask for spot {idx} at ({y},{x}) with shape {shape}")
-                    # plt.show()
-
-                if is_rgb:
-                    mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
-
-
-                img += mask
-
-                # plt.imshow(img, cmap='viridis')
-                # plt.axis('off')
-                # plt.title(f"Spot {idx} at ({y},{x}) with shape {shape}")
-                # plt.show()
-
-
-            except Exception as e:
-                logger.error(f"Error drawing spot {idx} at ({y},{x}): {e}", exc_info=True)
-
+        img += mask
         return np.clip(img, 0.0, 1.0)
 
     @staticmethod

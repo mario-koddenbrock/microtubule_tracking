@@ -174,17 +174,17 @@ def compute_vignette(cfg: SyntheticDataConfig) -> np.ndarray:
 
 def draw_gaussian_line_rgb(
         frame: np.ndarray,
-        mask: Optional[np.ndarray],  # Made optional explicitly
+        mask: Optional[np.ndarray],
         start_pt: np.ndarray,
         end_pt: np.ndarray,
         psf_sigma_h: float,
         psf_sigma_v: float,
         color_contrast_rgb: Tuple[float, float, float],
         mask_idx: int,
-        additional_mask: Optional[np.ndarray] = None,  # Made optional explicitly
+        additional_mask: Optional[np.ndarray] = None,
 ):
     """
-    Rasterizes a line by placing small 2D Gaussian spots at regular intervals.
+    Optimized: Rasterizes a line by placing small 2D Gaussian spots at regular intervals using vectorized NumPy operations.
     Modifies `frame` and `mask` in-place.
     """
     logger.debug(
@@ -192,69 +192,32 @@ def draw_gaussian_line_rgb(
 
     H, W, C = frame.shape
     if C != 3:
-        msg = f"Frame must be a 3-channel RGB image, but got {C} channels (shape: {frame.shape})."
-        logger.error(msg)
-        raise ValueError(msg)
+        raise ValueError(f"Frame must be a 3-channel RGB image, but got {C} channels (shape: {frame.shape}).")
 
-    # Pre-compute coordinate grids and line properties
-    yy, xx = np.mgrid[0:H, 0:W]
     x0, y0 = float(start_pt[0]), float(start_pt[1])
     x1, y1 = float(end_pt[0]), float(end_pt[1])
     vec = np.array([x1 - x0, y1 - y0], dtype=np.float32)
     length = np.linalg.norm(vec)
-    mask_threshold = 0.01  # Pixel intensity threshold for mask update
+    step = 0.5
+    num_steps = max(1, int(np.ceil(length / step)))
+    ts = np.linspace(0, 1, num_steps + 1)
+    pxs = x0 + ts * vec[0]
+    pys = y0 + ts * vec[1]
 
-    # Validate sigmas
-    if psf_sigma_h <= 0 or psf_sigma_v <= 0:
-        logger.warning(
-            f"psf_sigma_h ({psf_sigma_h}) or psf_sigma_v ({psf_sigma_v}) is non-positive. Setting to a small value (1e-6) to prevent division by zero in Gaussian calculation.")
-        psf_sigma_h = max(psf_sigma_h, 1e-6)
-        psf_sigma_v = max(psf_sigma_v, 1e-6)
-
-    # --- Nested Helper Function for Drawing a Single Spot ---
-    def draw_spot_at_point(px: float, py: float):
-        """Calculates and applies a single Gaussian spot centered at (px, py)."""
-        try:
-            # Calculate distances of all grid points from the spot's center
-            dx = xx - px
-            dy = yy - py
-
-            # Calculate the 2D Gaussian blob
-            gaussian_blob = np.exp(-((dx ** 2) / (2 * psf_sigma_h ** 2) + (dy ** 2) / (2 * psf_sigma_v ** 2)))
-
-            # Apply the contrast to each RGB channel and add it to the frame
-            for c in range(3):
-                frame[..., c] += color_contrast_rgb[c] * gaussian_blob
-
-            # Update the instance mask where the Gaussian is strong enough
-            if mask is not None:
-                mask[gaussian_blob > mask_threshold] = mask_idx
-            if additional_mask is not None:
-                additional_mask[gaussian_blob > mask_threshold] = mask_idx
-            # logger.debug(f"  Spot drawn at ({px:.2f}, {py:.2f}). Max Gaussian: {gaussian_blob.max():.4f}.")
-        except Exception as e:
-            logger.error(f"Error drawing spot at ({px:.2f}, {py:.2f}): {e}", exc_info=True)
-
-    # --- End of Helper Function ---
-
-    # If the line has no length, just draw a single spot at the start point.
-    if length < 1e-6:
-        logger.debug("Line length is negligible. Drawing a single spot.")
-        draw_spot_at_point(x0, y0)
-        return
-
-    # For lines with length, iterate along the line and draw spots at each step.
-    step = 0.5  # Draw a spot every half a pixel for smooth coverage
-    num_steps = int(np.ceil(length / step))
-    if num_steps == 0:  # Handle cases where length is very small but not zero.
-        num_steps = 1
-
-    for i in range(num_steps + 1):
-        t = i / num_steps
-        px = x0 + t * vec[0]
-        py = y0 + t * vec[1]
-        draw_spot_at_point(px, py)
-    logger.debug(f"Line drawn using {num_steps + 1} spots.")
+    yy, xx = np.mgrid[0:H, 0:W]
+    # Vectorized calculation: sum all Gaussian blobs
+    gaussians = np.zeros((H, W), dtype=np.float32)
+    for px, py in zip(pxs, pys):
+        dx = xx - px
+        dy = yy - py
+        gaussians += np.exp(-((dx ** 2) / (2 * psf_sigma_h ** 2) + (dy ** 2) / (2 * psf_sigma_v ** 2)))
+    for c in range(3):
+        frame[..., c] += color_contrast_rgb[c] * gaussians
+    mask_threshold = 0.01
+    if mask is not None:
+        mask[gaussians > mask_threshold] = mask_idx
+    if additional_mask is not None:
+        additional_mask[gaussians > mask_threshold] = mask_idx
 
 
 def annotate_frame(frame: np.ndarray, cfg: SyntheticDataConfig, frame_idx: int) -> np.ndarray:
@@ -432,3 +395,4 @@ def apply_brightness(frame: np.ndarray, brightness: float) -> np.ndarray:
     brightness > 0 increases brightness, brightness < 0 decreases brightness.
     """
     return np.clip(frame + brightness, 0, 1 if frame.dtype == np.float32 else 255).astype(frame.dtype)
+
