@@ -7,7 +7,6 @@ import numpy as np
 import requests
 from PIL import Image
 
-from data_generation.optimization.embeddings import ImageEmbeddingExtractor
 
 logger = logging.getLogger(f"mt.{__name__}")
 

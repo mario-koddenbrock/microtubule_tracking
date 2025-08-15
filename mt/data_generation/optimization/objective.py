@@ -3,9 +3,10 @@ import logging
 import numpy as np
 import optuna
 
-from config.tuning import TuningConfig
+
 from .embeddings import ImageEmbeddingExtractor
 from .metrics import similarity
+from ...config.tuning import TuningConfig
 
 logger = logging.getLogger(f"mt.{__name__}")
 

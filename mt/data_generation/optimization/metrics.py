@@ -9,7 +9,7 @@ from scipy.spatial.distance import jensenshannon, mahalanobis
 from scipy.stats import chi2_contingency
 from sklearn.metrics.pairwise import cosine_similarity
 
-from config.tuning import TuningConfig
+from mt.config.tuning import TuningConfig
 
 logger = logging.getLogger(f"mt.{__name__}")
 

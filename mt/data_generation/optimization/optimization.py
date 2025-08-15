@@ -4,11 +4,12 @@ from functools import partial
 
 import optuna
 
-from config.synthetic_data import SyntheticDataConfig
-from config.tuning import TuningConfig
+
 from .embeddings import ImageEmbeddingExtractor
 from .metrics import precompute_matric_args
 from .objective import objective
+from ...config.synthetic_data import SyntheticDataConfig
+from ...config.tuning import TuningConfig
 
 logger = logging.getLogger(f"mt.{__name__}")
 

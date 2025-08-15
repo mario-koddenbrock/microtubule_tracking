@@ -8,6 +8,8 @@ import numpy as np
 import torch
 from cellpose import transforms
 from cellpose.models import CellposeModel, normalize_default
+from dotenv import load_dotenv
+from huggingface_hub import login
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 from transformers import (AutoModel, CLIPModel,
@@ -49,6 +51,8 @@ class ImageEmbeddingExtractor:
         logger.debug("Initializing ImageEmbeddingExtractor...")
         self.config = tuning_cfg
 
+        self.hf_login()
+
         self.device = self._get_best_device()
         logger.debug(f"Using device: {self.device}")
 
@@ -63,6 +67,14 @@ class ImageEmbeddingExtractor:
         # Initialize PCA model, it will be fitted later
         self.pca_model: Optional[PCA] = None
         logger.debug("ImageEmbeddingExtractor initialized successfully.")
+
+    def hf_login(self):
+        logger.info(f"Logging into Hugging Face Hub")
+        load_dotenv()  # Load variables from .env file
+        HF_TOKEN = os.getenv('HUGGING_FACE_HUB_TOKEN')
+        if not HF_TOKEN:
+            raise ValueError("HUGGING_FACE_HUB_TOKEN not found in .env file or environment.")
+        login(HF_TOKEN)
 
     def _get_best_device(self) -> torch.device:
         """Selects the best available device (CUDA, MPS, or CPU)."""

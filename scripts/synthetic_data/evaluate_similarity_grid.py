@@ -8,10 +8,9 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
-from config.tuning import TuningConfig
-from data_generation.optimization.embeddings import ImageEmbeddingExtractor
-from data_generation.optimization.metrics import similarity
-from file_io.utils import extract_frames
+from mt.config.tuning import TuningConfig
+from mt.data_generation.optimization.embeddings import ImageEmbeddingExtractor
+from mt.file_io.utils import extract_frames
 
 logger = logging.getLogger(__name__)
 

@@ -4,9 +4,9 @@ from pathlib import Path
 
 import optuna
 
-from config.synthetic_data import SyntheticDataConfig
-from config.tuning import TuningConfig
-from data_generation.video import generate_video
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.config.tuning import TuningConfig
+from mt.data_generation.video import generate_video
 
 
 def sample_hyperparameters(
