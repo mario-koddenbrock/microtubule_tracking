@@ -168,7 +168,6 @@ class Microtubule:
             cfg: SyntheticDataConfig,
             seed_mask: Optional[np.ndarray] = None,
     ) -> List[dict]:
-        """Rasterizes the microtubule by drawing its persistent list of wagons."""
         logger.debug(
             f"MT {self.instance_id}: Drawing for frame {self.frame_idx}. Total wagons: {len(self.wagons)}.")
 
@@ -180,10 +179,7 @@ class Microtubule:
         if self.minus_end_length > 1e-6:
             minus_end_vec = np.array([np.cos(abs_angle + np.pi), np.sin(abs_angle + np.pi)])
             minus_end_pos = abs_pos + minus_end_vec * self.minus_end_length
-
-            # Use a fraction of the tubulus contrast for the minus end
             color_contrast = (cfg.tubulus_contrast, cfg.tubulus_contrast, cfg.tubulus_contrast)
-
             draw_gaussian_line_rgb(
                 frame, mt_mask, abs_pos, minus_end_pos,
                 cfg.psf_sigma_h, cfg.psf_sigma_v, color_contrast, self.instance_id
@@ -204,16 +200,12 @@ class Microtubule:
             vec = np.array([np.cos(abs_angle), np.sin(abs_angle)])
             end_pos = start_pos + vec * w.length
             abs_pos = end_pos
-
-            # Determine color and contrast
             psf_h = cfg.psf_sigma_h * (
                         1 + np.random.uniform(-cfg.tubule_width_variation, cfg.tubule_width_variation))
             psf_v = cfg.psf_sigma_v
-
             base_contrast = cfg.tubulus_contrast
             tip_brightness = cfg.tip_brightness_factor if self.state == MicrotubuleState.GROWING and idx == len(
                 self.wagons) - 1 else 1.0
-
             if w.is_seed:
                 color_contrast = (
                     base_contrast + cfg.seed_red_channel_boost,
@@ -229,13 +221,11 @@ class Microtubule:
                     base_contrast * tip_brightness
                 )
                 segment_type = "plus_end"
-                current_mask = None  # Plus-end segments don't draw to the seed mask
-
+                current_mask = None
             draw_gaussian_line_rgb(
                 frame, mt_mask, start_pos, end_pos,
                 psf_h, psf_v, color_contrast, self.instance_id, additional_mask=current_mask
             )
-
             gt_info.append({
                 "instance_id": self.instance_id,
                 "segment_id": f"{self.instance_id}-{idx}",
@@ -244,5 +234,5 @@ class Microtubule:
                 "end_pos": end_pos.tolist(),
                 "length": w.length,
             })
-
         return gt_info
+

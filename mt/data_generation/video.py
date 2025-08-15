@@ -1,10 +1,10 @@
+import concurrent.futures
 import logging
 import os
 import random
 from typing import List, Tuple, Optional, Dict, Any
 
 import albumentations as A
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -15,6 +15,22 @@ from mt.data_generation.spots import SpotGenerator
 from mt.file_io.writers import OutputManager
 
 logger = logging.getLogger(f"mt.{__name__}")
+
+
+def draw_mt(mt, cfg, frame, mt_mask, seed_mask, frame_idx, return_seed_mask, jitter):
+    mt.step(cfg)
+    mt.base_point += jitter
+    local_frame = np.zeros_like(frame)
+    local_mt_mask = np.zeros_like(mt_mask) if mt_mask is not None else None
+    local_seed_mask = np.zeros_like(seed_mask) if seed_mask is not None else None
+    gt_info = mt.draw(
+        frame=local_frame,
+        mt_mask=local_mt_mask,
+        cfg=cfg,
+        seed_mask=(local_seed_mask if frame_idx == 0 and return_seed_mask else None)
+    )
+    mt.base_point -= jitter
+    return local_frame, local_mt_mask, local_seed_mask, gt_info
 
 
 def render_frame(
@@ -59,28 +75,25 @@ def render_frame(
     if cfg.jitter_px > 0:
         logger.debug(f"Frame {frame_idx}: Applying jitter: {jitter.tolist()}")
 
-    # ─── Simulate and Draw Microtubules ──────────────────────────
-    logger.debug(f"Frame {frame_idx}: Simulating and drawing {len(mts)} microtubules.")
-    for mt_idx, mt in enumerate(mts):
-        try:
-            mt.step(cfg)
-            mt.base_point += jitter
+    # ─── Simulate and Draw Microtubules (Parallelized) ──────────
+    args = [(mt, cfg, frame, mt_mask, seed_mask, frame_idx, return_seed_mask, jitter) for mt in mts]
+    results = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(draw_mt, *arg) for arg in args]
+        for future in concurrent.futures.as_completed(futures):
+            results.append(future.result())
 
-            # Pass seed_mask only if it's the first frame and requested
-            gt_info = mt.draw(
-                frame=frame,
-                mt_mask=mt_mask,
-                cfg=cfg,
-                seed_mask=(seed_mask if frame_idx == 0 and return_seed_mask else None)
-            )
-            gt_data.extend(gt_info)
-            mt.base_point -= jitter
-            logger.debug(f"Frame {frame_idx}, MT {mt.instance_id}: Drawn with {len(gt_info)} segments.")
-        except Exception as e:
-            logger.error(f"Frame {frame_idx}, MT {mt.instance_id}: Error drawing microtubule: {e}", exc_info=True)
+
+    # Sum all microtubule results into main frame/mask
+    for local_frame, local_mt_mask, local_seed_mask, gt_info in results:
+        frame += local_frame
+        if mt_mask is not None and local_mt_mask is not None:
+            mt_mask += local_mt_mask
+        if seed_mask is not None and local_seed_mask is not None:
+            seed_mask += local_seed_mask
+        gt_data.extend(gt_info)
 
     # ─── Add Ancillary Objects (Spots) ───────────────────────────
-    logger.debug(f"Frame {frame_idx}: Applying spots.")
     try:
         frame = fixed_spot_generator.apply(frame)
         logger.debug(f"Frame {frame_idx}: Fixed spots applied.")
@@ -147,20 +160,12 @@ def render_frame(
             # Albumentations expects uint8 or float, ensure float [0,1]
             # Convert back to original frame type if needed
             # For simplicity, passing float32 as is.
-            plt.imshow(frame)
-            plt.axis("off")
-            plt.title(f"Frame {frame_idx}")
-            plt.show()
             augmented = aug_pipeline(image=frame, mask=mt_mask if mt_mask is not None else None)
             frame = augmented['image']
             if mt_mask is not None:
                 mt_mask = augmented['mask']
             logger.debug(f"Frame {frame_idx}: Albumentations applied.")
 
-            plt.imshow(frame)
-            plt.axis("off")
-            plt.title(f"Augmented Frame {frame_idx}")
-            plt.show()
         except Exception as e:
             logger.error(f"Frame {frame_idx}: Error applying Albumentations: {e}", exc_info=True)
             # Log error but don't stop rendering the frame
@@ -176,8 +181,6 @@ def render_frame(
         logger.debug(f"Frame {frame_idx}: Annotations applied.")
     except Exception as e:
         logger.error(f"Frame {frame_idx}: Error annotating frame: {e}", exc_info=True)
-
-    # Convert to uint8, clipping values to [0,1] range first
     frame_uint8 = (np.clip(frame, 0.0, 1.0) * 255).astype(np.uint8)
     logger.debug(f"Frame {frame_idx}: Converted to uint8 (clipping applied).")
 

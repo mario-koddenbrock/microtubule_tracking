@@ -1,5 +1,5 @@
 import logging
-from functools import partial
+import math
 from typing import Tuple, List, Union, Optional
 
 import albumentations as A
@@ -184,12 +184,9 @@ def draw_gaussian_line_rgb(
         additional_mask: Optional[np.ndarray] = None,
 ):
     """
-    Optimized: Rasterizes a line by placing small 2D Gaussian spots at regular intervals using vectorized NumPy operations.
+    Fast version: Rasterizes a line by placing small 2D Gaussian spots at regular intervals using a precomputed kernel and local windowing.
     Modifies `frame` and `mask` in-place.
     """
-    logger.debug(
-        f"Drawing Gaussian line from {start_pt.tolist()} to {end_pt.tolist()}. Sigmas: ({psf_sigma_h:.2f}, {psf_sigma_v:.2f}). Contrast: {color_contrast_rgb}.")
-
     H, W, C = frame.shape
     if C != 3:
         raise ValueError(f"Frame must be a 3-channel RGB image, but got {C} channels (shape: {frame.shape}).")
@@ -204,20 +201,50 @@ def draw_gaussian_line_rgb(
     pxs = x0 + ts * vec[0]
     pys = y0 + ts * vec[1]
 
-    yy, xx = np.mgrid[0:H, 0:W]
-    # Vectorized calculation: sum all Gaussian blobs
-    gaussians = np.zeros((H, W), dtype=np.float32)
+    # Precompute a Gaussian kernel (window size = 6*sigma)
+    win_h = max(3, int(math.ceil(psf_sigma_h * 6)))
+    win_v = max(3, int(math.ceil(psf_sigma_v * 6)))
+    win_h = win_h + 1 if win_h % 2 == 0 else win_h
+    win_v = win_v + 1 if win_v % 2 == 0 else win_v
+    kh = win_h // 2
+    kv = win_v // 2
+    y_grid = np.arange(-kv, kv + 1)
+    x_grid = np.arange(-kh, kh + 1)
+    xx, yy = np.meshgrid(x_grid, y_grid)
+    kernel = np.exp(-((xx ** 2) / (2 * psf_sigma_h ** 2) + (yy ** 2) / (2 * psf_sigma_v ** 2)))
+
+    # Accumulate all kernels in frame
     for px, py in zip(pxs, pys):
-        dx = xx - px
-        dy = yy - py
-        gaussians += np.exp(-((dx ** 2) / (2 * psf_sigma_h ** 2) + (dy ** 2) / (2 * psf_sigma_v ** 2)))
-    for c in range(3):
-        frame[..., c] += color_contrast_rgb[c] * gaussians
-    mask_threshold = 0.01
-    if mask is not None:
-        mask[gaussians > mask_threshold] = mask_idx
-    if additional_mask is not None:
-        additional_mask[gaussians > mask_threshold] = mask_idx
+        x_int = int(round(px))
+        y_int = int(round(py))
+        x0_win = x_int - kh
+        x1_win = x_int + kh + 1
+        y0_win = y_int - kv
+        y1_win = y_int + kv + 1
+        # Clip window to image
+        x0_clip = max(0, x0_win)
+        x1_clip = min(W, x1_win)
+        y0_clip = max(0, y0_win)
+        y1_clip = min(H, y1_win)
+        # Kernel slice
+        kx0 = x0_clip - x0_win
+        kx1 = kx0 + (x1_clip - x0_clip)
+        ky0 = y0_clip - y0_win
+        ky1 = ky0 + (y1_clip - y0_clip)
+        k_slice = kernel[ky0:ky1, kx0:kx1]
+        # Only update if region and kernel slice are non-empty and shapes match
+        region_shape = (y1_clip - y0_clip, x1_clip - x0_clip)
+        if region_shape[0] == 0 or region_shape[1] == 0 or k_slice.shape != region_shape:
+            continue  # Skip invalid/empty region
+        for c in range(3):
+            frame[y0_clip:y1_clip, x0_clip:x1_clip, c] += color_contrast_rgb[c] * k_slice
+        # Mask update
+        if mask is not None:
+            mask_region = mask[y0_clip:y1_clip, x0_clip:x1_clip]
+            mask_region[k_slice > 0.01] = mask_idx
+        if additional_mask is not None:
+            add_mask_region = additional_mask[y0_clip:y1_clip, x0_clip:x1_clip]
+            add_mask_region[k_slice > 0.01] = mask_idx
 
 
 def annotate_frame(frame: np.ndarray, cfg: SyntheticDataConfig, frame_idx: int) -> np.ndarray:
@@ -395,4 +422,3 @@ def apply_brightness(frame: np.ndarray, brightness: float) -> np.ndarray:
     brightness > 0 increases brightness, brightness < 0 decreases brightness.
     """
     return np.clip(frame + brightness, 0, 1 if frame.dtype == np.float32 else 255).astype(frame.dtype)
-
