@@ -57,7 +57,10 @@ class BenchmarkDataset:
         image = imageio.imread(image_path)
         mask = imageio.imread(mask_path)
 
-        with open(gt_path, 'r') as f:
-            gt_data = json.load(f)
+        if os.path.isfile(gt_path):
+            with open(gt_path, 'r') as f:
+                gt_data = json.load(f)
+        else:
+            gt_data = {}
 
         return image, mask, gt_data[frame_idx]
