@@ -42,7 +42,7 @@
   ],
   "max_angle_range": [
     0.05,
-    0.2
+    0.15
   ],
   "bending_prob_range": [
     0.05,
@@ -50,7 +50,11 @@
   ],
   "max_angle_sign_changes_range": [
     0,
-    10
+    3
+  ],
+  "minus_end_target_length_std_range": [
+    1.0,
+    10.0
   ],
   "num_microtubule_range": [
     5,
@@ -207,6 +211,8 @@
   "max_pause_at_min_frames": 50,
   "prob_to_flip_bend": 0.1,
   "jitter_px": 0.5,
+  "minus_end_target_length_mean": 0.0,
+  "minus_end_velocity": 1.0,
   "moving_spots": {
     "count": 0,
     "intensity_min": 0.005,
