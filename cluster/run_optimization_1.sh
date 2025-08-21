@@ -10,8 +10,8 @@ CONFIG_DIR="config"
 SBATCH_SCRIPT="cluster/optimization.sbatch"
 REFERENCE_DIR="/scratch/koddenbrock/mt/SynMT/real/full"
 CONFIG_TEMPLATE="config/tuning_config_cluster.json"
-FOLDER_START_INDEX=4  # Start index (optional)
-FOLDER_END_INDEX=7  # End index (large number for all folders)
+FOLDER_START_INDEX=1  # Start index (optional)
+FOLDER_END_INDEX=5  # End index (large number for all folders)
 
 # --- Main Logic ---
 echo "Starting Slurm job submission process..."
