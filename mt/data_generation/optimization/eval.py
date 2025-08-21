@@ -51,7 +51,8 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         logger.info(f"Trial {i + 1}: Value = {trial.value:.4f}, Params = {trial.params}")
 
         current_cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
-        current_cfg.num_frames = tuning_cfg.output_config_num_frames
+        # current_cfg.num_frames = tuning_cfg.output_config_num_frames
+        current_cfg.num_frames = 50 # TODO
         current_cfg.id = f"{tuning_cfg.output_config_id}_rank_{i + 1}"
         current_cfg.generate_mt_mask = True
         current_cfg.generate_seed_mask = False
@@ -96,7 +97,7 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
         for frame, *_ in frame_generator:
             frames.append(frame)
     else:
-        frames = generate_video(cfg, output_dir, is_for_expert_validation=is_for_expert_validation)
+        frames = generate_video(cfg, output_dir, num_png_frames=10, is_for_expert_validation=is_for_expert_validation)
 
     synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 

@@ -39,7 +39,6 @@ def evaluate_all_configs():
         # replace cluster paths if necessary
         cfg = TuningConfig.from_json(config_path)
         cfg.reference_images_dir = cfg.reference_images_dir.replace("/scratch/koddenbrock/mt", "data")
-        cfg.num_frames = 50  # This is the number of generated frames from which the synthetic data is sampled.
         cfg.hf_cache_dir = None
         cfg.temp_dir = ".temp"
         cfg.output_config_folder = output_dir
