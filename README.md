@@ -14,6 +14,7 @@ This document describes the usage of the `scripts/generate_synthetic_data.py` sc
     - [Configuration](#configuration)
   - [Contributing](#contributing)
   - [License](#license)
+  - [Testing](#testing)
 
 ## Installation
 To get started, clone the repository and install the required dependencies. It is recommended to use a virtual environment.
@@ -111,3 +112,26 @@ Contributions are welcome! Please feel free to submit a pull request or open an 
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+## Testing
+
+Some tests require access to the Hugging Face Hub and expect the environment variable `HUGGING_FACE_HUB_TOKEN` to be set. If this variable is missing, those tests will be skipped automatically.
+
+To run all tests, set the token in your environment or in a `.env` file:
+
+```bash
+export HUGGING_FACE_HUB_TOKEN=your_token_here
+```
+Or create a `.env` file in the project root:
+```
+HUGGING_FACE_HUB_TOKEN=your_token_here
+```
+For CI or local testing where a real token is not needed, you can use a dummy value:
+```
+HUGGING_FACE_HUB_TOKEN=dummy
+```
+
+Run tests with:
+```bash
+pytest
+```
