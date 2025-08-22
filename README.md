@@ -31,6 +31,15 @@ source venv/bin/activate
 pip install -e .
 ```
 
+### Install micro_sam (required for some features)
+`micro_sam` is only available via conda-forge. After installing the Python dependencies above, run:
+
+```bash
+conda install -c conda-forge micro_sam
+```
+
+Alternatively, you can use the provided `environment.yml` to set up everything with conda (see below).
+
 ## Usage
 
 The script is run from the command line from the root directory of your project. It requires a base configuration file and an output directory, and you must specify which video IDs to generate.
@@ -102,4 +111,3 @@ Contributions are welcome! Please feel free to submit a pull request or open an 
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
-```
