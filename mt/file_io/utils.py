@@ -114,10 +114,26 @@ def fiji_auto_contrast(img, low_percentile=0.4, high_percentile=99.6):
     img_stretched = (img_stretched - p_low) / (p_high - p_low)
     return img_stretched.astype(np.float32)
 
+
+def fiji_auto_contrast_brightness(img, low_percentile=0.4, high_percentile=99.6, target_mean=0.5):
+    """
+    Apply Fiji-style auto contrast and auto brightness:
+    - Stretch histogram so that low/high percentiles map to 0/1.
+    - Then scale so mean intensity is target_mean (default 0.5).
+    """
+    img_stretched = fiji_auto_contrast(img, low_percentile, high_percentile)
+    mean_val = np.mean(img_stretched)
+    if mean_val > 0:
+        img_bright = np.clip(img_stretched / mean_val * target_mean, 0, 1)
+    else:
+        img_bright = img_stretched
+    return img_bright.astype(np.float32)
+
 def process_tiff_video(
         video_path: str,
         num_crops: int = 3,
         crop_size: Tuple[int, int] = (512, 512),
+        auto_brightness: bool = True,
 ) -> List[List[np.ndarray]]:
     """
     Reads a TIFF video, performs repeated random cropping, applies contrast-stretching
@@ -127,9 +143,7 @@ def process_tiff_video(
         video_path (str): The file path to the TIFF video.
         num_crops (int): The number of different random video crops to generate.
         crop_size (Tuple[int, int]): The (height, width) for the random crops.
-        norm_bounds (Tuple[float, float]): The (t1, t2) normalization bounds.
-                                           Defaults to (0.0, 0.75) from the paper.
-        preprocess (bool): If True, applies preprocessing steps like normalization.
+        auto_brightness (bool): If True, applies auto brightness after auto contrast.
 
     Returns:
         List[List[np.ndarray]]: List of videos (list of frames). Each frame is a
@@ -197,21 +211,32 @@ def process_tiff_video(
                     main_chan = cropped_channels[1]
                     red_chan = cropped_channels[0]
 
-                # Apply Fiji auto contrast
-                main_chan_norm = fiji_auto_contrast(main_chan)
-                red_chan_norm = fiji_auto_contrast(red_chan)
+                # Apply Fiji auto contrast (+ optional auto brightness)
+                if auto_brightness:
+                    main_chan_norm = fiji_auto_contrast_brightness(main_chan)
+                    red_chan_norm = fiji_auto_contrast_brightness(red_chan)
+                else:
+                    main_chan_norm = fiji_auto_contrast(main_chan)
+                    red_chan_norm = fiji_auto_contrast(red_chan)
 
                 # Use OpenCV to convert grayscale to RGB
                 main_chan_rgb = cv2.cvtColor(main_chan_norm, cv2.COLOR_GRAY2RGB)
                 # Add red channel to R
                 main_chan_rgb[..., 0] = np.clip(np.maximum(main_chan_rgb[..., 0], red_chan_norm), 0, 1)
+                # main_chan_rgb[..., 0] = np.clip(np.add(main_chan_rgb[..., 0], red_chan_norm), 0, 1)
                 rgb_frame = main_chan_rgb
             elif len(cropped_channels) == 1:
-                gray_chan = fiji_auto_contrast(cropped_channels[0])
+                if auto_brightness:
+                    gray_chan = fiji_auto_contrast_brightness(cropped_channels[0])
+                else:
+                    gray_chan = fiji_auto_contrast(cropped_channels[0])
                 rgb_frame = np.stack([gray_chan, gray_chan, gray_chan], axis=-1)
             else:
-                # Fallback for >2 channels: use first three, Fiji auto contrast
-                norm_chans = [fiji_auto_contrast(chan) for chan in cropped_channels[:3]]
+                # Fallback for >2 channels: use first three, Fiji auto contrast (+ optional brightness)
+                if auto_brightness:
+                    norm_chans = [fiji_auto_contrast_brightness(chan) for chan in cropped_channels[:3]]
+                else:
+                    norm_chans = [fiji_auto_contrast(chan) for chan in cropped_channels[:3]]
                 while len(norm_chans) < 3:
                     norm_chans.append(np.zeros_like(norm_chans[0]))
                 rgb_frame = np.stack(norm_chans, axis=-1)
