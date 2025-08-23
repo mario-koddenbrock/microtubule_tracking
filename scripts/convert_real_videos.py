@@ -53,12 +53,10 @@ def process_all(data_path, output_path, num_crops=3, num_frames=10):
 
 
 def main():
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    # Define paths relative to the script location
 
     folder_names = [
-        '250523 Exemplary IRM Images',
-        # '250801 Additional Images from Dominik',
+        #  '250523 Exemplary IRM Images',
+        '250801 Additional Images from Dominik',
         # 'Simone'
     ]
 
