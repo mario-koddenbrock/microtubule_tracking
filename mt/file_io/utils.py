@@ -103,12 +103,21 @@ def normalize_contrast_stretch(
 
     return img_rescale
 
+def fiji_auto_contrast(img, low_percentile=0.4, high_percentile=99.6):
+    """
+    Apply Fiji-style auto contrast: stretch histogram so that low/high percentiles map to 0/1.
+    """
+    p_low, p_high = np.percentile(img, [low_percentile, high_percentile])
+    if p_high == p_low:
+        return np.zeros_like(img, dtype=np.float32)
+    img_stretched = np.clip(img, p_low, p_high)
+    img_stretched = (img_stretched - p_low) / (p_high - p_low)
+    return img_stretched.astype(np.float32)
+
 def process_tiff_video(
         video_path: str,
         num_crops: int = 3,
         crop_size: Tuple[int, int] = (512, 512),
-        norm_bounds: List[Tuple[float, float]] = [(0.0, 0.75), (0.0, 0.75)],
-        preprocess:bool = True,
 ) -> List[List[np.ndarray]]:
     """
     Reads a TIFF video, performs repeated random cropping, applies contrast-stretching
@@ -170,77 +179,48 @@ def process_tiff_video(
         current_cropped_frames = []
         for t in range(num_frames):
             if data.ndim == 4:
-                channels_to_process = [data[t, c, :, :] for c in range(min(3, data.shape[1]))]
+                channels_to_process = [data[t, c, :, :] for c in range(min(2, data.shape[1]))]
             else:
                 channels_to_process = [data[t, :, :]]
-
-            import matplotlib.pyplot as plt
-            test_image = channels_to_process[0]  # Assuming the first channel is the main one
-
-            #plt.imshow(test_image)
-            #plt.axis('off')
-            #plt.show()
 
             # Crop each channel
             cropped_channels = [chan[top:top + crop_h, left:left + crop_w] for chan in channels_to_process]
 
-            if preprocess:
-                # --- Step 4: Normalization ---
-                # Apply the paper's contrast stretching method to each channel
-                normalized_channels = [
-                    normalize_contrast_stretch(chan, min_vals[c_idx], max_vals[c_idx], norm_bounds[c_idx])
-                    for c_idx, chan in enumerate(cropped_channels)
-                ]
-            else:
-                # If preprocess is False, just convert to float32 without normalization
-                normalized_channels = [chan.astype(np.float32) for chan in cropped_channels]
-
-            # --- Step 5: Combine to RGB ---
-            num_chans = len(normalized_channels)
-
-            if num_chans >= 3:
-                # Standard case: We have R, G, and B. Take the first three.
-                rgb_frame = np.stack(normalized_channels[:3], axis=-1)
-
-            elif num_chans == 2:
-
-                # Case 1: At least 2 channels (assume R and G are the first two)
-                # This handles 2-channel, 3-channel (RGB), 4-channel, etc.
-
-                max_0 = np.max(normalized_channels[0])
-                max_1 = np.max(normalized_channels[1])
-                if max_0 > max_1:
-                    r_chan_in = normalized_channels[0]
-                    g_chan_in = normalized_channels[1]
+            if len(cropped_channels) == 2:
+                # Identify main and red channel by intensity
+                mean0 = np.mean(cropped_channels[0])
+                mean1 = np.mean(cropped_channels[1])
+                if mean0 > mean1:
+                    main_chan = cropped_channels[0]
+                    red_chan = cropped_channels[1]
                 else:
-                    r_chan_in = normalized_channels[1]
-                    g_chan_in = normalized_channels[0]
+                    main_chan = cropped_channels[1]
+                    red_chan = cropped_channels[0]
 
-                # The Green channel is the base intensity
-                final_g = g_chan_in
+                # Apply Fiji auto contrast
+                main_chan_norm = fiji_auto_contrast(main_chan)
+                red_chan_norm = fiji_auto_contrast(red_chan)
 
-                # The Red channel is an overlay. Use np.maximum to merge without clipping.
-                # A pixel is red if it was bright in *either* the original red or green.
-                final_r = np.maximum(r_chan_in, g_chan_in)
-
-                # The Blue channel is black.
-                final_b = final_g
-
-                rgb_frame = np.stack([final_r, final_g, final_b], axis=-1)
-                plt.imshow(rgb_frame, cmap='viridis', vmin=0, vmax=1)
-                plt.axis('off')
-                plt.title(f"Crop #{i + 1} Frame {t + 1} (R+G Overlay)")
-                plt.show()
-
-
-            elif num_chans == 1:
-                # Grayscale case: Duplicate the single channel into R, G, and B.
-                gray_chan = normalized_channels[0]
+                # Use OpenCV to convert grayscale to RGB
+                main_chan_rgb = cv2.cvtColor(main_chan_norm, cv2.COLOR_GRAY2RGB)
+                # Add red channel to R
+                main_chan_rgb[..., 0] = np.clip(np.maximum(main_chan_rgb[..., 0], red_chan_norm), 0, 1)
+                rgb_frame = main_chan_rgb
+            elif len(cropped_channels) == 1:
+                gray_chan = fiji_auto_contrast(cropped_channels[0])
                 rgb_frame = np.stack([gray_chan, gray_chan, gray_chan], axis=-1)
+            else:
+                # Fallback for >2 channels: use first three, Fiji auto contrast
+                norm_chans = [fiji_auto_contrast(chan) for chan in cropped_channels[:3]]
+                while len(norm_chans) < 3:
+                    norm_chans.append(np.zeros_like(norm_chans[0]))
+                rgb_frame = np.stack(norm_chans, axis=-1)
 
-            else:  # num_chans == 0 (empty)
-                # This is an edge case, create an empty black frame.
-                rgb_frame = np.zeros((crop_h, crop_w, 3), dtype=np.float32)
+
+            #plt.imshow(rgb_frame)
+            #plt.axis('off')
+            #plt.title(f"Crop {i+1}, Frame {t+1}")
+            #plt.show()
 
             current_cropped_frames.append(rgb_frame)
 
@@ -269,8 +249,6 @@ def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512), pre
                 video_path=video_path,
                 num_crops=num_crops,
                 crop_size=crop_size,
-                norm_bounds=[(0.1, 100), (0.1, 95)],
-                preprocess=preprocess,
             )
 
             plt.imshow(frames[0][0])
@@ -314,5 +292,3 @@ def process_avi_video(fps, video_path):
     cap.release()
     logger.debug(f"Successfully extracted {frame_count} frames from OpenCV video file.")
     return frames, fps
-
-

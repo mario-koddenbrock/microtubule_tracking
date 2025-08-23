@@ -1,78 +1,55 @@
 import logging
+import os
+from random import shuffle
 from typing import Generator, Tuple
 
 import cv2
 import numpy as np
 
-
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-def write_video(frames: Generator[np.ndarray, None, None], output_path: str, fps: int, img_size: Tuple[int, int]):
-    """
-    Writes a sequence of frames from a generator to a video file.
+def convert_frame_to_uint8_bgr(frame):
+    """Convert a frame to uint8 and BGR format for OpenCV."""
+    # If float, scale to [0,255] and convert to uint8
+    if np.issubdtype(frame.dtype, np.floating):
+        frame_uint8 = np.clip(frame * 255, 0, 255).astype('uint8')
+    elif frame.dtype != 'uint8':
+        frame_uint8 = frame.astype('uint8')
+    else:
+        frame_uint8 = frame
+    if len(frame_uint8.shape) == 2:
+        frame_uint8 = cv2.cvtColor(frame_uint8, cv2.COLOR_GRAY2BGR)
+    else:
+        frame_uint8 = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)
+    return frame_uint8
 
-    Args:
-        frames (Generator[np.ndarray, None, None]): A generator yielding numpy arrays (frames).
-                                                   Assumes frames are grayscale (H, W) or RGB (H, W, 3).
-        output_path (str): The full path to the output video file (e.g., "output/video.mp4").
-        fps (int): Frames per second for the output video.
-        img_size (Tuple[int, int]): The (height, width) of the frames.
-    """
-    logger.info(f"Starting video writing to: {output_path}")
-    logger.debug(f"Video parameters: FPS={fps}, Image Size={img_size} (H, W).")
 
-    # OpenCV's VideoWriter expects (width, height)
-    video_width, video_height = img_size[1], img_size[0]
-
-    # Define the codec. 'mp4v' is a common choice for MP4.
+def write_video(frames, output_path, fps, img_size=None):
+    """Write a list of frames to an MP4 video file."""
+    if not frames:
+        return False
+    height, width = frames[0].shape[:2] if img_size is None else img_size
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    logger.debug(f"Video codec FOURCC: '{fourcc}'.")
+    writer_fps = max(1, fps)
+    writer = cv2.VideoWriter(output_path, fourcc, writer_fps, (width, height))
+    for frame in frames:
+        frame_bgr = convert_frame_to_uint8_bgr(frame)
+        # Do NOT resize frames, just check shape and raise error if mismatch
+        if frame_bgr.shape[0] != height or frame_bgr.shape[1] != width:
+            raise ValueError(f"Frame shape {frame_bgr.shape[:2]} does not match expected size {(height, width)}. Crops must be consistent.")
+        writer.write(frame_bgr)
+    writer.release()
+    return True
 
-    writer = None
-    try:
-        # Initialize VideoWriter
-        writer = cv2.VideoWriter(output_path, fourcc, fps, (video_width, video_height))
 
-        if not writer.isOpened():
-            logger.error(
-                f"Failed to open video writer for path: {output_path}. Check path, codecs, or file permissions.")
-            raise IOError(f"Could not open video writer for {output_path}")
-
-        frame_count = 0
-        for i, frame in enumerate(frames):
-            if frame.ndim == 2:  # Grayscale frame, convert to BGR for output
-                processed_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-                logger.debug(f"Frame {i}: Converted grayscale to BGR for writing.")
-            elif frame.ndim == 3 and frame.shape[2] == 3:  # Already RGB or BGR
-                # Assuming incoming frames are RGB (e.g., from generated data)
-                # OpenCV writes BGR, so convert RGB to BGR if necessary
-                processed_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                logger.debug(f"Frame {i}: Converted RGB to BGR for writing.")
-            else:
-                logger.warning(
-                    f"Frame {i}: Unexpected frame dimensions ({frame.shape}). Attempting to write as is (may fail).")
-                processed_frame = frame
-
-            if processed_frame.shape[0] != video_height or processed_frame.shape[1] != video_width:
-                logger.warning(
-                    f"Frame {i}: Dimension mismatch (expected {video_height}x{video_width}, got {processed_frame.shape[0]}x{processed_frame.shape[1]}). Resizing.")
-                processed_frame = cv2.resize(processed_frame, (video_width, video_height))
-
-            writer.write(processed_frame)
-            frame_count += 1
-            if frame_count % (fps * 10) == 0:  # Log progress every 10 seconds of video
-                logger.info(f"Wrote {frame_count} frames to {output_path}...")
-
-        logger.info(f"Finished writing {frame_count} frames to: {output_path}")
-
-    except Exception as e:
-        logger.error(f"An error occurred during video writing to {output_path}: {e}", exc_info=True)
-        raise  # Re-raise the exception to indicate failure
-
-    finally:
-        if writer:
-            writer.release()
-            logger.debug(f"VideoWriter released for {output_path}.")
-        else:
-            logger.warning(f"VideoWriter was not initialized for {output_path}, nothing to release.")
+def write_png_frames(frames, output_dir, num_frames):
+    """Shuffle and write a subset of frames as PNG images."""
+    os.makedirs(output_dir, exist_ok=True)
+    frames_shuffled = frames.copy()
+    shuffle(frames_shuffled)
+    for i, frame in enumerate(frames_shuffled[:num_frames]):
+        frame_bgr = convert_frame_to_uint8_bgr(frame)
+        frame_filename = f"{i:05d}.png"
+        frame_output_path = os.path.join(output_dir, frame_filename)
+        cv2.imwrite(frame_output_path, frame_bgr)
