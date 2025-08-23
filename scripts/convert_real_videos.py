@@ -72,7 +72,6 @@ def split_and_convert(output_path, video_path, num_crops=3, num_frames=10):
         writer.release()
         print(f"  -> MP4 video saved to: {video_output_path}")
 
-
         # shuffle the frames to create a random video
         shuffle(frames)
         random_frames = frames[:num_frames]
@@ -101,8 +100,8 @@ if __name__ == "__main__":
     # Define paths relative to the script location
 
     folder_names = [
-        # '250523 Exemplary IRM Images',
-        '250801 Additional Images from Dominik',
+        '250523 Exemplary IRM Images',
+        # '250801 Additional Images from Dominik',
         # 'Simone'
     ]
 
