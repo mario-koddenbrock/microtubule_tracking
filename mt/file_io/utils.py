@@ -175,11 +175,11 @@ def process_tiff_video(
                 channels_to_process = [data[t, :, :]]
 
             import matplotlib.pyplot as plt
-            test_image = normalized_channels[1]  # Assuming the first channel is the main one
-            image_float = test_image.astype(np.float32) / np.max(test_image)
-            plt.imshow(test_image)
-            plt.axis('off')
-            plt.show()
+            test_image = channels_to_process[0]  # Assuming the first channel is the main one
+
+            #plt.imshow(test_image)
+            #plt.axis('off')
+            #plt.show()
 
             # Crop each channel
             cropped_channels = [chan[top:top + crop_h, left:left + crop_w] for chan in channels_to_process]
@@ -206,8 +206,15 @@ def process_tiff_video(
 
                 # Case 1: At least 2 channels (assume R and G are the first two)
                 # This handles 2-channel, 3-channel (RGB), 4-channel, etc.
-                r_chan_in = normalized_channels[0]
-                g_chan_in = normalized_channels[1]
+
+                max_0 = np.max(normalized_channels[0])
+                max_1 = np.max(normalized_channels[1])
+                if max_0 > max_1:
+                    r_chan_in = normalized_channels[0]
+                    g_chan_in = normalized_channels[1]
+                else:
+                    r_chan_in = normalized_channels[1]
+                    g_chan_in = normalized_channels[0]
 
                 # The Green channel is the base intensity
                 final_g = g_chan_in
@@ -220,10 +227,10 @@ def process_tiff_video(
                 final_b = final_g
 
                 rgb_frame = np.stack([final_r, final_g, final_b], axis=-1)
-                # plt.imshow(rgb_frame, cmap='viridis', vmin=0, vmax=1)
-                # plt.axis('off')
-                # plt.title(f"Crop #{i + 1} Frame {t + 1} (R+G Overlay)")
-                # plt.show()
+                plt.imshow(rgb_frame, cmap='viridis', vmin=0, vmax=1)
+                plt.axis('off')
+                plt.title(f"Crop #{i + 1} Frame {t + 1} (R+G Overlay)")
+                plt.show()
 
 
             elif num_chans == 1:
