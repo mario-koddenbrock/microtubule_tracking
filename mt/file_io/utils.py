@@ -172,15 +172,11 @@ def process_tiff_video(
         logger.error(f"Crop size {crop_size} is larger than frame size {(orig_h, orig_w)}.")
         return []
 
-    # --- Step 2: Pre-calculate global min/max for consistent normalization ---
-    min_vals, max_vals = [], []
-    if data.ndim == 4:  # T x C x H x W
-        for c in range(data.shape[1]):
-            min_vals.append(np.min(data[:, c, :, :]))
-            max_vals.append(np.max(data[:, c, :, :]))
-    else:  # 3D data: T x H x W (Grayscale)
-        min_vals.append(np.min(data))
-        max_vals.append(np.max(data))
+    # --- Step 2: Calculate global max for normalization ---
+    global_max = np.max(data)
+    if global_max == 0:
+        logger.error("Global max is zero. Cannot normalize.")
+        return []
 
     all_cropped_videos = []
 
@@ -211,20 +207,25 @@ def process_tiff_video(
                     main_chan = cropped_channels[1]
                     red_chan = cropped_channels[0]
 
-                # Apply Fiji auto contrast (+ optional auto brightness)
-                if auto_brightness:
-                    main_chan_norm = fiji_auto_contrast_brightness(main_chan)
-                    red_chan_norm = fiji_auto_contrast_brightness(red_chan)
-                else:
-                    main_chan_norm = fiji_auto_contrast(main_chan)
-                    red_chan_norm = fiji_auto_contrast(red_chan)
+                # --- Normalize both channels by global max ---
+                main_chan = np.clip(main_chan / global_max, 0, 1)
+                red_chan = np.clip(red_chan / global_max, 0, 1)
+
+                # Apply Fiji auto contrast
+                main_chan_norm = fiji_auto_contrast(main_chan)
+                red_chan_norm = fiji_auto_contrast(red_chan)
 
                 # Use OpenCV to convert grayscale to RGB
                 main_chan_rgb = cv2.cvtColor(main_chan_norm, cv2.COLOR_GRAY2RGB)
                 # Add red channel to R
                 main_chan_rgb[..., 0] = np.clip(np.maximum(main_chan_rgb[..., 0], red_chan_norm), 0, 1)
-                # main_chan_rgb[..., 0] = np.clip(np.add(main_chan_rgb[..., 0], red_chan_norm), 0, 1)
                 rgb_frame = main_chan_rgb
+
+                # --- Apply auto brightness correction to merged RGB ---
+                if auto_brightness:
+                    mean_val = np.mean(rgb_frame)
+                    if mean_val > 0:
+                        rgb_frame = np.clip(rgb_frame / mean_val * 0.9, 0, 1)
             elif len(cropped_channels) == 1:
                 if auto_brightness:
                     gray_chan = fiji_auto_contrast_brightness(cropped_channels[0])
@@ -269,6 +270,10 @@ def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512), pre
         if video_path.lower().endswith((".avi", ".mp4", ".mov", ".mkv")):
             frames, fps = process_avi_video(fps, video_path)
 
+            # rescale frames to 512 x 512
+            frames = [cv2.resize(frame, (512, 512), interpolation=cv2.INTER_AREA) for frame in frames]
+            frames = [frames]
+
         elif video_path.lower().endswith((".tif", ".tiff")):
             frames = process_tiff_video(
                 video_path=video_path,
@@ -276,10 +281,10 @@ def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512), pre
                 crop_size=crop_size,
             )
 
-            plt.imshow(frames[0][0])
-            plt.axis('off')
-            plt.title(f"First frame from {os.path.basename(video_path)}")
-            plt.show()
+            # plt.imshow(frames[0][0])
+            # plt.axis('off')
+            # plt.title(f"First frame from {os.path.basename(video_path)}")
+            # plt.show()
 
         else:
             msg = f"Unsupported video format '{os.path.splitext(video_path)[1]}'. Only AVI, MP4, MOV, MKV and TIFF/TIF files are supported."
@@ -311,7 +316,7 @@ def process_avi_video(fps, video_path):
         if frame.dtype != 'uint8':
             frame = (255 * frame).astype('uint8')
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         frames.append(frame)
         frame_count += 1
     cap.release()
