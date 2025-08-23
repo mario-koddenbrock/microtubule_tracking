@@ -26,9 +26,7 @@ def main(data_folder: str, main_output_folder:str, expert_output_folder:str, num
     os.makedirs(main_output_folder, exist_ok=True)
 
     for video_idx, video_path in enumerate(video_files):
-        print(f"Processing: {video_path}")
-
-
+        # print(f"Processing: {video_path}")
         frames_list, fps = extract_frames(video_path, num_crops = 10, crop_size=(512, 512))
         if not frames_list:
             print(f"  -> Skipping video, no frames were extracted.")
@@ -71,8 +69,21 @@ def main(data_folder: str, main_output_folder:str, expert_output_folder:str, num
 
 if __name__ == "__main__":
 
+    folder_names = [
+        '250523 Exemplary IRM Images',
+        '250801 Additional Images from Dominik',
+        '250811 images from Gil',
+        # 'Simone'
+    ]
+
     data_path = os.path.join('data', 'mpi', 'type_B')
     main_output = os.path.join('data', 'SynMT', 'real', 'full')
     expert_output = os.path.join('data', 'SynMT', 'real', 'validation')
+    os.makedirs(main_output, exist_ok=True)
+    os.makedirs(expert_output, exist_ok=True)
 
-    main(data_path, main_output, expert_output)
+    for folder_name in folder_names:
+        data_path = os.path.join("data", "mpi", folder_name)
+
+        main(data_path, main_output, expert_output)
+
