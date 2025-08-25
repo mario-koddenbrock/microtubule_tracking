@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --gres=gpu:0
-#SBATCH --cpus-per-task=12
-#SBATCH --mem=16G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=8G
 #SBATCH --qos=high
-#SBATCH --time=3-00:00:00
+#SBATCH --time=3-12:00:00
 #SBATCH --output=%j_%x_out.log
 #SBATCH --error=%j_%x_err.log
 #SBATCH --mail-type=ALL
