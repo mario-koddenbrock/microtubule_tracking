@@ -8,6 +8,7 @@ import numpy as np
 import tifffile
 import matplotlib.pyplot as plt
 from skimage import exposure
+from tqdm import tqdm
 
 logger = logging.getLogger(f"mt.{__name__}")
 
@@ -103,7 +104,7 @@ def normalize_contrast_stretch(
 
     return img_rescale
 
-def fiji_auto_contrast(img, low_percentile=0.4, high_percentile=99.6):
+def fiji_auto_contrast(img, low_percentile=0.1, high_percentile=99.6):
     """
     Apply Fiji-style auto contrast: stretch histogram so that low/high percentiles map to 0/1.
     """
@@ -180,40 +181,39 @@ def process_tiff_video(
 
     all_cropped_videos = []
 
-    # --- Step 3: Cropping Loop (same as before) ---
-    for i in range(num_crops):
+    # --- Step 3: Cropping Loop ---
+    for i in tqdm(range(num_crops), desc="Reading TIFF", unit="crop"):
+
         top = np.random.randint(0, orig_h - crop_h + 1)
         left = np.random.randint(0, orig_w - crop_w + 1)
+
         logger.info(f"Generating crop #{i + 1}/{num_crops} at (top={top}, left={left})")
+
+        cropped_data = data[:, :, top:top + crop_h, left:left + crop_w] if data.ndim == 4 else data[:, top:top + crop_h, left:left + crop_w]
 
         current_cropped_frames = []
         for t in range(num_frames):
             if data.ndim == 4:
-                channels_to_process = [data[t, c, :, :] for c in range(min(2, data.shape[1]))]
+                channels_to_process = [cropped_data[t, c, :, :] for c in range(min(2, cropped_data.shape[1]))]
             else:
-                channels_to_process = [data[t, :, :]]
+                channels_to_process = [cropped_data[t, :, :]]
 
-            # Crop each channel
-            cropped_channels = [chan[top:top + crop_h, left:left + crop_w] for chan in channels_to_process]
-
-            if len(cropped_channels) == 2:
+            if len(channels_to_process) == 2:
                 # Identify main and red channel by intensity
-                mean0 = np.mean(cropped_channels[0])
-                mean1 = np.mean(cropped_channels[1])
-                if mean0 > mean1:
-                    main_chan = cropped_channels[0]
-                    red_chan = cropped_channels[1]
-                else:
-                    main_chan = cropped_channels[1]
-                    red_chan = cropped_channels[0]
+                mean0 = np.mean(channels_to_process[0])
+                mean1 = np.mean(channels_to_process[1])
 
-                # --- Normalize both channels by global max ---
-                main_chan = np.clip(main_chan / global_max, 0, 1)
-                red_chan = np.clip(red_chan / global_max, 0, 1)
+                if mean0 > mean1:
+                    main_chan = channels_to_process[0]
+                    red_chan = channels_to_process[1]
+                else:
+                    main_chan = channels_to_process[1]
+                    red_chan = channels_to_process[0]
 
                 # Apply Fiji auto contrast
-                main_chan_norm = fiji_auto_contrast(main_chan)
-                red_chan_norm = fiji_auto_contrast(red_chan)
+                main_chan_norm = fiji_auto_contrast(main_chan, low_percentile=0.1, high_percentile=90.6)
+                # main_chan_norm = cv2.equalizeHist((255 * main_chan).astype(np.uint8))
+                red_chan_norm = fiji_auto_contrast(red_chan, low_percentile=50, high_percentile=99.6)
 
                 # Use OpenCV to convert grayscale to RGB
                 main_chan_rgb = cv2.cvtColor(main_chan_norm, cv2.COLOR_GRAY2RGB)
@@ -225,19 +225,21 @@ def process_tiff_video(
                 if auto_brightness:
                     mean_val = np.mean(rgb_frame)
                     if mean_val > 0:
-                        rgb_frame = np.clip(rgb_frame / mean_val * 0.9, 0, 1)
-            elif len(cropped_channels) == 1:
+                        rgb_frame = np.clip(rgb_frame / mean_val * 0.8, 0, 1)
+
+            elif len(channels_to_process) == 1:
                 if auto_brightness:
-                    gray_chan = fiji_auto_contrast_brightness(cropped_channels[0])
+                    gray_chan = fiji_auto_contrast_brightness(channels_to_process[0])
                 else:
-                    gray_chan = fiji_auto_contrast(cropped_channels[0])
+                    gray_chan = fiji_auto_contrast(channels_to_process[0])
                 rgb_frame = np.stack([gray_chan, gray_chan, gray_chan], axis=-1)
+
             else:
                 # Fallback for >2 channels: use first three, Fiji auto contrast (+ optional brightness)
                 if auto_brightness:
-                    norm_chans = [fiji_auto_contrast_brightness(chan) for chan in cropped_channels[:3]]
+                    norm_chans = [fiji_auto_contrast_brightness(chan) for chan in channels_to_process[:3]]
                 else:
-                    norm_chans = [fiji_auto_contrast(chan) for chan in cropped_channels[:3]]
+                    norm_chans = [fiji_auto_contrast(chan) for chan in channels_to_process[:3]]
                 while len(norm_chans) < 3:
                     norm_chans.append(np.zeros_like(norm_chans[0]))
                 rgb_frame = np.stack(norm_chans, axis=-1)
@@ -281,10 +283,10 @@ def extract_frames(video_path: str, num_crops:int = 1, crop_size=(512, 512), pre
                 crop_size=crop_size,
             )
 
-            # plt.imshow(frames[0][0])
-            # plt.axis('off')
+            #plt.imshow(frames[0][0])
+            #plt.axis('off')
             # plt.title(f"First frame from {os.path.basename(video_path)}")
-            # plt.show()
+            #plt.show()
 
         else:
             msg = f"Unsupported video format '{os.path.splitext(video_path)[1]}'. Only AVI, MP4, MOV, MKV and TIFF/TIF files are supported."
