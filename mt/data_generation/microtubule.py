@@ -44,9 +44,8 @@ class Microtubule:
         self.wagons: List[Wagon] = [Wagon(length=base_length, is_seed=True)]
 
         # Bending state must be initialized before adding the tail
-        self.is_bent = np.random.rand() < cfg.bending_prob
-        self.bend_angle_sign_changes_left = cfg.max_angle_sign_changes if self.is_bent else 0
-        self.current_bend_sign = np.random.choice([-1, 1]) if self.is_bent else 0
+        self.bend_angle_sign_changes_left = cfg.max_angle_sign_changes
+        self.current_bend_sign = np.random.choice([-1, 1])
 
         # Initialize the dynamic tail length
         initial_tail_length = np.random.uniform(
@@ -65,7 +64,7 @@ class Microtubule:
         logger.debug(
             f"MT {self.instance_id} created. Base len: {base_length:.2f}, "
             f"Initial tail: {initial_tail_length:.2f}, Total: {self.total_length:.2f}, "
-            f"Bent: {self.is_bent}, Minus-end target: {self.minus_end_target_length:.2f}"
+            f"Minus-end target: {self.minus_end_target_length:.2f}"
         )
 
     @property
@@ -150,8 +149,9 @@ class Microtubule:
         return len(self.wagons) == 1
 
     def _get_next_bend_angle(self, cfg: SyntheticDataConfig) -> float:
-        """Determines the bend angle for a new wagon based on bending probability."""
-        if not self.is_bent:
+        """Determines the bend angle for a new wagon based on a gamma distribution."""
+        # If scale is zero, no bending will occur.
+        if cfg.bending_angle_gamma_scale == 0:
             return 0.0
 
         # Flip sign probabilistically if allowed
@@ -159,7 +159,8 @@ class Microtubule:
             self.current_bend_sign *= -1
             self.bend_angle_sign_changes_left -= 1
 
-        return self.current_bend_sign * np.random.uniform(0, cfg.max_angle)
+        angle = np.random.gamma(cfg.bending_angle_gamma_shape, cfg.bending_angle_gamma_scale)
+        return self.current_bend_sign * angle
 
     def draw(
             self,
@@ -235,4 +236,3 @@ class Microtubule:
                 "length": w.length,
             })
         return gt_info
-

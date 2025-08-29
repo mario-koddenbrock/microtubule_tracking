@@ -41,8 +41,8 @@ class SyntheticDataConfig(BaseConfig):
 
     # Bending is applied to the dynamic "tail" part of the microtubule.
     tail_wagon_length: float = 10.0  # Visual segments for drawing the tail. Does not affect growth speed.
-    max_angle: float = 0.1  # Max angle in radians between tail wagons
-    bending_prob: float = 0.1  # Probability of the tail being bent at all
+    bending_angle_gamma_shape: float = 1.0  # Shape parameter (k) for the gamma distribution of bend angles.
+    bending_angle_gamma_scale: float = 0.02  # Scale parameter (theta) for the gamma distribution.
     max_angle_sign_changes: int = 1  # 0 for C-shape, 1 for S-shape, etc.
     prob_to_flip_bend: float = 0.1  # Probability to use an available sign change when adding new visual wagons
 
