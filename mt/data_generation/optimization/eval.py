@@ -44,7 +44,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     sorted_trials = sorted(trials, key=lambda t: t.value, reverse=True)
 
     # Choose top-N
-    top_n = 10
+    top_n = tuning_cfg.output_config_num_best
     top_trials = sorted_trials[:top_n]
 
     for i, trial in enumerate(top_trials):
