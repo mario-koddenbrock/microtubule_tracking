@@ -52,8 +52,8 @@ class TuningConfig(BaseConfig):
     microtubule_length_min_range: Tuple[int, int] = (50, 150)
     microtubule_length_max_range: Tuple[int, int] = (100, 250)
     tail_wagon_length_range: Tuple[float, float] = (5.0, 20.0)
-    max_angle_range: Tuple[float, float] = (0.05, 0.4)
-    bending_prob_range: Tuple[float, float] = (0.0, 1.0)
+    bending_angle_gamma_shape_range: Tuple[float, float] = (0.5, 2.0)
+    bending_angle_gamma_scale_range: Tuple[float, float] = (0.01, 0.05)
     max_angle_sign_changes_range: Tuple[int, int] = (0, 3)
     minus_end_target_length_std_range: Tuple[float, float] = (1.0, 8.0) # Tunable std dev
 
@@ -169,8 +169,8 @@ class TuningConfig(BaseConfig):
 
         # --- Bending & Minus-End ---
         suggested_params["tail_wagon_length"] = trial.suggest_float("tail_wagon_length", *self.tail_wagon_length_range)
-        suggested_params["max_angle"] = trial.suggest_float("max_angle", *self.max_angle_range)
-        suggested_params["bending_prob"] = trial.suggest_float("bending_prob", *self.bending_prob_range)
+        suggested_params["bending_angle_gamma_shape"] = trial.suggest_float("bending_angle_gamma_shape", *self.bending_angle_gamma_shape_range)
+        suggested_params["bending_angle_gamma_scale"] = trial.suggest_float("bending_angle_gamma_scale", *self.bending_angle_gamma_scale_range)
         suggested_params["max_angle_sign_changes"] = trial.suggest_int("max_angle_sign_changes",
                                                                        *self.max_angle_sign_changes_range)
         suggested_params["minus_end_target_length_std"] = trial.suggest_float("minus_end_target_length_std",
