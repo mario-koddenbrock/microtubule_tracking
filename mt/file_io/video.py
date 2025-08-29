@@ -1,7 +1,6 @@
 import logging
 import os
 from random import shuffle
-from typing import Generator, Tuple
 
 import cv2
 import numpy as np
