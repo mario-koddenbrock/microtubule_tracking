@@ -3,7 +3,7 @@
   "embedding_layer": 5,
   "hf_cache_dir": null,
   "reference_video_path": "",
-  "reference_images_dir": "data/SynMT/real/full/250123_GLO19_R02_6um HEK PHK10_DMSO _002_cropped_flatfield_registered_BGsubt_crop_0",
+  "reference_images_dir": "data/SynMT/real/full/all_frames/1_8pt5uMporcTub001_crop_4",
   "num_compare_frames": 10,
   "temp_dir": ".temp",
   "output_config_folder": "config/optimal_configs",
@@ -40,13 +40,13 @@
     5.0,
     15.0
   ],
-  "max_angle_range": [
-    0.05,
-    0.2
+  "bending_angle_gamma_shape_range": [
+    0.5,
+    2.0
   ],
-  "bending_prob_range": [
-    0.05,
-    0.5
+  "bending_angle_gamma_scale_range": [
+    0.01,
+    0.05
   ],
   "max_angle_sign_changes_range": [
     0,
