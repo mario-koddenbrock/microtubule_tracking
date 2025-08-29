@@ -69,12 +69,34 @@ class ImageEmbeddingExtractor:
         logger.debug("ImageEmbeddingExtractor initialized successfully.")
 
     def hf_login(self):
-        logger.info(f"Logging into Hugging Face Hub")
-        load_dotenv()  # Load variables from .env file
-        HF_TOKEN = os.getenv('HUGGING_FACE_HUB_TOKEN')
-        if not HF_TOKEN:
-            raise ValueError("HUGGING_FACE_HUB_TOKEN not found in .env file or environment.")
-        login(HF_TOKEN)
+        """
+        Attempts to log into the Hugging Face Hub using a token.
+
+        This is a non-blocking login attempt. If a token is found, it will try
+        to log in. If login fails or no token is found, it will log a warning
+        and continue execution, assuming the model might be public.
+        """
+        logger.info("Attempting to log into Hugging Face Hub...")
+        token = os.getenv('HUGGING_FACE_HUB_TOKEN')
+
+        # Check if the token from env is valid, otherwise try to load from .env
+        if not token or not token.startswith("hf_"):
+            if token:
+                logger.warning(
+                    f"Environment variable HUGGING_FACE_HUB_TOKEN has a value that does not look like a token. "
+                    f"Will attempt to load from .env file."
+                )
+            load_dotenv()
+            token = os.getenv('HUGGING_FACE_HUB_TOKEN')
+
+        if token and token.startswith("hf_"):
+            try:
+                login(token)
+                logger.info("Successfully logged into Hugging Face Hub.")
+            except Exception as e:
+                logger.warning(f"Hugging Face login failed: {e}. Continuing without authentication.")
+        else:
+            logger.warning("No valid Hugging Face token found. Continuing without authentication.")
 
     def _get_best_device(self) -> torch.device:
         """Selects the best available device (CUDA, MPS, or CPU)."""
@@ -370,3 +392,4 @@ class ImageEmbeddingExtractor:
             return embeddings.reshape(N, H * W)
         logger.debug(f"Embeddings are already 2D ({embeddings.shape}). No flattening needed.")
         return embeddings
+
