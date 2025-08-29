@@ -1,9 +1,7 @@
-import logging
 import os
 
-from config.synthetic_data import SyntheticDataConfig
-from data_generation.video import generate_video
-from utils.logger import setup_logging
+from mt.config.synthetic_data import SyntheticDataConfig
+from mt.data_generation.video import generate_video
 
 
 def main(folder_path: str):
@@ -11,7 +9,7 @@ def main(folder_path: str):
     Args:
         folder_path (str): Path to the folder containing the synthetic data configurations.
     """
-    num_examples_per_config = 10
+    num_examples_per_config = 3
     cfg_paths = [
         os.path.join(folder_path, f) for f in os.listdir(folder_path)
         if f.endswith(".json")
@@ -28,7 +26,8 @@ def main(folder_path: str):
 
             # Load the configuration from the JSON file
             cfg = SyntheticDataConfig.from_json(cfg_path)
-            cfg.num_frames = 1
+            cfg.num_frames = 10
+            cfg.fps = 5
             cfg.to_json(cfg_path)
             old_id = cfg.id
             for i in range(num_examples_per_config):
@@ -45,6 +44,6 @@ def main(folder_path: str):
 if __name__ == "__main__":
 
     folder_path = "data/synthetic_manual"
-
+    os.makedirs(folder_path, exist_ok=True)
     main(folder_path)
 
