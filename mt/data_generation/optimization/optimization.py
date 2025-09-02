@@ -3,6 +3,7 @@ import os
 from functools import partial
 
 import optuna
+from optuna.trial import TrialState
 
 
 from .embeddings import ImageEmbeddingExtractor
@@ -79,20 +80,27 @@ def run_optimization(tuning_config_path: str):
         f"Direction: '{tuning_cfg.direction}', "
         f"Load if exists: {tuning_cfg.load_if_exists}."
     )
-    logger.info(f"Starting optimization for {tuning_cfg.num_trials} trials.")
 
+    n_existing_trials = len(study.get_trials(states=[TrialState.COMPLETE]))
+    n_trials_to_run = tuning_cfg.num_trials - n_existing_trials
 
-    # Use partial to pass the pre-computed objects to the objective function
-    objective_fcn = partial(
-        objective,
-        tuning_cfg=tuning_cfg,
-        ref_embeddings=ref_embeddings,
-        embedding_extractor=embedding_extractor,
-        **precomputed_kwargs,
-    )
+    if n_trials_to_run > 0:
+        logger.info(f"Starting optimization for {n_trials_to_run} trials.")
+        # Use partial to pass the pre-computed objects to the objective function
+        objective_fcn = partial(
+            objective,
+            tuning_cfg=tuning_cfg,
+            ref_embeddings=ref_embeddings,
+            embedding_extractor=embedding_extractor,
+            **precomputed_kwargs,
+        )
 
-    study.optimize(objective_fcn, n_trials=tuning_cfg.num_trials)
-    logger.info(f"Optimization finished after {tuning_cfg.num_trials} trials.")
+        study.optimize(objective_fcn, n_trials=n_trials_to_run)
+        logger.info(f"Optimization finished after {n_trials_to_run} new trials.")
+    else:
+        logger.info(
+            f"Study already has {n_existing_trials} trials, which meets or exceeds the target of {tuning_cfg.num_trials}. No new trials will be run."
+        )
 
     if study.best_trial:
         logger.info(f"Best trial found (Trial {study.best_trial.number}): Value = {study.best_trial.value:.6f}")
