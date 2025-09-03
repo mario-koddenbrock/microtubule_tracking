@@ -1,5 +1,5 @@
 {
-  "model_name": "facebook/dinov2-small",
+  "model_name": "facebook/dinov2-large",
   "embedding_layer": 5,
   "hf_cache_dir": null,
   "reference_video_path": "",
@@ -14,7 +14,7 @@
   "similarity_metric": "cosine",
   "num_trials": 15,
   "pca_components": 0,
-  "load_if_exists": true,
+  "load_if_exists": false,
   "img_size": [
     512,
     512
