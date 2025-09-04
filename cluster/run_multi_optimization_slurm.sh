@@ -10,8 +10,8 @@ CONFIG_DIR="config"
 SBATCH_SCRIPT="cluster/multi_optimization.sbatch"
 REFERENCE_DIR="/scratch/koddenbrock/mt/SynMT/real/small/all_frames"
 CONFIG_TEMPLATE="config/tuning_config_cluster.json"
-FOLDER_START_INDEX=45  # Start index (optional)
-FOLDER_END_INDEX=55  # End index (large number for all folders)
+FOLDER_START_INDEX=56  # Start index (optional)
+FOLDER_END_INDEX=66  # End index (large number for all folders)
 
 # --- Main Logic ---
 echo "Starting Slurm job submission process for multiple optimizations..."
