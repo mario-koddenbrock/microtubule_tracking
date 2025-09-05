@@ -138,8 +138,6 @@ if __name__ == "__main__":
     RESULTS_DIR = "results"
 
     # Define which models to run here.
-    # Each entry is a dictionary with "name" and optional "params".
-    # The "model_name" in params is used for logging and output files.
     MODELS_TO_RUN = [
         {"name": "AnyStar"},
         {
@@ -155,13 +153,13 @@ if __name__ == "__main__":
             "params": {"pretrained": "2D_paper_dsb2018", "model_name": "StarDist_dsb2018"},
         },
         {"name": "SAM"},
-        # {"name": "CellSAM"},
         {"name": "Cellpose-SAM"},
-        # {"name": "DRIFT"},
-        # {"name": "FIESTA"},
-        # {"name": "MicroSAM"},
-        # {"name": "SIFINE"},
-        # {"name": "SOAX"},
+        {"name": "MicroSAM"},
+        # {"name": "CellSAM"}, # Needs token from deepcell - did not get it until now
+        # {"name": "DRIFT"}, # No pretrained model available
+        # {"name": "FIESTA"}, # Only MATLAB version available: https://github.com/fiesta-tud/FIESTA/wiki
+        # {"name": "SIFINE"}, # Only MATLAB version available
+        # {"name": "SOAX"}, # Only C++ and no pretrained model available
     ]
 
     run_benchmark(dataset_path=DATASET_PATH, results_dir=RESULTS_DIR, models_to_run=MODELS_TO_RUN)
