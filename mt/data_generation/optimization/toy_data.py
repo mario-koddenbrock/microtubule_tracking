@@ -1,6 +1,7 @@
 import io
 import logging
 from typing import Dict, Optional, Any
+from functools import lru_cache
 
 import cv2
 import numpy as np
@@ -11,9 +12,11 @@ from PIL import Image
 logger = logging.getLogger(f"mt.{__name__}")
 
 
+@lru_cache(maxsize=None)
 def get_toy_data() -> Dict[str, Optional[Any]]:
     """
     Downloads toy images, standardizes them to a 512x512 square, and returns them.
+    Caches the result in memory to avoid repeated downloads.
 
     Args:
         embedding_extractor (ImageEmbeddingExtractor, optional): Not used in this version
@@ -23,7 +26,7 @@ def get_toy_data() -> Dict[str, Optional[Any]]:
         Dict[str, Optional[Any]]: A dictionary containing the list of processed toy images
                                   and their corresponding labels.
     """
-    logger.debug("\n--- Loading and processing toy images for comparison ---")
+    logger.debug("\n--- Loading and processing toy images for comparison (no cache) ---")
     toy_image_urls = [
         "https://upload.wikimedia.org/wikipedia/commons/1/18/Dog_Breeds.jpg",
         "https://upload.wikimedia.org/wikipedia/en/2/2e/Donald_Duck_-_temper.png",
