@@ -5,12 +5,12 @@ from mt.benchmark.models.base import BaseModel
 from .sam import SAM
 
 from .anystar import AnyStar
-# from .cellsam import CellSAM
+from .cellsam import CellSAM
 from .cellpose_sam import CellposeSAM
 from .drift import DRIFT
 from .fiesta import FIESTA
 
-# from .micro_sam import MicroSAM
+from .micro_sam import MicroSAM
 from .sifine import SIFINE
 from .soax import SOAX
 
@@ -65,9 +65,9 @@ def setup_model_factory() -> ModelFactory:
         SIFINE,
         DRIFT,
         SAM,
-        # CellSAM,
+        CellSAM,
         AnyStar,
-        # MicroSAM,
+        MicroSAM,
         CellposeSAM,
         StarDist,
     ]
