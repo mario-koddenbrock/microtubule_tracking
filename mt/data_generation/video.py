@@ -236,10 +236,6 @@ def generate_frames(
     try:
         if cfg.albumentations:
             aug_pipeline = utils.build_albumentations_pipeline(cfg.albumentations)
-            # if aug_pipeline:
-            #     logger.debug(f"Albumentations pipeline built successfully (master prob: {cfg.albumentations.p:.2f}).")
-            # else:
-            #     logger.debug("Albumentations config provided but pipeline is None (e.g., p=0 or no transforms).")
         else:
             logger.debug("Albumentations configuration is None. No augmentation pipeline will be built.")
     except Exception as e:
