@@ -32,6 +32,7 @@ class TuningConfig(BaseConfig):
     output_config_num_best: int = 5  # Number of best configs to save
     output_config_id: int | str = "best_synthetic_config"
     output_config_num_frames: int = 50
+    output_config_num_png: int = 10  # Number of sample PNG frames to save
     direction: str = "maximize"
     similarity_metric: str = "fid"
     num_trials: int = 100
