@@ -107,6 +107,11 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
                 "Length KS": avg_downstream_metrics.get("Length_KS", np.nan),
                 "Length KL": avg_downstream_metrics.get("Length_KL", np.nan),
                 "Length EMD": avg_downstream_metrics.get("Length_EMD", np.nan),
+                "Curvature KS": avg_downstream_metrics.get("Curvature_KS", np.nan),
+                "Curvature KL": avg_downstream_metrics.get("Curvature_KL", np.nan),
+                "Curvature EMD": avg_downstream_metrics.get("Curvature_EMD", np.nan),
+                "Count pred": avg_downstream_metrics.get("Count_pred", np.nan),
+                "Count gt": avg_downstream_metrics.get("Count_gt", np.nan),
             }
             results.append(model_results)
         else:

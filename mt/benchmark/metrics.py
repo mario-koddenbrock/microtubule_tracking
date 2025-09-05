@@ -166,6 +166,57 @@ def _get_length_distribution(masks: np.ndarray) -> np.ndarray:
     return np.array([np.sum(skeletonize(m)) for m in masks], dtype=float)
 
 
+def _get_curvature_distribution(masks: np.ndarray) -> np.ndarray:
+    """
+    Computes the mean curvature for the skeleton of each mask.
+    Returns an array of mean curvatures, one for each mask.
+    """
+    if masks.size == 0:
+        return np.array([])
+
+    curvatures = []
+    for mask in masks:
+        skeleton = skeletonize(mask)
+        coords = np.argwhere(skeleton)
+        if len(coords) < 5:  # Need enough points to calculate curvature
+            curvatures.append(np.nan)
+            continue
+
+        # Simple ordering of points for non-branching skeletons
+        # This is a simplification and may not work for complex skeletons
+        from scipy.spatial.distance import cdist
+
+        ordered_coords = [coords[0]]
+        remaining_coords = list(coords[1:])
+
+        current_coord = coords[0]
+        while remaining_coords:
+            distances = cdist([current_coord], remaining_coords)
+            nearest_idx = np.argmin(distances)
+            current_coord = remaining_coords.pop(nearest_idx)
+            ordered_coords.append(current_coord)
+
+        ordered_coords = np.array(ordered_coords)
+
+        # Using np.gradient to estimate derivatives
+        dx = np.gradient(ordered_coords[:, 1].astype(float))
+        dy = np.gradient(ordered_coords[:, 0].astype(float))
+        d2x = np.gradient(dx)
+        d2y = np.gradient(dy)
+
+        # Curvature formula: k = |x'y'' - y'x''| / (x'^2 + y'^2)^(3/2)
+        numerator = np.abs(dx * d2y - dy * d2x)
+        denominator = (dx**2 + dy**2)**1.5
+
+        # Avoid division by zero for straight segments
+        instance_curvatures = np.divide(numerator, denominator, where=denominator!=0)
+
+        mean_curvature = np.nanmean(instance_curvatures)
+        curvatures.append(mean_curvature)
+
+    return np.array(curvatures, dtype=float)
+
+
 # -------------------------
 # Public metrics
 # -------------------------
@@ -250,27 +301,30 @@ def calculate_segmentation_metrics(
 
 def calculate_downstream_metrics(pred_masks: np.ndarray, gt_masks: np.ndarray) -> Dict[str, float]:
     """
-    Compare simple downstream distributions (here: skeleton lengths).
+    Compare simple downstream distributions (length, curvature) and counts.
     Returns:
         {
-          'Length_KS': Kolmogorov-Smirnov statistic,
-          'Length_KL': KL(pred || gt) on histogrammed lengths (NaN if degenerate),
-          'Length_EMD': 1D Earth Mover's Distance (Wasserstein)
+          'Length_KS', 'Length_KL', 'Length_EMD',
+          'Curvature_KS', 'Curvature_KL', 'Curvature_EMD',
+          'Count_pred', 'Count_gt'
         }
     """
     pred_masks = _as_instance_stack(pred_masks)
     gt_masks = _as_instance_stack(gt_masks)
 
+    out: Dict[str, float] = {
+        "Length_KS": np.nan, "Length_KL": np.nan, "Length_EMD": np.nan,
+        "Curvature_KS": np.nan, "Curvature_KL": np.nan, "Curvature_EMD": np.nan,
+    }
+
+    # Length distribution
     pred_lengths = _get_length_distribution(pred_masks)
     gt_lengths = _get_length_distribution(gt_masks)
-
-    out: Dict[str, float] = {"Length_KS": np.nan, "Length_KL": np.nan, "Length_EMD": np.nan}
 
     if pred_lengths.size > 0 and gt_lengths.size > 0:
         ks_stat, _ = ks_2samp(pred_lengths, gt_lengths)
         out["Length_KS"] = float(ks_stat)
 
-        # KL on histograms (avoid zero bins)
         min_len = float(min(pred_lengths.min(), gt_lengths.min()))
         max_len = float(max(pred_lengths.max(), gt_lengths.max()))
         if max_len > min_len:
@@ -286,5 +340,36 @@ def calculate_downstream_metrics(pred_masks: np.ndarray, gt_masks: np.ndarray) -
             out["Length_KL"] = float(entropy(pk=pred_dist, qk=gt_dist))
 
         out["Length_EMD"] = float(wasserstein_distance(pred_lengths, gt_lengths))
+
+    # Curvature distribution
+    pred_curvatures = _get_curvature_distribution(pred_masks)
+    gt_curvatures = _get_curvature_distribution(gt_masks)
+
+    pred_curvatures = pred_curvatures[~np.isnan(pred_curvatures)]
+    gt_curvatures = gt_curvatures[~np.isnan(gt_curvatures)]
+
+    if pred_curvatures.size > 0 and gt_curvatures.size > 0:
+        ks_stat, _ = ks_2samp(pred_curvatures, gt_curvatures)
+        out["Curvature_KS"] = float(ks_stat)
+
+        min_curv = float(min(pred_curvatures.min(), gt_curvatures.min()))
+        max_curv = float(max(pred_curvatures.max(), gt_curvatures.max()))
+        if max_curv > min_curv:
+            num_bins = max(10, int(np.sqrt(len(gt_curvatures))))
+            bins = np.linspace(min_curv, max_curv, num_bins)
+            pred_hist, _ = np.histogram(pred_curvatures, bins=bins, density=True)
+            gt_hist, _ = np.histogram(gt_curvatures, bins=bins, density=True)
+            eps = 1e-10
+            pred_dist = pred_hist + eps
+            gt_dist = gt_hist + eps
+            pred_dist /= pred_dist.sum()
+            gt_dist /= gt_dist.sum()
+            out["Curvature_KL"] = float(entropy(pk=pred_dist, qk=gt_dist))
+
+        out["Curvature_EMD"] = float(wasserstein_distance(pred_curvatures, gt_curvatures))
+
+    # Simple counts
+    out["Count_pred"] = float(pred_masks.shape[0])
+    out["Count_gt"] = float(gt_masks.shape[0])
 
     return out
