@@ -18,9 +18,16 @@ class BenchmarkDataset:
             raise IndexError("Index out of bounds for dataset.")
         return self.image_files[idx]
 
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, num_samples: int = -1):
+        """
+        Args:
+            data_path: Path to the dataset directory.
+            num_samples: Number of samples to load. Default is -1 (load all).
+        """
         self.data_path = data_path
         self.image_files = sorted(glob(os.path.join(self.data_path, "images", "*.png")))
+        if num_samples > 0:
+            self.image_files = self.image_files[:num_samples]
 
         if not self.image_files:
             raise FileNotFoundError(f"Dataset not found or incomplete in {data_path}")
