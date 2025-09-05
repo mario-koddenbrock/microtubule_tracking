@@ -28,7 +28,7 @@ class ModelFactory:
         Registers a model class with the factory.
         The model name is retrieved from the class's `get_model_name` method.
         """
-        name = model_class.get_model_name()
+        name = model_class.__name__
         if name in self._models:
             raise ValueError(f"Model '{name}' is already registered.")
         self._models[name] = model_class

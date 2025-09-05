@@ -1,19 +1,13 @@
-# src/benchmark/models/base.py
 from abc import ABC, abstractmethod
-from typing import List
+
 import numpy as np
+
 
 class BaseModel(ABC):
     """Abstract base class for a segmentation model."""
 
     def __init__(self, model_name: str):
         self.model_name = model_name
-
-    @classmethod
-    @abstractmethod
-    def get_model_name(cls) -> str:
-        """Return the unique name of the model."""
-        raise NotImplementedError
 
     @abstractmethod
     def predict(self, image: np.ndarray) -> np.ndarray:

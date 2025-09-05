@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
+import cv2
 import numpy as np
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D, StarDist3D
@@ -44,9 +45,6 @@ class StarDist(BaseModel):
     n_tiles : Optional[Union[int, Tuple[int, ...]]]
         Tiling for large images.
     """
-    @classmethod
-    def get_model_name(cls) -> str:
-        return "StarDist"
 
     def __init__(
         self,
@@ -159,23 +157,35 @@ class StarDist(BaseModel):
         if img.dtype.kind in "ui":
             img = img.astype(np.float32, copy=False)
 
-        # (H,W,C) -> select single channel
-        if img.ndim == 3 and img.shape[-1] > 1:  # Assuming last dim is channel
-            ch = 0 if self.channel is None else int(self.channel)
-            if not (0 <= ch < img.shape[2]):
-                raise ValueError(f"Requested channel {ch} outside image channels [0..{img.shape[2] - 1}]")
-            img = img[..., ch]
+        # --- Input image handling ---
+        axes = None
+        if not self._is_3d:
+            # Handle different pretrained 2D models
+            if self.pretrained == "2D_versatile_he":
+                # This model expects a color image (Y,X,C).
+                if img.ndim == 2:
+                    # If grayscale, convert to RGB for this model.
+                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+                axes = "YXC"
+            else:
+                # Other 2D models expect grayscale (Y,X).
+                if img.ndim == 3:
+                    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+                axes = "YX"
+        else:  # 3D model
+            if img.ndim == 3 and img.shape[-1] > 1:
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-        is_2d_input = img.ndim == 2
-        # Ensure 3D for the 3D model, adding a z-axis if it's a 2D image
-        if self._is_3d and is_2d_input:
-            img = img[np.newaxis, ...,]  # (H, W) -> (1, H, W)
+        is_2d_input_for_3d_model = self._is_3d and img.ndim == 2
+        if is_2d_input_for_3d_model:
+            img = img[np.newaxis, ..., ]  # (H, W) -> (1, H, W)
 
         # Normalize if requested
         img_in = normalize(img, *self.norm_percentiles, axis=tuple(range(img.ndim))) if self.normalize else img
 
         labels, _details = self._model.predict_instances(
             img_in,
+            axes=axes,
             prob_thresh=self.prob_thresh,
             nms_thresh=self.nms_thresh,
             n_tiles=self.n_tiles,
@@ -186,7 +196,7 @@ class StarDist(BaseModel):
             return np.empty((0, h, w), dtype=np.uint16)
 
         # Squeeze out the z-axis if it was added for a 3D model on a 2D input
-        if self._is_3d and is_2d_input:
+        if is_2d_input_for_3d_model:
             labels = labels.squeeze(axis=0)
 
         return labels

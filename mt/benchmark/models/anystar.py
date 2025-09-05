@@ -24,10 +24,6 @@ class AnyStar(StarDist):
     # Google Drive folder for AnyStar release (provided earlier)
     _ANYSTAR_DRIVE_ID = "1yiY_vBR2GQW9zJzgUPRWeIecN4ZnCi3c"
 
-    @classmethod
-    def get_model_name(cls) -> str:
-        return "AnyStar"
-
     def __init__(
         self,
         *,
