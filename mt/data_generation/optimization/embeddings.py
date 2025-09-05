@@ -51,7 +51,7 @@ class ImageEmbeddingExtractor:
         logger.debug("Initializing ImageEmbeddingExtractor...")
         self.config = tuning_cfg
 
-        self.hf_login()
+        # self.hf_login()
 
         self.device = self._get_best_device()
         logger.debug(f"Using device: {self.device}")
