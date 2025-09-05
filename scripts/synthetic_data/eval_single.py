@@ -2,7 +2,7 @@ import os
 
 from mt.config.synthetic_data import SyntheticDataConfig
 from mt.config.tuning import TuningConfig
-from mt.data_generation.optimization.eval import eval_config
+from mt.data_generation.optimization.eval import evaluate_synthetic_data_cfg
 
 
 def main(cfg_path: str, tuning_config_path: str, output_dir: str):
@@ -14,7 +14,7 @@ def main(cfg_path: str, tuning_config_path: str, output_dir: str):
     best_cfg = SyntheticDataConfig.load(cfg_path)
     print(f"Loaded configuration from: {cfg_path}")
 
-    eval_config(best_cfg, tuning_cfg, output_dir)
+    evaluate_synthetic_data_cfg(best_cfg, tuning_cfg, output_dir)
 
 
 

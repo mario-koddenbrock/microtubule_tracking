@@ -6,7 +6,7 @@ import sys
 import pandas as pd
 
 from mt.config.tuning import TuningConfig
-from mt.data_generation.optimization.eval import evaluate_results
+from mt.data_generation.optimization.eval import evaluate_tuning_cfg
 from mt.utils.logger import setup_logging
 
 setup_logging(log_level_console=logging.INFO)
@@ -52,7 +52,7 @@ def evaluate_all_configs():
             cfg.output_config_num_png = 10
             cfg.to_json(config_path)
 
-            study_name, n_trials, best_score = evaluate_results(config_path, output_dir)
+            study_name, n_trials, best_score = evaluate_tuning_cfg(config_path, output_dir)
             all_results.append(
                 {"study": study_name, "n_trials": n_trials, "best_score": best_score}
             )

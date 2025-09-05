@@ -15,7 +15,7 @@ from ...plotting.plotting import visualize_embeddings
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-def evaluate_results(tuning_config_path: str, output_dir: str, visualize:bool=False):
+def evaluate_tuning_cfg(tuning_config_path: str, output_dir: str, visualize:bool=False):
     logger.debug(f"{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
 
     logger.debug("--- Loading configurations and study results ---")
@@ -66,7 +66,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str, visualize:bool=Fa
         current_cfg.generate_mt_mask = True
         current_cfg.generate_seed_mask = False
 
-        eval_config(
+        evaluate_synthetic_data_cfg(
             cfg=current_cfg,
             tuning_cfg=tuning_cfg,
             output_dir=output_dir,
@@ -91,7 +91,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str, visualize:bool=Fa
     return study.study_name, len(study.trials), study.best_value
 
 
-def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str, plot_output_dir: str,
+def evaluate_synthetic_data_cfg(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str, plot_output_dir: str,
                 embedding_extractor: ImageEmbeddingExtractor, reference_vecs: np.ndarray,
                 toy_data: Dict[str, Any], is_for_expert_validation:bool = True,
                 visualize: bool = False,
