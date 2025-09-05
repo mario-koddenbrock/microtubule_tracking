@@ -52,6 +52,6 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), lo
         logger.addHandler(file_handler)
 
     # 6. Log the successful configuration
-    logger.info("Logging has been configured successfully. Console level: %s", log_level_console)
+    logger.debug("Logging has been configured successfully. Console level: %s", log_level_console)
 
     return logger

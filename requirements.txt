@@ -1,6 +1,6 @@
 pyyaml~=6.0.2
 optuna~=4.4.0
-opencv-python~=4.9
+opencv-python~=4.9.0
 tifffile~=2025.6.11
 matplotlib~=3.10.5
 scikit-image~=0.25.2
@@ -27,3 +27,4 @@ ultralytics~=8.3.159
 numpy<2.0,>=1.26
 huggingface_hub~=0.34.4
 # tensorflow # for stardist
+

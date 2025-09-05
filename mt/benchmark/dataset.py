@@ -58,7 +58,9 @@ class BenchmarkDataset:
         if os.path.isfile(gt_path):
             with open(gt_path, "r") as f:
                 gt_data = json.load(f)
+                frame_gt = gt_data[frame_idx]
         else:
-            gt_data = {}
+            frame_gt = {}
 
-        return image, mask, gt_data[frame_idx]
+
+        return image, mask, frame_gt

@@ -1,4 +1,4 @@
-from mt.data_generation.optimization.eval import evaluate_results
+from mt.data_generation.optimization.eval import evaluate_tuning_cfg
 from mt.data_generation.optimization.optimization import run_optimization
 from mt.utils.logger import setup_logging
 from scripts.utils.cli import parse_optimization_args
@@ -15,7 +15,7 @@ def main():
         run_optimization(config_path)
 
     if run_evaluation_flag:
-        evaluate_results(config_path, output_dir)
+        evaluate_tuning_cfg(config_path, output_dir)
 
 
 
