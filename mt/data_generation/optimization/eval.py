@@ -25,10 +25,10 @@ def evaluate_tuning_cfg(tuning_config_path: str, output_dir: str, visualize:bool
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(tuning_cfg.temp_dir, exist_ok=True)
     plot_output_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plot_output_dir, exist_ok=True)
 
     # Initialize the ImageEmbeddingExtractor to extract embeddings from images
     if visualize:
+        os.makedirs(plot_output_dir, exist_ok=True)
         embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
         reference_vecs = embedding_extractor.extract_from_references()
         toy_data: Dict[str, Any] = get_toy_data()
@@ -50,12 +50,21 @@ def evaluate_tuning_cfg(tuning_config_path: str, output_dir: str, visualize:bool
     study = optuna.load_study(study_name=tuning_cfg.output_config_id, storage=full_study_db_uri)
     logger.debug(f"Loaded Optuna study '{tuning_cfg.output_config_id}' from: {full_study_db_uri}")
 
-    trials = [t for t in study.get_trials(deepcopy=False) if t.state == optuna.trial.TrialState.COMPLETE]
-    sorted_trials = sorted(trials, key=lambda t: t.value, reverse=True)
 
     # Choose top-N
     top_n = tuning_cfg.output_config_num_best
-    top_trials = sorted_trials[:top_n]
+    top_trials = []
+
+    if top_n > 1:
+        # trials = [t for t in study.get_trials(deepcopy=False) if t.state == optuna.trial.TrialState.COMPLETE]
+        trials = study.trials
+        sorted_trials = sorted([t for t in trials if t.value is not None], key=lambda t: t.value, reverse=True)
+        number_of_trials = len(sorted_trials)
+        if number_of_trials > top_n:
+            top_trials = sorted_trials[:top_n]
+    else:
+        top_trials = [study.best_trial]
+        number_of_trials = 1 # TODO: Calculate actual number of trials
 
     for i, trial in enumerate(top_trials):
         logger.info(f"Trial {i + 1}: Value = {trial.value:.4f}, Params = {trial.params}")
@@ -77,18 +86,18 @@ def evaluate_tuning_cfg(tuning_config_path: str, output_dir: str, visualize:bool
             is_for_expert_validation=(i == 0),  # Only the first trial is for expert validation
         )
 
-    try:
-        # Optimization history plot
-        # plot_optimization_history(study).write_html(os.path.join(plot_output_dir, f"optimization_history_{study.study_name}.html"))
-        # plot_param_importances(study).write_html(os.path.join(plot_output_dir, f"param_importances_{study.study_name}.html"))
-        # plot_slice(study).write_html(os.path.join(plot_output_dir, f"slice_plot_{study.study_name}.html"))
-        logging.debug("Analysis plots saved successfully.")
-
-    except Exception as e:
-        logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
+    # try:
+    #     # Optimization history plot
+    #     plot_optimization_history(study).write_html(os.path.join(plot_output_dir, f"optimization_history_{study.study_name}.html"))
+    #     plot_param_importances(study).write_html(os.path.join(plot_output_dir, f"param_importances_{study.study_name}.html"))
+    #     plot_slice(study).write_html(os.path.join(plot_output_dir, f"slice_plot_{study.study_name}.html"))
+    #     logging.debug("Analysis plots saved successfully.")
+    #
+    # except Exception as e:
+    #     logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
 
     logger.debug("Evaluation complete.")
-    return study.study_name, len(study.trials), study.best_value
+    return study.study_name, number_of_trials, study.best_value
 
 
 def evaluate_synthetic_data_cfg(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str, plot_output_dir: str,
