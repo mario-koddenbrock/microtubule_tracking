@@ -20,7 +20,7 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
     os.makedirs(results_dir, exist_ok=True)
 
     logger.info(f"Loading dataset from: {dataset_path}")
-    dataset = BenchmarkDataset(dataset_path)
+    dataset = BenchmarkDataset(dataset_path, num_samples=5)
 
     factory = setup_model_factory()
     available_models = factory.get_available_models()
@@ -154,9 +154,9 @@ if __name__ == "__main__":
             "name": "StarDist",
             "params": {"pretrained": "2D_paper_dsb2018", "model_name": "StarDist_dsb2018"},
         },
-        # {"name": "SAM"},
+        {"name": "SAM"},
         # {"name": "CellSAM"},
-        # {"name": "Cellpose-SAM"},
+        {"name": "Cellpose-SAM"},
         # {"name": "DRIFT"},
         # {"name": "FIESTA"},
         # {"name": "MicroSAM"},
