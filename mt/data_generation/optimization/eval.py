@@ -6,8 +6,8 @@ import numpy as np
 import optuna
 
 from .embeddings import ImageEmbeddingExtractor
-from ..video import generate_video, generate_frames
 from .toy_data import get_toy_data
+from ..video import generate_video, generate_frames
 from ...config.synthetic_data import SyntheticDataConfig
 from ...config.tuning import TuningConfig
 from ...plotting.plotting import visualize_embeddings
@@ -15,7 +15,7 @@ from ...plotting.plotting import visualize_embeddings
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-def evaluate_results(tuning_config_path: str, output_dir: str):
+def evaluate_results(tuning_config_path: str, output_dir: str, visualize:bool=False):
     logger.debug(f"{'=' * 80}\nStarting EVALUATION for: {tuning_config_path}\n{'=' * 80}")
 
     logger.debug("--- Loading configurations and study results ---")
@@ -28,12 +28,22 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
     os.makedirs(plot_output_dir, exist_ok=True)
 
     # Initialize the ImageEmbeddingExtractor to extract embeddings from images
-    embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
-    reference_vecs = embedding_extractor.extract_from_references()
-    toy_data: Dict[str, Any] = get_toy_data()
+    if visualize:
+        embedding_extractor = ImageEmbeddingExtractor(tuning_cfg)
+        reference_vecs = embedding_extractor.extract_from_references()
+        toy_data: Dict[str, Any] = get_toy_data()
+    else:
+        embedding_extractor = None
+        reference_vecs = None
+        toy_data = {}
 
     # Load the completed Optuna study from its database file
     study_db_path = os.path.join(tuning_cfg.temp_dir, f'{tuning_cfg.output_config_id}.db')
+
+    if not os.path.exists(study_db_path):
+        logger.info(f"Study database file not found: {study_db_path}")
+        return tuning_cfg.output_config_id, 0, 0.0
+
     full_study_db_uri = f"sqlite:///{study_db_path}"
     logger.debug(f"Attempting to load Optuna study from: {full_study_db_uri}")
 
@@ -51,8 +61,7 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
         logger.info(f"Trial {i + 1}: Value = {trial.value:.4f}, Params = {trial.params}")
 
         current_cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
-        # current_cfg.num_frames = tuning_cfg.output_config_num_frames
-        current_cfg.num_frames = 50 # TODO
+        current_cfg.num_frames = tuning_cfg.output_config_num_frames
         current_cfg.id = f"{tuning_cfg.output_config_id}_rank_{i + 1}"
         current_cfg.generate_mt_mask = True
         current_cfg.generate_seed_mask = False
@@ -68,22 +77,25 @@ def evaluate_results(tuning_config_path: str, output_dir: str):
             is_for_expert_validation=(i == 0),  # Only the first trial is for expert validation
         )
 
-    # try:
-    #     # Optimization history plot
-    #     vis.plot_optimization_history(study).write_html(os.path.join(plot_output_dir, "optimization_history.html"))
-    #     vis.plot_param_importances(study).write_html(os.path.join(plot_output_dir, "param_importances.html"))
-    #     vis.plot_slice(study).write_html(os.path.join(plot_output_dir, "slice_plot.html"))
-    #     logging.debug("Analysis plots saved successfully.")
-    #
-    # except Exception as e:
-    #     logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
+    try:
+        # Optimization history plot
+        # plot_optimization_history(study).write_html(os.path.join(plot_output_dir, f"optimization_history_{study.study_name}.html"))
+        # plot_param_importances(study).write_html(os.path.join(plot_output_dir, f"param_importances_{study.study_name}.html"))
+        # plot_slice(study).write_html(os.path.join(plot_output_dir, f"slice_plot_{study.study_name}.html"))
+        logging.debug("Analysis plots saved successfully.")
+
+    except Exception as e:
+        logger.error(f"Failed to generate analysis plots: {e}", exc_info=True)
 
     logger.debug("Evaluation complete.")
+    return study.study_name, len(study.trials), study.best_value
 
 
 def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: str, plot_output_dir: str,
                 embedding_extractor: ImageEmbeddingExtractor, reference_vecs: np.ndarray,
-                toy_data: Dict[str, Any], is_for_expert_validation:bool = True) -> None:
+                toy_data: Dict[str, Any], is_for_expert_validation:bool = True,
+                visualize: bool = False,
+                ) -> None:
     """
     Evaluates a specific SyntheticDataConfig against reference data.
     """
@@ -97,18 +109,21 @@ def eval_config(cfg: SyntheticDataConfig, tuning_cfg: TuningConfig, output_dir: 
         for frame, *_ in frame_generator:
             frames.append(frame)
     else:
-        frames = generate_video(cfg, output_dir, num_png_frames=10, is_for_expert_validation=is_for_expert_validation)
+        frames = generate_video(cfg, output_dir,
+                                num_png_frames=tuning_cfg.output_config_num_png,
+                                is_for_expert_validation=is_for_expert_validation,
+                                )
 
-    synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 
-    logger.debug("\n--- Creating visualizations ---")
+    if visualize:
+        synthetic_vecs = embedding_extractor.extract_from_frames(frames, tuning_cfg.num_compare_frames)
 
-    visualize_embeddings(
-        cfg=cfg,
-        tuning_cfg=tuning_cfg,
-        ref_embeddings=reference_vecs,
-        synthetic_embeddings=synthetic_vecs,
-        toy_data=toy_data,
-        output_dir=plot_output_dir,
-    )
-    logger.debug(f"Embedding plot saved in {plot_output_dir}")
+        visualize_embeddings(
+            cfg=cfg,
+            tuning_cfg=tuning_cfg,
+            ref_embeddings=reference_vecs,
+            synthetic_embeddings=synthetic_vecs,
+            toy_data=toy_data,
+            output_dir=plot_output_dir,
+        )
+        logger.debug(f"Embedding plot saved in {plot_output_dir}")
