@@ -84,7 +84,7 @@
   ],
   "seed_red_channel_boost_range": [
     0.2,
-    0.3
+    0.5
   ],
   "tip_brightness_factor_range": [
     1.0,
