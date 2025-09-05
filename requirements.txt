@@ -24,6 +24,7 @@ pytest~=8.3.5
 pandas~=2.2.3
 seaborn~=0.13.2
 ultralytics~=8.3.159
-numpy<2
+numpy<2.0,>=1.26
 huggingface_hub~=0.34.4
-tensorflow
+# tensorflow # for stardist
+

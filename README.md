@@ -6,6 +6,7 @@ This document describes the usage of the `scripts/generate_synthetic_data.py` sc
 - [Microtubule Tracking: Synthetic Data Generation](#microtubule-tracking-synthetic-data-generation)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
+    - [Install micro\_sam (required for some features)](#install-micro_sam-required-for-some-features)
   - [Usage](#usage)
     - [Command-Line Arguments](#command-line-arguments)
     - [Examples](#examples)
@@ -30,6 +31,9 @@ source venv/bin/activate
 
 # Install package
 pip install -e .
+
+# Install other dependencies
+pip install -r requirements.txt
 ```
 
 ### Install micro_sam (required for some features)
@@ -90,20 +94,20 @@ python scripts/generate_synthetic_data.py \
 
 The synthetic video generation is controlled by a single JSON configuration file. The parameters are grouped by their effect on the final video, allowing for fine-grained control over the simulation.
 
-| Effect / Feature            | Description                                                                                                                              | Relevant Parameters                                                                                                                      |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **Core Video Properties**   | Basic settings for the output video dimensions, frame rate, and duration.                                                                | `id`, `img_size`, `fps`, `num_frames`, `color_mode`                                                                                      |
+| Effect / Feature            | Description                                                                                                                              | Relevant Parameters                                                                                                                              |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Core Video Properties**   | Basic settings for the output video dimensions, frame rate, and duration.                                                                | `id`, `img_size`, `fps`, `num_frames`, `color_mode`                                                                                              |
 | **Microtubule Dynamics**    | Controls the stochastic growth and shrinkage behavior, mimicking dynamic instability. Sets the overall length constraints and pauses.    | `growth_speed`, `shrink_speed`, `catastrophe_prob`, `rescue_prob`, `min_length_min/max`, `microtubule_length_min/max`, `pause_on_min/max_length` |
-| **Filament Structure**      | Defines the semi-flexible "train of wagons" model, controlling segment length and the potential for bending at junctions.                | `max_num_wagons`, `min/base_wagon_length_max`, `min/max_wagon_length_*`, `max_angle`, `max_angle_change_prob`                            |
-| **Population & Seeding**    | Determines the number and initial placement of microtubules in the frame.                                                                | `num_microtubule`, `microtubule_min_dist`, `margin`                                                                                                |
-| **Fluorescence & Staining** | Sets the colors and brightness of different microtubule parts, simulating fluorescent labels and tip-tracking proteins (+TIPs).          | `tubulus_contrast`, `seed_color_rgb`, `tubulus_color_rgb`, `tip_brightness_factor`                                                       |
+| **Filament Structure**      | Defines the semi-flexible "train of wagons" model, controlling segment length and the potential for bending at junctions.                | `max_num_wagons`, `min/base_wagon_length_max`, `min/max_wagon_length_*`, `max_angle`, `max_angle_change_prob`                                    |
+| **Population & Seeding**    | Determines the number and initial placement of microtubules in the frame.                                                                | `num_microtubule`, `microtubule_min_dist`, `margin`                                                                                              |
+| **Fluorescence & Staining** | Sets the colors and brightness of different microtubule parts, simulating fluorescent labels and tip-tracking proteins (+TIPs).          | `tubulus_contrast`, `seed_color_rgb`, `tubulus_color_rgb`, `tip_brightness_factor`                                                               |
 | **Microscope Optics & PSF** | Simulates the Point Spread Function (PSF) and global blur, defining how sharp or blurry the microtubules appear.                         | `psf_sigma_h`, `psf_sigma_v`, `width_var_std`, `global_blur_sigma`                                                                               |
-| **Camera & Illumination**   | Models the camera's background signal level, contrast mode, and common optical artifacts like uneven illumination (vignetting).          | `background_level`, `vignetting_strength`, `invert_contrast`                                                                             |
-| **Camera Noise Model**      | Applies a realistic mixed noise model, combining signal-dependent photon shot noise (Poisson) and constant camera read noise (Gaussian). | `quantum_efficiency`, `gaussian_noise`                                                                                                   |
-| **Other Realism Effects**   | Adds other common experimental artifacts like photobleaching (signal fading over time) and sample drift/jitter.                          | `bleach_tau`, `jitter_px`                                                                                                                |
-| **Background Particles**    | Adds various types of spots to simulate cellular debris or other fluorescent particles. Each is an object with its own sub-parameters.   | `fixed_spots`, `moving_spots`, `random_spots`                                                                                            |
-| **Frame Annotations**       | Overlays a timestamp and scale bar on the final video for easier analysis and presentation.                                              | `show_time`, `show_scale`, `um_per_pixel`, `scale_bar_um`                                                                                |
-| **Output Settings**         | Controls whether to generate a pixel-perfect instance segmentation mask alongside the video, which is vital for training ML models.      | `generate_microtubule_mask`, `generate_seed_mask`                                                                                             |
+| **Camera & Illumination**   | Models the camera's background signal level, contrast mode, and common optical artifacts like uneven illumination (vignetting).          | `background_level`, `vignetting_strength`, `invert_contrast`                                                                                     |
+| **Camera Noise Model**      | Applies a realistic mixed noise model, combining signal-dependent photon shot noise (Poisson) and constant camera read noise (Gaussian). | `quantum_efficiency`, `gaussian_noise`                                                                                                           |
+| **Other Realism Effects**   | Adds other common experimental artifacts like photobleaching (signal fading over time) and sample drift/jitter.                          | `bleach_tau`, `jitter_px`                                                                                                                        |
+| **Background Particles**    | Adds various types of spots to simulate cellular debris or other fluorescent particles. Each is an object with its own sub-parameters.   | `fixed_spots`, `moving_spots`, `random_spots`                                                                                                    |
+| **Frame Annotations**       | Overlays a timestamp and scale bar on the final video for easier analysis and presentation.                                              | `show_time`, `show_scale`, `um_per_pixel`, `scale_bar_um`                                                                                        |
+| **Output Settings**         | Controls whether to generate a pixel-perfect instance segmentation mask alongside the video, which is vital for training ML models.      | `generate_microtubule_mask`, `generate_seed_mask`                                                                                                |
 
 ## Contributing
 
