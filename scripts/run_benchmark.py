@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str]):
+def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
     """
     Runs the full benchmark on all models and saves the results.
     """
@@ -26,14 +26,24 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
     available_models = factory.get_available_models()
     logger.info(f"Available models: {available_models}")
 
-    # Filter models to run based on user input and availability
-    models_to_run_filtered = [m for m in models_to_run if m in available_models]
-    if not models_to_run_filtered:
-        logger.error("None of the specified models are available. Exiting.")
+    # Create model instances from the configuration
+    models = []
+    for model_config in models_to_run:
+        name = model_config["name"]
+        params = model_config.get("params", {})
+        if name in available_models:
+            try:
+                models.append(factory.create_model(name, **params))
+            except Exception as e:
+                logger.error(f"Failed to create model '{name}' with params {params}: {e}")
+        else:
+            logger.warning(f"Model '{name}' is not available. Skipping.")
+
+    if not models:
+        logger.error("No models to run. Exiting.")
         return
 
-    logger.info(f"Models to run: {models_to_run_filtered}")
-    models = [factory.create_model(name) for name in models_to_run_filtered]
+    logger.info(f"Models to run: {[m.model_name for m in models]}")
 
     results = []
 
@@ -87,21 +97,14 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
                 "IoU_median": avg_seg_metrics.get("IoU_median", 0),
                 "AP50-95": avg_seg_metrics.get("AP50-95", 0),
                 "AP@.50": avg_seg_metrics.get("AP@0.50", 0),
-                "AP@.75": avg_seg_metrics.get("AP@0.75", 0),
-                "AP@.90": avg_seg_metrics.get("AP@0.90", 0),
                 "F1@.50": avg_seg_metrics.get("F1@0.50", 0),
-                "F1@.75": avg_seg_metrics.get("F1@0.75", 0),
                 "Dice@.50": avg_seg_metrics.get("Dice@0.50", 0),
-                "Dice@.75": avg_seg_metrics.get("Dice@0.75", 0),
                 "BF1@.50": avg_seg_metrics.get("BF1@0.50", 0),
-                "BF1@.75": avg_seg_metrics.get("BF1@0.75", 0),
                 "PQ@.50": avg_seg_metrics.get("PQ@0.50", 0),
                 "SQ@.50": avg_seg_metrics.get("SQ@0.50", 0),
                 "DQ@.50": avg_seg_metrics.get("DQ@0.50", 0),
                 "Hausdorff@.50": avg_seg_metrics.get("Hausdorff@0.50", np.nan),
-                "Hausdorff@.75": avg_seg_metrics.get("Hausdorff@0.75", np.nan),
                 "ASSD@.50": avg_seg_metrics.get("ASSD@0.50", np.nan),
-                "ASSD@.75": avg_seg_metrics.get("ASSD@0.75", np.nan),
                 "Count AbsErr": avg_seg_metrics.get("CountAbsErr", np.nan),
                 "Count RelErr": avg_seg_metrics.get("CountRelErr", np.nan),
                 "Length KS": avg_downstream_metrics.get("Length_KS", np.nan),
@@ -134,18 +137,31 @@ if __name__ == "__main__":
     DATASET_PATH = "data/SynMT/synthetic/full"
     RESULTS_DIR = "results"
 
-    # Define which models to run here
+    # Define which models to run here.
+    # Each entry is a dictionary with "name" and optional "params".
+    # The "model_name" in params is used for logging and output files.
     MODELS_TO_RUN = [
-        "SAM",
-        # "AnyStar",
-        # "CellSAM",
-        "Cellpose-SAM",
-        # "DRIFT",
-        # "FIESTA",
-        # "MicroSAM",
-        # "SIFINE",
-        # "SOAX",
-        # "StarDist",
+        {"name": "AnyStar"},
+        {
+            "name": "StarDist",
+            "params": {"pretrained": "2D_versatile_fluo", "model_name": "StarDist_2D_fluo"},
+        },
+        {
+            "name": "StarDist",
+            "params": {"pretrained": "2D_versatile_he", "model_name": "StarDist_2D_he"},
+        },
+        {
+            "name": "StarDist",
+            "params": {"pretrained": "2D_paper_dsb2018", "model_name": "StarDist_dsb2018"},
+        },
+        # {"name": "SAM"},
+        # {"name": "CellSAM"},
+        # {"name": "Cellpose-SAM"},
+        # {"name": "DRIFT"},
+        # {"name": "FIESTA"},
+        # {"name": "MicroSAM"},
+        # {"name": "SIFINE"},
+        # {"name": "SOAX"},
     ]
 
     run_benchmark(dataset_path=DATASET_PATH, results_dir=RESULTS_DIR, models_to_run=MODELS_TO_RUN)

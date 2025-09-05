@@ -9,6 +9,12 @@ class BaseModel(ABC):
     def __init__(self, model_name: str):
         self.model_name = model_name
 
+    @classmethod
+    @abstractmethod
+    def get_model_name(cls) -> str:
+        """Return the unique name of the model."""
+        raise NotImplementedError
+
     @abstractmethod
     def predict(self, image: np.ndarray) -> np.ndarray:
         """

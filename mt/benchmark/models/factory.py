@@ -4,7 +4,7 @@ from mt.benchmark.models.base import BaseModel
 
 from .sam import SAM
 
-# from .anystar import AnyStar
+from .anystar import AnyStar
 # from .cellsam import CellSAM
 from .cellpose_sam import CellposeSAM
 from .drift import DRIFT
@@ -14,7 +14,7 @@ from .fiesta import FIESTA
 from .sifine import SIFINE
 from .soax import SOAX
 
-# from .stardist import StarDist
+from .stardist import StarDist
 
 
 class ModelFactory:
@@ -26,20 +26,20 @@ class ModelFactory:
     def register_model(self, model_class: Type[BaseModel]):
         """
         Registers a model class with the factory.
-        The model name is retrieved from the class's `model_name` property.
+        The model name is retrieved from the class's `get_model_name` method.
         """
-        model_instance = model_class()
-        name = model_instance.model_name
+        name = model_class.get_model_name()
         if name in self._models:
             raise ValueError(f"Model '{name}' is already registered.")
         self._models[name] = model_class
 
-    def create_model(self, name: str) -> BaseModel:
+    def create_model(self, name: str, **kwargs) -> BaseModel:
         """
         Creates an instance of a registered model by its name.
 
         Args:
             name: The name of the model to create.
+            **kwargs: Additional keyword arguments to pass to the model's constructor.
 
         Returns:
             An instance of the specified model.
@@ -49,7 +49,7 @@ class ModelFactory:
             raise ValueError(
                 f"Model '{name}' not registered. Available models: {self.get_available_models()}"
             )
-        return model_class()
+        return model_class(**kwargs)
 
     def get_available_models(self) -> List[str]:
         """Returns a list of all registered model names."""
@@ -66,10 +66,10 @@ def setup_model_factory() -> ModelFactory:
         DRIFT,
         SAM,
         # CellSAM,
-        # AnyStar,
+        AnyStar,
         # MicroSAM,
         CellposeSAM,
-        # StarDist,
+        StarDist,
     ]
     for model_class in model_classes:
         factory.register_model(model_class)
