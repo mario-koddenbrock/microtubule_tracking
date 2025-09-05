@@ -2,14 +2,18 @@ from typing import Type, Dict, List
 
 from mt.benchmark.models.base import BaseModel
 
+from .sam import SAM
+
 # from .anystar import AnyStar
-from .cellsam import CellSAM
+# from .cellsam import CellSAM
 from .cellpose_sam import CellposeSAM
 from .drift import DRIFT
 from .fiesta import FIESTA
+
 # from .micro_sam import MicroSAM
 from .sifine import SIFINE
 from .soax import SOAX
+
 # from .stardist import StarDist
 
 
@@ -42,7 +46,9 @@ class ModelFactory:
         """
         model_class = self._models.get(name)
         if not model_class:
-            raise ValueError(f"Model '{name}' not registered. Available models: {self.get_available_models()}")
+            raise ValueError(
+                f"Model '{name}' not registered. Available models: {self.get_available_models()}"
+            )
         return model_class()
 
     def get_available_models(self) -> List[str]:
@@ -58,7 +64,8 @@ def setup_model_factory() -> ModelFactory:
         SOAX,
         SIFINE,
         DRIFT,
-        CellSAM,
+        SAM,
+        # CellSAM,
         # AnyStar,
         # MicroSAM,
         CellposeSAM,

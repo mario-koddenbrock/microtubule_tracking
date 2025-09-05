@@ -30,7 +30,9 @@ class CellposeSAM(BaseModel):
         if self._model is not None:
             return
 
-        self._model = models.CellposeModel(gpu=self.use_gpu, pretrained_model="cpsam", use_bfloat16=False)
+        self._model = models.CellposeModel(
+            gpu=self.use_gpu, pretrained_model="cpsam", use_bfloat16=False
+        )
 
     def predict(self, image: np.ndarray) -> np.ndarray:
         """

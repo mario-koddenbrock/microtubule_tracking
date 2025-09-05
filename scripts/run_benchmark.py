@@ -42,7 +42,9 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
         all_seg_metrics = []
         all_downstream_metrics = []
 
-        for idx, (image, gt_mask, _) in enumerate(tqdm(dataset, desc=f"Evaluating {model.model_name}")):
+        for idx, (image, gt_mask, _) in enumerate(
+            tqdm(dataset, desc=f"Evaluating {model.model_name}")
+        ):
             pred_mask = model.predict(image)
             # pred_mask = gt_mask # For sanity check
 
@@ -61,10 +63,19 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
             image_name = os.path.basename(dataset.get_image_path(idx))
             save_path = os.path.join(save_to_path, f"{image_name}_overlay.png")
             # Extract mean IoU and F1@0.5 for overlay
-            iou = seg_metrics.get('IoU_mean', None)
-            f1 = seg_metrics.get('F1@0.50', None)
-            plot_gt_pred_overlays(image, gt_mask, pred_mask, boundary=True, thickness=2, alpha=0.6, save_path=save_path, iou=iou, f1=f1)
-
+            iou = seg_metrics.get("IoU_mean", None)
+            f1 = seg_metrics.get("F1@0.50", None)
+            plot_gt_pred_overlays(
+                image,
+                gt_mask,
+                pred_mask,
+                boundary=True,
+                thickness=2,
+                alpha=0.6,
+                save_path=save_path,
+                iou=iou,
+                f1=f1,
+            )
 
         if all_seg_metrics:
             avg_seg_metrics = pd.DataFrame(all_seg_metrics).mean().to_dict()
@@ -72,39 +83,41 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list[str])
 
             model_results = {
                 "Model": model.model_name,
-                "IoU_mean": avg_seg_metrics.get('IoU_mean', 0),
-                "IoU_median": avg_seg_metrics.get('IoU_median', 0),
-                "AP50-95": avg_seg_metrics.get('AP50-95', 0),
-                "AP@.50": avg_seg_metrics.get('AP@0.50', 0),
-                "AP@.75": avg_seg_metrics.get('AP@0.75', 0),
-                "AP@.90": avg_seg_metrics.get('AP@0.90', 0),
-                "F1@.50": avg_seg_metrics.get('F1@0.50', 0),
-                "F1@.75": avg_seg_metrics.get('F1@0.75', 0),
-                "Dice@.50": avg_seg_metrics.get('Dice@0.50', 0),
-                "Dice@.75": avg_seg_metrics.get('Dice@0.75', 0),
-                "BF1@.50": avg_seg_metrics.get('BF1@0.50', 0),
-                "BF1@.75": avg_seg_metrics.get('BF1@0.75', 0),
-                "PQ@.50": avg_seg_metrics.get('PQ@0.50', 0),
-                "SQ@.50": avg_seg_metrics.get('SQ@0.50', 0),
-                "DQ@.50": avg_seg_metrics.get('DQ@0.50', 0),
-                "Hausdorff@.50": avg_seg_metrics.get('Hausdorff@0.50', np.nan),
-                "Hausdorff@.75": avg_seg_metrics.get('Hausdorff@0.75', np.nan),
-                "ASSD@.50": avg_seg_metrics.get('ASSD@0.50', np.nan),
-                "ASSD@.75": avg_seg_metrics.get('ASSD@0.75', np.nan),
-                "Count AbsErr": avg_seg_metrics.get('CountAbsErr', np.nan),
-                "Count RelErr": avg_seg_metrics.get('CountRelErr', np.nan),
-                "Length KS": avg_downstream_metrics.get('Length_KS', np.nan),
-                "Length KL": avg_downstream_metrics.get('Length_KL', np.nan),
-                "Length EMD": avg_downstream_metrics.get('Length_EMD', np.nan),
+                "IoU_mean": avg_seg_metrics.get("IoU_mean", 0),
+                "IoU_median": avg_seg_metrics.get("IoU_median", 0),
+                "AP50-95": avg_seg_metrics.get("AP50-95", 0),
+                "AP@.50": avg_seg_metrics.get("AP@0.50", 0),
+                "AP@.75": avg_seg_metrics.get("AP@0.75", 0),
+                "AP@.90": avg_seg_metrics.get("AP@0.90", 0),
+                "F1@.50": avg_seg_metrics.get("F1@0.50", 0),
+                "F1@.75": avg_seg_metrics.get("F1@0.75", 0),
+                "Dice@.50": avg_seg_metrics.get("Dice@0.50", 0),
+                "Dice@.75": avg_seg_metrics.get("Dice@0.75", 0),
+                "BF1@.50": avg_seg_metrics.get("BF1@0.50", 0),
+                "BF1@.75": avg_seg_metrics.get("BF1@0.75", 0),
+                "PQ@.50": avg_seg_metrics.get("PQ@0.50", 0),
+                "SQ@.50": avg_seg_metrics.get("SQ@0.50", 0),
+                "DQ@.50": avg_seg_metrics.get("DQ@0.50", 0),
+                "Hausdorff@.50": avg_seg_metrics.get("Hausdorff@0.50", np.nan),
+                "Hausdorff@.75": avg_seg_metrics.get("Hausdorff@0.75", np.nan),
+                "ASSD@.50": avg_seg_metrics.get("ASSD@0.50", np.nan),
+                "ASSD@.75": avg_seg_metrics.get("ASSD@0.75", np.nan),
+                "Count AbsErr": avg_seg_metrics.get("CountAbsErr", np.nan),
+                "Count RelErr": avg_seg_metrics.get("CountRelErr", np.nan),
+                "Length KS": avg_downstream_metrics.get("Length_KS", np.nan),
+                "Length KL": avg_downstream_metrics.get("Length_KL", np.nan),
+                "Length EMD": avg_downstream_metrics.get("Length_EMD", np.nan),
             }
             results.append(model_results)
         else:
-            logger.warning(f"No valid predictions made by {model.model_name} across the dataset. Skipping.")
+            logger.warning(
+                f"No valid predictions made by {model.model_name} across the dataset. Skipping."
+            )
 
     results_df = pd.DataFrame(results)
     if not results_df.empty:
         output_path = os.path.join(results_dir, "benchmark_results.csv")
-        results_df.to_csv(output_path, index=False, float_format='%.2f')
+        results_df.to_csv(output_path, index=False, float_format="%.2f")
         logger.info(f"Benchmark complete. Results saved to {output_path}")
         print("\nBenchmark Results:")
         print(results_df.to_string(index=False))
@@ -118,6 +131,7 @@ if __name__ == "__main__":
 
     # Define which models to run here
     MODELS_TO_RUN = [
+        "SAM",
         # "AnyStar",
         # "CellSAM",
         "Cellpose-SAM",
@@ -129,8 +143,4 @@ if __name__ == "__main__":
         # "StarDist",
     ]
 
-    run_benchmark(
-        dataset_path=DATASET_PATH,
-        results_dir=RESULTS_DIR,
-        models_to_run=MODELS_TO_RUN
-    )
+    run_benchmark(dataset_path=DATASET_PATH, results_dir=RESULTS_DIR, models_to_run=MODELS_TO_RUN)
