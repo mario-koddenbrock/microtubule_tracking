@@ -175,13 +175,15 @@ class StarDist(BaseModel):
         else:  # 3D model
             if img.ndim == 3 and img.shape[-1] > 1:
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            axes = "YXZ"
 
         is_2d_input_for_3d_model = self._is_3d and img.ndim == 2
         if is_2d_input_for_3d_model:
-            img = img[np.newaxis, ..., ]  # (H, W) -> (1, H, W)
+            img = img[..., np.newaxis]  # (H, W) -> (H, W, 1)
 
         # Normalize if requested
         img_in = normalize(img, *self.norm_percentiles, axis=tuple(range(img.ndim))) if self.normalize else img
+
 
         labels, _details = self._model.predict_instances(
             img_in,
@@ -189,6 +191,7 @@ class StarDist(BaseModel):
             prob_thresh=self.prob_thresh,
             nms_thresh=self.nms_thresh,
             n_tiles=self.n_tiles,
+            verbose=False,
         )
 
         if labels is None:
@@ -197,6 +200,6 @@ class StarDist(BaseModel):
 
         # Squeeze out the z-axis if it was added for a 3D model on a 2D input
         if is_2d_input_for_3d_model:
-            labels = labels.squeeze(axis=0)
+            labels = labels.squeeze(axis=0) # (H, W, 1) -> (H, W)
 
         return labels
