@@ -8,7 +8,7 @@ import multiprocessing
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 
 # --- Setup ---
-def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), log_level_console: int = "INFO", log_level: int = logging.DEBUG):
+def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), log_level_console: int = logging.INFO, log_level: int = logging.INFO):
     """Configures the application's logging."""
     # Only configure logging in the main process
     if multiprocessing.current_process().name != "MainProcess":
@@ -24,7 +24,7 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), lo
     # 1. Get the logger
     logger = logging.getLogger(logger_name)
     # Set the lowest-level to be captured. DEBUG will capture everything.
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(min(log_level_console, log_level))
 
     # 2. Create a formatter
     formatter = logging.Formatter(LOG_FORMAT)
@@ -34,9 +34,7 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), lo
     console_handler = logging.StreamHandler()
     # You can set a different level for the console. For example, INFO.
     # The level can be controlled by an environment variable for flexibility.
-    console_log_level_str = os.environ.get('LOG_LEVEL', log_level_console).upper()
-    console_log_level = getattr(logging, console_log_level_str, logging.INFO)
-    console_handler.setLevel(console_log_level)
+    console_handler.setLevel(log_level_console)
     console_handler.setFormatter(formatter)
 
     # 4. Create and configure the rotating file handler (for production/history)
@@ -54,6 +52,6 @@ def setup_logging(logger_name = 'mt', log_dir:str = os.path.abspath(".logs"), lo
         logger.addHandler(file_handler)
 
     # 6. Log the successful configuration
-    logger.info("Logging has been configured successfully. Console level: %s", console_log_level_str)
+    logger.info("Logging has been configured successfully. Console level: %s", log_level_console)
 
     return logger
