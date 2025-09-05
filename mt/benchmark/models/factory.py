@@ -2,15 +2,19 @@ from typing import Type, Dict, List
 
 from mt.benchmark.models.base import BaseModel
 
-from .anystar import AnyStar
-from .cellsam import CellSAM
+from .sam import SAM
+
+# from .anystar import AnyStar
+# from .cellsam import CellSAM
 from .cellpose_sam import CellposeSAM
 from .drift import DRIFT
 from .fiesta import FIESTA
-from .micro_sam import MicroSAM
+
+# from .micro_sam import MicroSAM
 from .sifine import SIFINE
 from .soax import SOAX
-from .stardist import StarDist
+
+# from .stardist import StarDist
 
 
 class ModelFactory:
@@ -42,7 +46,9 @@ class ModelFactory:
         """
         model_class = self._models.get(name)
         if not model_class:
-            raise ValueError(f"Model '{name}' not registered. Available models: {self.get_available_models()}")
+            raise ValueError(
+                f"Model '{name}' not registered. Available models: {self.get_available_models()}"
+            )
         return model_class()
 
     def get_available_models(self) -> List[str]:
@@ -54,8 +60,16 @@ def setup_model_factory() -> ModelFactory:
     """Initializes and registers all models with the factory."""
     factory = ModelFactory()
     model_classes = [
-        FIESTA, SOAX, SIFINE, DRIFT, CellSAM, AnyStar,
-        MicroSAM, CellposeSAM, StarDist
+        FIESTA,
+        SOAX,
+        SIFINE,
+        DRIFT,
+        SAM,
+        # CellSAM,
+        # AnyStar,
+        # MicroSAM,
+        CellposeSAM,
+        # StarDist,
     ]
     for model_class in model_classes:
         factory.register_model(model_class)
