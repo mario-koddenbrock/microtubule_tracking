@@ -2,15 +2,15 @@ from typing import Type, Dict, List
 
 from mt.benchmark.models.base import BaseModel
 
-from .anystar import AnyStar
+# from .anystar import AnyStar
 from .cellsam import CellSAM
 from .cellpose_sam import CellposeSAM
 from .drift import DRIFT
 from .fiesta import FIESTA
-from .micro_sam import MicroSAM
+# from .micro_sam import MicroSAM
 from .sifine import SIFINE
 from .soax import SOAX
-from .stardist import StarDist
+# from .stardist import StarDist
 
 
 class ModelFactory:
@@ -54,8 +54,15 @@ def setup_model_factory() -> ModelFactory:
     """Initializes and registers all models with the factory."""
     factory = ModelFactory()
     model_classes = [
-        FIESTA, SOAX, SIFINE, DRIFT, CellSAM, AnyStar,
-        MicroSAM, CellposeSAM, StarDist
+        FIESTA,
+        SOAX,
+        SIFINE,
+        DRIFT,
+        CellSAM,
+        # AnyStar,
+        # MicroSAM,
+        CellposeSAM,
+        # StarDist,
     ]
     for model_class in model_classes:
         factory.register_model(model_class)
