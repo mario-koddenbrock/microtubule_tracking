@@ -3,7 +3,7 @@
 #SBATCH --cpus-per-task=64
 #SBATCH --mem=160G
 #SBATCH --qos=high
-#SBATCH --time=2-00:00:00
+#SBATCH --time=10-00:00:00
 #SBATCH --output=%j_%x_out.log
 #SBATCH --error=%j_%x_err.log
 #SBATCH --mail-type=ALL
