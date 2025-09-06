@@ -73,7 +73,7 @@ done
 
 # Submit a single sbatch job with all config files if any were created
 if [ ${#CONFIG_FILES[@]} -gt 0 ]; then
-    JOB_NAME="mt-multi-opt"
+    JOB_NAME="mt-opt-all"
     echo "--------------------------------------------------"
     echo "Submitting a single job for all ${#CONFIG_FILES[@]} configurations."
     sbatch --job-name="$JOB_NAME" "$SBATCH_SCRIPT" "${CONFIG_FILES[@]}"
