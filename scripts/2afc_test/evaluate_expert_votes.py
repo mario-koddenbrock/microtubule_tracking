@@ -1,15 +1,25 @@
 import os
 from datetime import datetime
+from pathlib import Path
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from PIL import Image
 from scipy import stats
 
+# -------------------------
+# Paths
+# -------------------------
 LIKERT_CSV = 'results/expert_validation/likert_ratings.csv'
 AFC_CSV = 'results/expert_validation/2afc_choices.csv'
 RESULTS_DIR = 'results/expert_validation'
+# image roots provided by you
+REAL_DIR = "data/SynMT/real/small/single_frame"
+SYN_DIR  = "data/SynMT/synthetic/validation/images"
+
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # -------------------------
@@ -75,6 +85,72 @@ def roc_auc_from_scores(scores, labels):
     U, _ = stats.mannwhitneyu(real, synth, alternative="two-sided")
     return U / (len(real) * len(synth))
 
+# ==== Image I/O helpers for composites (zero gap) ====
+def resolve_path(filename: str, typ: str):
+    """Find file by exact path or by basename within REAL_DIR/SYN_DIR."""
+    if not isinstance(filename, str) or len(filename) == 0:
+        return None
+    p = Path(filename)
+    if p.exists():
+        return p
+    root = Path(REAL_DIR if typ == "real" else SYN_DIR)
+    hits = list(root.rglob(Path(filename).name))
+    return hits[0] if hits else None
+
+def read_rgb(path: Path):
+    try:
+        with Image.open(path) as im:
+            return np.array(im.convert("RGB"))
+    except Exception:
+        return None
+
+def concat_side_by_side(imgL: np.ndarray, imgR: np.ndarray, sep_px: int = 0):
+    """Concatenate two images horizontally with optional tiny separator."""
+    if imgL is None or imgR is None:
+        return None
+    hL, wL = imgL.shape[:2]
+    hR, wR = imgR.shape[:2]
+    target_h = min(hL, hR)
+    # Resize both to the same height
+    imL = Image.fromarray(imgL).resize((int(wL * target_h / max(hL,1)), target_h), Image.BICUBIC)
+    imR = Image.fromarray(imgR).resize((int(wR * target_h / max(hR,1)), target_h), Image.BICUBIC)
+    imL = np.array(imL); imR = np.array(imR)
+    if sep_px <= 0:
+        return np.hstack([imL, imR])
+    sep = np.ones((target_h, sep_px, 3), dtype=np.uint8) * 255
+    return np.hstack([imL, sep, imR])
+
+def show_composites(items, title, outpath, cols=3, max_items=9, sep_px: int = 0):
+    """
+    items: list of dicts with keys { 'real_path': Path, 'syn_path': Path, 'caption': str }
+    """
+    sel = items[:max_items]
+    if not sel:
+        return
+    rows = int(np.ceil(len(sel) / cols)) if cols > 0 else 1
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5.8, rows * 4.2))
+    if rows == 1 and cols == 1:
+        axes = np.array([[axes]])
+    elif rows == 1:
+        axes = np.array([axes])
+    axes = axes.flatten()
+    for ax in axes[len(sel):]:
+        ax.axis("off")
+    for ax, item in zip(axes, sel):
+        rpath, spath = item.get("real_path"), item.get("syn_path")
+        ax.axis("off")
+        imgR = read_rgb(rpath) if rpath else None
+        imgS = read_rgb(spath) if spath else None
+        comp = concat_side_by_side(imgR, imgS, sep_px=sep_px)
+        if comp is not None:
+            ax.imshow(comp)
+            ax.set_title(item.get("caption", ""), fontsize=10)
+        ax.axis("off")
+    fig.suptitle(title, fontsize=14)
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=220, bbox_inches="tight")
+    plt.close(fig)
+
 # -------------------------
 # 1) LIKERT ANALYSIS
 # -------------------------
@@ -93,7 +169,8 @@ if "user_name" in likert and len(likert["user_name"].unique()) > 0:
     )
     g.set_axis_labels("Likert rating", "Count")
     g.set_titles("Likert distribution — {col_name}")
-    save_fig(os.path.join(RESULTS_DIR, "likert_hist_per_expert.png"))
+    g.fig.savefig(os.path.join(RESULTS_DIR, "likert_hist_per_expert.png"), dpi=220, bbox_inches="tight")
+    plt.close(g.fig)
 
 # Overall by type
 fig, ax = plt.subplots(figsize=(7, 4))
@@ -326,45 +403,99 @@ if len(cross):
     plt.close(jp.figure)
 
 # -------------------------
-# 4) PER-IMAGE
+# 4) PER-IMAGE + VISUAL PAIRS (zero-gap)
 # -------------------------
 mixed_pairs = mixed.copy()
+
 def synthetic_image_filename(row):
-    if row["image1_type"]=="synthetic":
-        return row["image1_filename"]
-    else:
-        return row["image2_filename"]
+    return row["image1_filename"] if row["image1_type"]=="synthetic" else row["image2_filename"]
+
+def real_image_filename(row):
+    return row["image1_filename"] if row["image1_type"]=="real" else row["image2_filename"]
 
 mixed_pairs["synthetic_image"] = mixed_pairs.apply(synthetic_image_filename, axis=1)
-mixed_pairs["synthetic_won"] = (mixed_pairs["chosen_image_type"]=="synthetic").astype(int)
+mixed_pairs["real_image"]      = mixed_pairs.apply(real_image_filename, axis=1)
+mixed_pairs["synthetic_won"]   = (mixed_pairs["chosen_image_type"]=="synthetic").astype(int)
 
-per_synth_image = mixed_pairs.groupby("synthetic_image")["synthetic_won"].agg(["mean","count"]).reset_index()
-per_synth_image = per_synth_image.rename(columns={"mean":"foolability", "count":"n_trials"}).sort_values("foolability", ascending=False)
+# Per synthetic image foolability
+per_synth_image = (
+    mixed_pairs.groupby("synthetic_image")["synthetic_won"]
+    .agg(["mean","count"]).reset_index()
+    .rename(columns={"mean":"foolability", "count":"n_trials"})
+    .sort_values("foolability", ascending=False)
+)
 
-likert_by_image = likert.groupby(["image_filename","image_type"])["rating_score"].agg(["mean","std","count"]).reset_index()
-likert_by_image = likert_by_image.rename(columns={"mean":"mean_rating","std":"std_rating","count":"n_ratings"})
-
+# Link Likert realism by image (for synthetics)
+likert_by_image = (
+    likert.groupby(["image_filename","image_type"])["rating_score"]
+    .agg(["mean","std","count"]).reset_index()
+    .rename(columns={"mean":"mean_rating","std":"std_rating","count":"n_ratings"})
+)
 synth_likert = likert_by_image[likert_by_image["image_type"]=="synthetic"].copy()
 per_synth_image = per_synth_image.merge(
     synth_likert[["image_filename","mean_rating","n_ratings"]],
     left_on="synthetic_image", right_on="image_filename", how="left"
 ).drop(columns=["image_filename"])
 
-if len(per_synth_image):
-    topN = per_synth_image.head(15).copy()
-    fig, ax = plt.subplots(figsize=(9, 6))
-    sns.barplot(
-        data=topN,
-        y="synthetic_image", x="foolability",
-        color=PALETTE[2], ax=ax
-    )
-    ax.set_xlim(0, 1)
-    ax.set_xlabel("Foolability (win rate vs real in mixed pairs)")
-    ax.set_ylabel("")
-    for i, r in enumerate(topN.itertuples()):
-        ax.text(r.foolability + 0.01, i, f"{r.foolability:.2f} (n={r.n_trials})", va="center")
-    ax.set_title("Most convincing synthetic images (Top 15)")
-    save_fig(os.path.join(RESULTS_DIR, "per_synthetic_image_foolability_top15.png"))
+# Determine a representative real counterpart per synthetic (most frequent pairing)
+real_for_synth = (
+    mixed_pairs.groupby(["synthetic_image","real_image"])
+    .size().reset_index(name="n").sort_values(["synthetic_image","n"], ascending=[True, False])
+    .drop_duplicates("synthetic_image")
+    .set_index("synthetic_image")["real_image"]
+)
+per_synth_image = per_synth_image.merge(real_for_synth, left_on="synthetic_image", right_index=True, how="left")
+
+# Save standard CSVs
+topN = per_synth_image.head(15).copy()
+topN.to_csv(os.path.join(RESULTS_DIR, "summary_per_synthetic_image_top15.csv"), index=False)
+
+# Visual grids: BEST and WORST (zero-gap)
+def _rows_to_items(df):
+    items = []
+    for r in df.itertuples(index=False):
+        syn = resolve_path(r.synthetic_image, "synthetic")
+        rea = resolve_path(getattr(r, "real_image", None), "real")
+        cap = f"{Path(r.synthetic_image).name}\nFoolability={r.foolability:.2f} (n={int(r.n_trials)})"
+        if pd.notna(getattr(r, "mean_rating", np.nan)):
+            cap += f"; Likert≈{r.mean_rating:.2f} (n={int(r.n_ratings) if pd.notna(r.n_ratings) else 0})"
+        items.append({"real_path": rea, "syn_path": syn, "caption": cap})
+    return items
+
+TOPK = 9
+best_items  = _rows_to_items(per_synth_image.sort_values("foolability", ascending=False).head(TOPK))
+worst_items = _rows_to_items(per_synth_image.sort_values("foolability", ascending=True).head(TOPK))
+
+show_composites(best_items,  "BEST synthetic (highest foolability)",  os.path.join(RESULTS_DIR, "pairs_best.png"),  cols=3, max_items=TOPK, sep_px=0)
+show_composites(worst_items, "WORST synthetic (lowest foolability)", os.path.join(RESULTS_DIR, "pairs_worst.png"), cols=3, max_items=TOPK, sep_px=0)
+
+# Optional: also show name-prefix matched examples (based on your pattern)
+def extract_key_real(fname: str):
+    # e.g. "1_9uMporcTub_crop_1_frame_214.png" -> "1_9uMporcTub_crop_1"
+    return fname.split("_frame_")[0]
+
+def extract_key_syn(fname: str):
+    # e.g. "series_1_9uMporcTub_crop_1_rank_1.png" -> "1_9uMporcTub_crop_1"
+    m = re.search(r"series_(.+?)_rank", fname)
+    return m.group(1) if m else None
+
+def list_images(root):
+    root = Path(root)
+    exts = ("*.png","*.jpg","*.jpeg","*.bmp","*.tif","*.tiff")
+    files = []
+    for ext in exts:
+        files += list(root.rglob(ext))
+    return files
+
+real_files = list_images(REAL_DIR)
+syn_files  = list_images(SYN_DIR)
+real_map = {extract_key_real(p.name): p for p in real_files if extract_key_real(p.name)}
+syn_map  = {extract_key_syn(p.name):  p for p in syn_files  if extract_key_syn(p.name)}
+common_keys = [k for k in real_map.keys() if k in syn_map]
+
+name_items = [{"real_path": real_map[k], "syn_path": syn_map[k], "caption": k} for k in common_keys]
+if name_items:
+    show_composites(name_items, "Name-matched real/synthetic pairs", os.path.join(RESULTS_DIR, "pairs_by_prefix.png"), cols=2, max_items=8, sep_px=0)
 
 # -------------------------
 # 5) REPORTING
@@ -446,15 +577,25 @@ figs = [
     "control_position_bias.png",
     "likert_auc_vs_foolrate.png",
     "per_synthetic_image_foolability_top15.png",
+    "pairs_best.png",
+    "pairs_worst.png",
+    "pairs_by_prefix.png",
 ]
-for f in figs: report_lines.append(f"- {f}")
+for f in figs:
+    report_lines.append(f"- {f}")
+
 report_lines.append("\n## Do Likert separations predict who gets fooled?\n")
 report_lines.append(f"- Spearman correlation between per-expert Likert AUC and fool rate: ρ={fmt(rho)}, p={fmt(rho_p)}.")
+
 report_lines.append("\n## Which synthetic images are most convincing?\n")
 if len(per_synth_image):
     head = per_synth_image.head(10)
     for _, r in head.iterrows():
-        report_lines.append(f"- `{r['synthetic_image']}`: foolability {pct(r['foolability'])} over {int(r['n_trials'])} trials; mean Likert {fmt(r['mean_rating'])} (n={int(r['n_ratings']) if pd.notna(r['n_ratings']) else 0}).")
+        report_lines.append(
+            f"- `{r['synthetic_image']}`: foolability {pct(r['foolability'])} over {int(r['n_trials'])} trials; "
+            f"paired-most-with `{r['real_image']}`; mean Likert {fmt(r['mean_rating'])} "
+            f"(n={int(r['n_ratings']) if pd.notna(r['n_ratings']) else 0})."
+        )
 else:
     report_lines.append("- No mixed 2AFC trials found to assess synthetic-image foolability.")
 
