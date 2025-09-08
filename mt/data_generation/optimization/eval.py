@@ -67,7 +67,7 @@ def evaluate_tuning_cfg(tuning_config_path: str, output_dir: str, visualize:bool
         number_of_trials = 1 # TODO: Calculate actual number of trials
 
     for i, trial in enumerate(top_trials):
-        logger.info(f"Trial {i + 1}: Value = {trial.value:.4f}, Params = {trial.params}")
+        logger.info(f"Trial {i + 1}/{top_n}: Value = {trial.value:.4f}")
 
         current_cfg = tuning_cfg.create_synthetic_config_from_trial(trial)
         current_cfg.num_frames = tuning_cfg.output_config_num_frames
