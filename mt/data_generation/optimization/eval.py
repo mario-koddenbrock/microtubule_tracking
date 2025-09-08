@@ -74,6 +74,9 @@ def evaluate_tuning_cfg(tuning_config_path: str, output_dir: str, visualize:bool
         current_cfg.id = f"{tuning_cfg.output_config_id}_rank_{i + 1}"
         current_cfg.generate_mt_mask = True
         current_cfg.generate_seed_mask = False
+        current_cfg.fps = 5
+        current_cfg.red_channel_noise_std *= 5
+        current_cfg.seed_red_channel_boost *= 3
 
         evaluate_synthetic_data_cfg(
             cfg=current_cfg,
