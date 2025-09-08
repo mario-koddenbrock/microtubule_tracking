@@ -3,6 +3,7 @@ from typing import Type, Dict, List
 from mt.benchmark.models.base import BaseModel
 
 from .sam import SAM
+from .sam2 import SAM2
 
 from .anystar import AnyStar
 from .cellsam import CellSAM
@@ -65,6 +66,7 @@ def setup_model_factory() -> ModelFactory:
         SIFINE,
         DRIFT,
         SAM,
+        SAM2,
         CellSAM,
         AnyStar,
         MicroSAM,
