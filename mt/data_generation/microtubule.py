@@ -170,7 +170,7 @@ class Microtubule:
             seed_mask: Optional[np.ndarray] = None,
     ) -> List[dict]:
         logger.debug(
-            f"MT {self.instance_id}: Drawing for frame {self.frame_idx}. Total wagons: {len(self.wagons)}.")
+            f"MT {self.instance_id}: Drawing for {self.frame_idx}. Total wagons: {len(self.wagons)}.")
 
         abs_angle = self.base_orientation
         abs_pos = self.base_point.astype(np.float32)
@@ -210,8 +210,8 @@ class Microtubule:
             if w.is_seed:
                 color_contrast = (
                     base_contrast + cfg.seed_red_channel_boost,
-                    base_contrast,
-                    base_contrast
+                    base_contrast - cfg.seed_red_channel_boost,
+                    base_contrast - cfg.seed_red_channel_boost
                 )
                 segment_type = "seed"
                 current_mask = seed_mask
