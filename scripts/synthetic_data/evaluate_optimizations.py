@@ -21,11 +21,6 @@ def evaluate_all_configs():
     # Output directory for evaluation results
     output_dir = "data/SynMT/synthetic"
 
-    # Delete output directory if it exists
-    if os.path.exists(output_dir):
-        os.remove(output_dir)
-        logger.info(f"Removing {output_dir}")
-
     # Find all generated tuning config files
     config_dir = "config/optimization"
     config_pattern = os.path.join(config_dir, "tuning_config_*.json")
