@@ -6,6 +6,7 @@ from typing import Optional, Any
 import cv2
 import imageio
 import numpy as np
+from matplotlib import pyplot as plt
 from skimage.color import label2rgb
 
 from mt.config.synthetic_data import SyntheticDataConfig
@@ -36,7 +37,7 @@ class OutputManager:
         write_video_pngs: bool = True,
         write_masks_pngs: bool = True,
         write_config: bool = True,
-        write_gt: bool = True,
+        write_gt: bool = False,
     ):
         """
         Initializes all file paths and writer objects based on the config.
@@ -226,6 +227,15 @@ class OutputManager:
             if self.write_masks_pngs and export_current_png:
                 path = os.path.join(self.paths['mt_mask_png_dir'], frame_name)
                 imageio.imwrite(path, mt_mask_img)
+
+                # cmap = plt.get_cmap("Paired")
+                # num_labels = int(mt_mask_img.max())  # assumes labels are 0..N
+                # colors = [cmap(i)[:3] for i in range(1, num_labels + 1)]  # skip background=0
+                #
+                # rgb = label2rgb(mt_mask_img, colors=colors, bg_label=0, bg_color=cmap(0)[:3], kind='overlay')
+                # rgb_uint8 = (rgb * 255).astype(np.uint8)
+                # cv2.imwrite(path, cv2.cvtColor(rgb_uint8, cv2.COLOR_RGB2BGR))
+
             if self.writers.get('mt_mask_mp4') or self.writers.get('mt_mask_gif'):
                 mask_vis_rgb = (label2rgb(mt_mask_img, bg_label=0) * 255).astype(np.uint8)
                 if self.writers.get('mt_mask_mp4'):
