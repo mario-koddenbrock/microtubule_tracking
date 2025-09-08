@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 import logging
 import numpy as np
+import time
 
 from mt.benchmark.dataset import BenchmarkDataset
 from mt.benchmark import metrics
@@ -51,11 +52,18 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
         logger.info(f"--- Benchmarking model: {model.model_name} ---")
         all_seg_metrics = []
         all_downstream_metrics = []
+        all_processing_times = []
 
         for idx, (image, gt_mask, _) in enumerate(
             tqdm(dataset, desc=f"Evaluating {model.model_name}")
         ):
+            # Time the prediction
+            start_time = time.time()
             pred_mask = model.predict(image)
+            end_time = time.time()
+            processing_time = end_time - start_time
+            all_processing_times.append(processing_time)
+
             # pred_mask = gt_mask # For sanity check
 
             if pred_mask is None or gt_mask is None:
@@ -91,8 +99,17 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
             avg_seg_metrics = pd.DataFrame(all_seg_metrics).mean().to_dict()
             avg_downstream_metrics = pd.DataFrame(all_downstream_metrics).mean().to_dict()
 
+            # Calculate speed metrics
+            avg_processing_time = np.mean(all_processing_times)
+            images_per_second = 1.0 / avg_processing_time if avg_processing_time > 0 else 0
+
+            logger.info(
+                f"{model.model_name} - Avg processing time: {avg_processing_time:.3f}s, Images/sec: {images_per_second:.2f}"
+            )
+
             model_results = {
                 "Model": model.model_name,
+                "Avg Images/sec": images_per_second,
                 "IoU_mean": avg_seg_metrics.get("IoU_mean", 0),
                 "IoU_median": avg_seg_metrics.get("IoU_median", 0),
                 "AP50-95": avg_seg_metrics.get("AP50-95", 0),
@@ -139,28 +156,63 @@ if __name__ == "__main__":
 
     # Define which models to run here.
     MODELS_TO_RUN = [
-        {"name": "AnyStar"},
+        # {"name": "AnyStar"},
+        # {
+        #     "name": "AnyStar",
+        #     "params": {"model_dir": "models/AnyStar/finetuned_anystar", "model_name": "mtStar"},
+        # },
+        # {
+        #     "name": "CellposeSAM",
+        #     "params": {
+        #         "model_dir": "models/CellposeSAM/finetuned_cellposesam",
+        #         "model_name": "mtCellposeSAM",
+        #     },
+        # },
+        # {
+        #     "name": "StarDist",
+        #     "params": {
+        #         "pretrained": "2D_versatile_fluo",
+        #         "model_name": "StarDist_2D_fluo",
+        #         "prob_thresh": 0.061613,
+        #         "nms_thresh": 0.8974,
+        #     },
+        # },
+        # {
+        #     "name": "StarDist",
+        #     "params": {
+        #         "pretrained": "2D_versatile_he",
+        #         "model_name": "StarDist_2D_he",
+        #         "prob_thresh": 0.020277,
+        #         "nms_thresh": 0.63537,
+        #     },
+        # },
+        # {
+        #     "name": "StarDist",
+        #     "params": {
+        #         "pretrained": "2D_paper_dsb2018",
+        #         "model_name": "StarDist_dsb2018",
+        #         "prob_thresh": 0.097102,
+        #         "nms_thresh": 0.85354,
+        #     },
+        # },
         {
-            "name": "AnyStar",
-            "params": {"model_dir": "models/AnyStar/finetuned_anystar", "model_name": "mtStar"},
+            "name": "SAM",
+            "params": {
+                "points_per_batch": 64,  # only affects speed
+                "pred_iou_thresh": 0.88,  # default 0.88
+                "stability_score_thresh": 0.95,  # default 0.95
+                "min_mask_region_area": 0,  # default 0
+            },
         },
         {
-            "name": "CellposeSAM",
-            "params": {"model_dir": "models/CellposeSAM/finetuned_cellposesam", "model_name": "mtCellposeSAM"},
+            "name": "SAM2",
+            "params": {
+                "points_per_batch": 64,  # only affects speed
+                "pred_iou_thresh": 0.8,  # default 0.8
+                "stability_score_thresh": 0.95,  # default 0.95
+                "min_mask_region_area": 0,  # default 0
+            },
         },
-        {
-            "name": "StarDist",
-            "params": {"pretrained": "2D_versatile_fluo", "model_name": "StarDist_2D_fluo", "prob_thresh": 0.061613, "nms_thresh": 0.8974},
-        },
-        {
-            "name": "StarDist",
-            "params": {"pretrained": "2D_versatile_he", "model_name": "StarDist_2D_he", "prob_thresh": 0.020277, "nms_thresh": 0.63537},
-        },
-        {
-            "name": "StarDist",
-            "params": {"pretrained": "2D_paper_dsb2018", "model_name": "StarDist_dsb2018", "prob_thresh": 0.097102, "nms_thresh": 0.85354},
-        },
-        # {"name": "SAM"},
         # {"name": "Cellpose-SAM"},
         # {"name": "MicroSAM"},
         # {"name": "CellSAM"}, # Needs token from deepcell - did not get it until now
