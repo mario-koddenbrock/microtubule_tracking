@@ -6,6 +6,7 @@ This document describes the usage of the `scripts/generate_synthetic_data.py` sc
 - [Microtubule Tracking: Synthetic Data Generation](#microtubule-tracking-synthetic-data-generation)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
+    - [Apple Silicon Compatibility](#apple-silicon-compatibility)
     - [Install micro\_sam (required for some features)](#install-micro_sam-required-for-some-features)
   - [Usage](#usage)
     - [Command-Line Arguments](#command-line-arguments)
@@ -35,6 +36,15 @@ pip install -e .
 # Install other dependencies
 pip install -r requirements.txt
 ```
+
+### Apple Silicon Compatibility
+If you encounter TensorFlow/Keras conflicts on Apple Silicon, run this additional command after installation:
+
+```bash
+pip uninstall pyarrow
+```
+
+This fixes compatibility issues between tf-keras and Apple Silicon optimizations, resolving mutex.cc locking warnings and TensorFlow conflicts.
 
 ### Install micro_sam (required for some features)
 `micro_sam` is only available via conda-forge. After installing the Python dependencies above, run:
