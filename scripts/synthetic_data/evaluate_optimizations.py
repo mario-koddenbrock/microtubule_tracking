@@ -43,7 +43,7 @@ def evaluate_all_configs():
             # replace cluster paths if necessary
             cfg = TuningConfig.from_json(config_path)
             cfg.reference_images_dir = cfg.reference_images_dir.replace("/scratch/koddenbrock/mt", "data")
-            # cfg.reference_images_dir = cfg.reference_images_dir.replace("/full/", "/full/all_frames/")
+
             cfg.hf_cache_dir = None
             cfg.temp_dir = ".temp"
             cfg.output_config_folder = output_dir
@@ -53,9 +53,12 @@ def evaluate_all_configs():
             cfg.to_json(config_path)
 
             study_name, n_trials, best_score = evaluate_tuning_cfg(config_path, output_dir)
-            all_results.append(
-                {"study": study_name, "n_trials": n_trials, "best_score": best_score}
-            )
+            all_results.append({
+                "study": study_name,
+                "n_trials": n_trials,
+                "best_score": best_score,
+            })
+
         except Exception as e:
             logger.error(f"Failed to evaluate config {config_path}: {e}", exc_info=True)
 
