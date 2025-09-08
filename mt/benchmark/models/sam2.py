@@ -7,58 +7,61 @@ from transformers import pipeline
 from .base import BaseModel
 
 
-class SAM(BaseModel):
+class SAM2(BaseModel):
     """
-    HuggingFace Segment-Anything-Model (SAM) for automatic mask generation.
+    HuggingFace Segment-Anything-Model 2 (SAM2) for automatic mask generation.
 
     Notes:
       - Uses the `mask-generation` pipeline from the `transformers` library.
       - The model automatically finds and masks all objects in an image.
       - Input images are converted to RGB for the model.
+
+    For parameters, see
+    https://github.com/facebookresearch/segment-anything/blob/dca509fe793f601edb92606367a655c15ac00fdf/segment_anything/automatic_mask_generator.py#L35
     """
 
     def __init__(
         self,
-        model_name: str = "facebook/sam-vit-huge",  # the largest one
+        model_name: str = "facebook/sam2.1-hiera-large",  # the largest one
         use_gpu: bool = True,
         points_per_batch: int = 64,
-        pred_iou_thresh: float = 0.88,
+        pred_iou_thresh: float = 0.8,
         stability_score_thresh: float = 0.95,
         min_mask_region_area: int = 0,
     ):
         """
-        Initialize SAM model with tunable parameters.
+        Initialize SAM2 model with tunable parameters.
 
-        Using a SAM model, generates masks for the entire image.
+        Using a SAM 2 model, generates masks for the entire image.
         Generates a grid of point prompts over the image, then filters
         low quality and duplicate masks. The default settings are chosen
-        for SAM with a ViT-H backbone.
+        for SAM 2 with a HieraL backbone.
 
         Parameters
         ----------
         model_name : str
-            HuggingFace model identifier for SAM variants. "facebook/sam-vit-huge" is the
+            HuggingFace model identifier for SAM2 variants. "facebook/sam2.1-hiera-large" is the
             largest one available.
         use_gpu : bool
             Whether to use GPU acceleration if available
         points_per_batch : int
             Sets the number of points run simultaneously by the model.
             Higher numbers may be faster but use more GPU memory.
-            Default: 64 (from original SAM automatic mask generator)
+            Default: 64
         pred_iou_thresh : float
             A filtering threshold in [0,1], using the model's predicted mask quality.
-            Default: 0.88 (from original SAM automatic mask generator)
+            Default: 0.8
         stability_score_thresh : float
             A filtering threshold in [0,1], using the stability of the mask under
             changes to the cutoff used to binarize the model's mask predictions.
-            Default: 0.95 (from original SAM automatic mask generator)
+            Default: 0.95
         min_mask_region_area : int
             If >0, postprocessing will be applied to remove disconnected regions
             and holes in masks with area smaller than min_mask_region_area.
             Requires opencv.
-            Default: 0 (from original SAM automatic mask generator)
+            Default: 0
         """
-        super().__init__(f"SAM")
+        super().__init__(f"SAM2")
 
         # Determine device
         self.device = -1  # CPU default for pipeline
@@ -66,7 +69,7 @@ class SAM(BaseModel):
             if torch.cuda.is_available():
                 self.device = 0  # Use first GPU
             elif torch.backends.mps.is_available():
-                self.device = "mps"  # Re-enable MPS with float32 fix
+                self.device = "mps"
 
         self._model_name = model_name
         self._points_per_batch = points_per_batch
@@ -80,22 +83,6 @@ class SAM(BaseModel):
             return
 
         self._generator = pipeline("mask-generation", model=self._model_name, device=self.device)
-
-        # Patch the pipeline for MPS float32 compatibility
-        if self.device == "mps":
-            original_ensure_tensor = self._generator._ensure_tensor_on_device
-
-            def ensure_tensor_float32(inputs, device):
-                # Convert any float64 tensors to float32 before moving to device
-                if hasattr(inputs, "items"):
-                    for key, value in inputs.items():
-                        if hasattr(value, "dtype") and value.dtype == torch.float64:
-                            inputs[key] = value.to(torch.float32)
-                elif hasattr(inputs, "dtype") and inputs.dtype == torch.float64:
-                    inputs = inputs.to(torch.float32)
-                return original_ensure_tensor(inputs, device)
-
-            self._generator._ensure_tensor_on_device = ensure_tensor_float32
 
     def predict(self, image: np.ndarray) -> np.ndarray:
         """
