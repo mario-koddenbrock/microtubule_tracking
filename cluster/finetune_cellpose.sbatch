@@ -39,7 +39,7 @@ fi
 which python
 
 # Run the CellposeSAM finetuning script
-python scripts/finetune_cellposesam.py --dataset_dir data/synthetic/full
+python scripts/finetuning/finetune_cellposesam.py --dataset_dir scratch/koddenbrock/mt/SynMT/synthetic/full
 
 # Log completion time
 echo "Job finished at $(date)"
