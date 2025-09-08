@@ -69,7 +69,7 @@ class TuningConfig(BaseConfig):
     # ─── Photophysics / camera realism ranges ─────────────────────
     background_level_range: Tuple[float, float] = (0.5, 0.9)
     tubulus_contrast_range: Tuple[float, float] = (-0.6, 0.6)
-    seed_red_channel_boost_range: Tuple[float, float] = (0.0, 0.6)
+    seed_red_channel_boost_range: Tuple[float, float] = (0.2, 0.6)
     tip_brightness_factor_range: Tuple[float, float] = (1.0, 1.5)
     red_channel_noise_std_range: Tuple[float, float] = (0.0, 0.05)
     quantum_efficiency_range: Tuple[float, float] = (40.0, 120.0)
