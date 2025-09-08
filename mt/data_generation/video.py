@@ -17,7 +17,7 @@ from mt.file_io.writers import OutputManager
 logger = logging.getLogger(f"mt.{__name__}")
 
 
-def draw_mt(mt, cfg, frame, mt_mask, seed_mask, frame_idx, return_seed_mask, jitter):
+def draw_mt(mt:Microtubule, cfg:SyntheticDataConfig, frame, mt_mask, seed_mask, frame_idx, return_seed_mask, jitter):
     mt.step(cfg)
     mt.base_point += jitter
     local_frame = np.zeros_like(frame)
@@ -116,8 +116,9 @@ def render_frame(
         # Apply red channel noise if specified
         if cfg.red_channel_noise_std > 0.0:
             red_noise = np.random.normal(0, cfg.red_channel_noise_std, frame.shape[:2]).astype(np.float32)
-            frame[..., 0] += red_noise
-            frame[..., 0] = np.clip(frame[..., 0], 0, 1)  # Ensure red channel stays in [0, 1]
+            red_ch_idx = 2  # OpenCV uses BGR format
+            frame[..., red_ch_idx] += red_noise
+            frame[..., red_ch_idx] = np.clip(frame[..., red_ch_idx], 0, 1)  # Ensure red channel stays in [0, 1]
             logger.debug(f"Frame {frame_idx}: Applied red channel noise (std={cfg.red_channel_noise_std:.4f}).")
         else:
             logger.debug(f"Frame {frame_idx}: Skipping red channel noise (std={cfg.red_channel_noise_std:.4f}).")
