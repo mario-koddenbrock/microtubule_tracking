@@ -9,7 +9,7 @@ from mt.config.tuning import TuningConfig
 from mt.data_generation.optimization.eval import evaluate_tuning_cfg
 from mt.utils.logger import setup_logging
 
-setup_logging(log_level_console=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +20,11 @@ def evaluate_all_configs():
 
     # Output directory for evaluation results
     output_dir = "data/SynMT/synthetic"
+
+    # Delete output directory if it exists
+    if os.path.exists(output_dir):
+        os.remove(output_dir)
+        logger.info(f"Removing {output_dir}")
 
     # Find all generated tuning config files
     config_dir = "config/optimization"
@@ -37,6 +42,7 @@ def evaluate_all_configs():
     all_results = []
     # Loop through all config files and run the evaluation script
     for i, config_path in enumerate(config_files, 1):
+        logger.info(f"{'=' * 80}")
         logger.info(f"[{i}/{total_configs}] Evaluating config: '{config_path}'")
 
         try:
