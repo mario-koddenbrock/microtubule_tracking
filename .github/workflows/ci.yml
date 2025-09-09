@@ -32,8 +32,8 @@ jobs:
         run: |
           micromamba run -n test python -m pip install --upgrade pip
           micromamba run -n test pip install pytest pytest-mock
-          micromamba run -n test pip install -r requirements.txt
-          micromamba run -n test pip install .
+          micromamba run -n test micromamba install -y --file requirements.txt
+          micromamba run -n test pip install --no-deps .
 
       - name: Run tests
         shell: bash -l {0}
