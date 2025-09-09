@@ -21,8 +21,7 @@ jobs:
           create-args: >-
             python=3.11
             micro_sam
-            optuna
-            cellpose
+            pip
           channels: conda-forge
           cache-environment: true
           init-shell: bash
@@ -32,8 +31,8 @@ jobs:
         run: |
           micromamba run -n test python -m pip install --upgrade pip
           micromamba run -n test pip install pytest pytest-mock
-          micromamba run -n test micromamba install -y --file requirements.txt
-          micromamba run -n test pip install --no-deps .
+          micromamba run -n test pip install -r requirements.txt
+          micromamba run -n test pip install .
 
       - name: Run tests
         shell: bash -l {0}
