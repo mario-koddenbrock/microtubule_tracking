@@ -22,6 +22,7 @@ jobs:
             python=3.11
             micro_sam
             optuna
+            cellpose
           channels: conda-forge
           cache-environment: true
           init-shell: bash

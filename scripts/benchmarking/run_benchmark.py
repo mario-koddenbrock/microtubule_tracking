@@ -156,45 +156,45 @@ if __name__ == "__main__":
 
     # Define which models to run here.
     MODELS_TO_RUN = [
-        # {"name": "AnyStar"},
-        # {
-        #     "name": "AnyStar",
-        #     "params": {"model_dir": "models/AnyStar/finetuned_anystar", "model_name": "mtStar"},
-        # },
-        # {
-        #     "name": "CellposeSAM",
-        #     "params": {
-        #         "model_dir": "models/CellposeSAM/finetuned_cellposesam",
-        #         "model_name": "mtCellposeSAM",
-        #     },
-        # },
-        # {
-        #     "name": "StarDist",
-        #     "params": {
-        #         "pretrained": "2D_versatile_fluo",
-        #         "model_name": "StarDist_2D_fluo",
-        #         "prob_thresh": 0.061613,
-        #         "nms_thresh": 0.8974,
-        #     },
-        # },
-        # {
-        #     "name": "StarDist",
-        #     "params": {
-        #         "pretrained": "2D_versatile_he",
-        #         "model_name": "StarDist_2D_he",
-        #         "prob_thresh": 0.020277,
-        #         "nms_thresh": 0.63537,
-        #     },
-        # },
-        # {
-        #     "name": "StarDist",
-        #     "params": {
-        #         "pretrained": "2D_paper_dsb2018",
-        #         "model_name": "StarDist_dsb2018",
-        #         "prob_thresh": 0.097102,
-        #         "nms_thresh": 0.85354,
-        #     },
-        # },
+        {"name": "AnyStar"},
+        {
+            "name": "AnyStar",
+            "params": {"model_dir": "models/AnyStar/finetuned_anystar", "model_name": "mtStar"},
+        },
+        {
+            "name": "CellposeSAM",
+            "params": {
+                "model_dir": "models/CellposeSAM/finetuned_cellposesam",
+                "model_name": "mtCellposeSAM",
+            },
+        },
+        {
+            "name": "StarDist",
+            "params": {
+                "pretrained": "2D_versatile_fluo",
+                "model_name": "StarDist_2D_fluo",
+                "prob_thresh": 0.061613,
+                "nms_thresh": 0.8974,
+            },
+        },
+        {
+            "name": "StarDist",
+            "params": {
+                "pretrained": "2D_versatile_he",
+                "model_name": "StarDist_2D_he",
+                "prob_thresh": 0.020277,
+                "nms_thresh": 0.63537,
+            },
+        },
+        {
+            "name": "StarDist",
+            "params": {
+                "pretrained": "2D_paper_dsb2018",
+                "model_name": "StarDist_dsb2018",
+                "prob_thresh": 0.097102,
+                "nms_thresh": 0.85354,
+            },
+        },
         {
             "name": "SAM",
             "params": {
@@ -213,8 +213,8 @@ if __name__ == "__main__":
                 "min_mask_region_area": 0,  # default 0
             },
         },
-        # {"name": "Cellpose-SAM"},
-        # {"name": "MicroSAM"},
+        {"name": "Cellpose-SAM"},
+        {"name": "MicroSAM"},
         # {"name": "CellSAM"}, # Needs token from deepcell - did not get it until now
         # {"name": "DRIFT"}, # No pretrained model available
         # {"name": "FIESTA"}, # Only MATLAB version available: https://github.com/fiesta-tud/FIESTA/wiki
