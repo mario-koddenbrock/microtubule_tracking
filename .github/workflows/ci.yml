@@ -21,6 +21,7 @@ jobs:
           create-args: >-
             python=3.11
             micro_sam
+            optuna
           channels: conda-forge
           cache-environment: true
           init-shell: bash
