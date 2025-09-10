@@ -214,7 +214,24 @@ if __name__ == "__main__":
             },
         },
         {"name": "Cellpose-SAM"},
-        {"name": "MicroSAM"},
+        # {
+        #     "name": "MicroSAM",
+        #     "params": {
+        #         "model_type": "vit_l_lm",
+        #         # Default μSAM parameters -> Won't lead to any segmentations on SynMT
+        #     },
+        # },
+        {
+            "name": "MicroSAM",
+            "params": {
+                "model_type": "vit_l_lm",
+                "center_distance_threshold": 0.9,
+                "boundary_distance_threshold": 0.9,
+                "foreground_threshold": 0.1,
+                # "foreground_sm oothing": 0.1,
+                # "distance_smoothing": 0.5,
+            },
+        },
         # {"name": "CellSAM"}, # Needs token from deepcell - did not get it until now
         # {"name": "DRIFT"}, # No pretrained model available
         # {"name": "FIESTA"}, # Only MATLAB version available: https://github.com/fiesta-tud/FIESTA/wiki
