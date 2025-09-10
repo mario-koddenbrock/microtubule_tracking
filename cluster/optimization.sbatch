@@ -39,13 +39,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-#pip install -e .
-#
-## Check if pip install was successful
-#if [ $? -ne 0 ]; then
-#    echo "ERROR: 'pip install -e .' failed."
-#    exit 1
-#fi
+pip install -e .
+
+# Check if pip install was successful
+if [ $? -ne 0 ]; then
+    echo "ERROR: 'pip install -e .' failed."
+    exit 1
+fi
 
 # Print the Python executable path for debugging
 which python
