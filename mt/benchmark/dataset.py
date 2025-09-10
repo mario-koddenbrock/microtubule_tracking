@@ -25,12 +25,13 @@ class BenchmarkDataset:
             num_samples: Number of samples to load. Default is -1 (load all).
         """
         self.data_path = data_path
-        self.image_files = sorted(glob(os.path.join(self.data_path, "images", "*.png")))
+        self.image_path = os.path.join(self.data_path, "images")
+        self.image_files = sorted(glob(os.path.join(self.image_path, "*.png")))
         if num_samples > 0:
             self.image_files = self.image_files[:num_samples]
 
         if not self.image_files:
-            raise FileNotFoundError(f"Dataset not found or incomplete in {data_path}")
+            raise FileNotFoundError(f"Dataset not found or incomplete in {self.image_path}")
 
     def __len__(self) -> int:
         return len(self.image_files)
