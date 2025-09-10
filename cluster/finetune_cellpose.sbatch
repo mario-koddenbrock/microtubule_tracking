@@ -1,11 +1,9 @@
 #!/bin/bash
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:0
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=160G
 #SBATCH --qos=high
 #SBATCH --time=5-00:00:00
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
 #SBATCH --output=%j_%x_out.log
 #SBATCH --error=%j_%x_err.log
 #SBATCH --mail-type=ALL
