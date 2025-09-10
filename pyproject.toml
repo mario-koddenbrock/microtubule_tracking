@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "microtubule_tracking"
-version = "0.8.12"
+version = "0.9.10"
 authors = [
     { name = "Mario Koddenbrock", email = "mario.koddenbrock@htw-berlin.de" },
     { name = "Justus Westerhoff", email = "justus.westerhoff@bht-berlin.de" }
