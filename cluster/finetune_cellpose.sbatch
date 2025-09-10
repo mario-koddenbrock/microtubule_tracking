@@ -4,6 +4,8 @@
 #SBATCH --mem=160G
 #SBATCH --qos=high
 #SBATCH --time=5-00:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
 #SBATCH --output=%j_%x_out.log
 #SBATCH --error=%j_%x_err.log
 #SBATCH --mail-type=ALL
@@ -39,7 +41,9 @@ fi
 which python
 
 # Run the CellposeSAM finetuning script
-python -m scripts.finetuning.finetune_cellposesam --dataset_dir scratch/koddenbrock/mt/SynMT/synthetic/full
+export NCCL_DEBUG=INFO
+export PYTHONFAULTHANDLER=1
+torchrun --nproc_per_node=2 --nnodes=1 scripts/finetuning/finetune_cellposesam.py --dataset_dir scratch/koddenbrock/mt/SynMT/synthetic/full
 
 # Log completion time
 echo "Job finished at $(date)"
