@@ -33,12 +33,6 @@ set -e
 source ~/.bashrc
 conda activate microtubule_tracking
 
-# Check if conda activation was successful
-if [ $? -ne 0 ]; then
-    echo "ERROR: Conda environment 'microtubule_tracking' could not be activated."
-    exit 1
-fi
-
 pip install -e .
 
 # Check if pip install was successful

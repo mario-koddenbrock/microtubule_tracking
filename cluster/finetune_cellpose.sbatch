@@ -1,14 +1,16 @@
 #!/bin/bash
-#SBATCH --gres=gpu:0
+#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=160G
 #SBATCH --qos=high
 #SBATCH --time=5-00:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
 #SBATCH --output=%j_%x_out.log
 #SBATCH --error=%j_%x_err.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=koddenb@htw-berlin.de
-#SBATCH --job-name=finetune_cellpose_mt
+#SBATCH --job-name=Cellpose_MT_Tuning
 
 # Log SLURM environment variables
 echo "SLURM Job ID: $SLURM_JOB_ID"
@@ -29,7 +31,8 @@ set -e
 source ~/.bashrc
 conda activate microtubule_tracking
 
-# Check if conda activation was successful
+pip install -e .
+
 if [ $? -ne 0 ]; then
     echo "ERROR: Conda environment 'microtubule_tracking' could not be activated."
     exit 1
