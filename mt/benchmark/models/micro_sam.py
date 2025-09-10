@@ -6,34 +6,93 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 from micro_sam import util
-from micro_sam.automatic_segmentation import get_predictor_and_segmenter, InstanceSegmentationWithDecoder
+from micro_sam.automatic_segmentation import (
+    get_predictor_and_segmenter,
+    InstanceSegmentationWithDecoder,
+)
 
 from .base import BaseModel
 
 
 class MicroSAM(BaseModel):
-    """μSAM automatic instance segmentation (AIS) for 2D images, tuned for microtubules."""
+    """
+    MicroSAM (μSAM) automatic instance segmentation for microscopy images.
+
+    Notes:
+      - Uses the μSAM library for automatic instance segmentation (AIS).
+      - Specialized for microscopy data with decoder-based segmentation.
+      - Since our images are only 512x512, we are not using any tiling.
+    """
 
     def __init__(
         self,
         model_type: str = "vit_l_lm",
         checkpoint: Optional[Union[str, Path]] = None,
-        tile_shape: Tuple[int, int] = (512, 512),
-        halo: Tuple[int, int] = (32, 32),
         device: Optional[str] = None,
         batch_size: int = 1,
         model_dir: Union[str, Path] = "models/muSAM",
+        center_distance_threshold: float = 0.5,
+        boundary_distance_threshold: float = 0.5,
+        foreground_threshold: float = 0.5,
+        foreground_smoothing: float = 1.0,
+        distance_smoothing: float = 1.6,
+        min_size: int = 0,
     ):
+        """
+        Initialize μSAM model with tunable segmentation parameters.
+
+        Parameters
+        ----------
+        model_type : str
+            μSAM model type. Available options include "vit_l_lm" (default), "vit_b_lm", etc.
+        checkpoint : Optional[Union[str, Path]]
+            Path to custom checkpoint. If None, uses pretrained weights.
+        device : Optional[str]
+            Device to use ("cpu", "cuda", "mps"). If None, auto-detects.
+        batch_size : int
+            Batch size for processing. Default: 1
+        model_dir : Union[str, Path]
+            Directory to cache model weights. Default: "models/muSAM"
+        center_distance_threshold : float
+            Center distance predictions below this value will be used to find seeds
+            (intersected with thresholded boundary distance predictions).
+            Default: 0.5
+        boundary_distance_threshold : float
+            Boundary distance predictions below this value will be used to find seeds
+            (intersected with thresholded center distance predictions).
+            Default: 0.5
+        foreground_threshold : float
+            Foreground predictions above this value will be used as foreground mask.
+            Default: 0.5
+        foreground_smoothing : float
+            Sigma value for smoothing the foreground predictions, to avoid
+            checkerboard artifacts in the prediction.
+            Default: 1.0
+        distance_smoothing : float
+            Sigma value for smoothing the distance predictions.
+            Default: 1.6
+        min_size : int
+            Minimal object size in the segmentation result.
+            Default: 0
+        """
         super().__init__("MicroSAM")
         self.model_type = model_type
         self.checkpoint = str(checkpoint) if checkpoint is not None else None
-        self.tile_shape = tile_shape
-        self.halo = halo
         self.device = device
         self.batch_size = int(batch_size)
 
-        # Always use tiled AIS if tile_shape is given
-        self.is_tiled = True
+        # Segmentation parameters
+        self.center_distance_threshold = center_distance_threshold
+        self.boundary_distance_threshold = boundary_distance_threshold
+        self.foreground_threshold = foreground_threshold
+        self.foreground_smoothing = foreground_smoothing
+        self.distance_smoothing = distance_smoothing
+        self.min_size = min_size
+
+        # Use non-tiled AIS for 512x512 images (InstanceSegmentationWithDecoder)
+        # Note: For 512x512 images with tile_shape=(512,512), no actual tiling occurs,
+        # so we use is_tiled=False to get the simpler InstanceSegmentationWithDecoder
+        self.is_tiled = False
 
         # Set μSAM cache dir for weights
         cache_root = Path(model_dir).expanduser()
@@ -51,7 +110,7 @@ class MicroSAM(BaseModel):
             model_type=self.model_type,
             checkpoint=self.checkpoint,
             device=self.device,
-            amg=False,            # AIS mode only
+            amg=False,  # AIS mode only
             is_tiled=self.is_tiled,
         )
         if not isinstance(self._segmenter, InstanceSegmentationWithDecoder):
@@ -72,8 +131,6 @@ class MicroSAM(BaseModel):
             input_=img,
             save_path=None,
             ndim=ndim,
-            tile_shape=self.tile_shape,
-            halo=self.halo,
             verbose=False,
             batch_size=self.batch_size,
         )
@@ -86,37 +143,15 @@ class MicroSAM(BaseModel):
         )
 
         # 3) Generate prediction
-        #         Args:
-        #             center_distance_threshold: Center distance predictions below this value will be
-        #                 used to find seeds (intersected with thresholded boundary distance predictions).
-        #                 By default, set to '0.5'.
-        #             boundary_distance_threshold: Boundary distance predictions below this value will be
-        #                 used to find seeds (intersected with thresholded center distance predictions).
-        #                 By default, set to '0.5'.
-        #             foreground_threshold: Foreground predictions above this value will be used as foreground mask.
-        #                 By default, set to '0.5'.
-        #             foreground_smoothing: Sigma value for smoothing the foreground predictions, to avoid
-        #                 checkerboard artifacts in the prediction. By default, set to '1.0'.
-        #             distance_smoothing: Sigma value for smoothing the distance predictions.
-        #             min_size: Minimal object size in the segmentation result. By default, set to '0'.
-        #             output_mode: The form masks are returned in. Pass None to directly return the instance segmentation.
-        #                 By default, set to 'binary_mask'.
-        #             tile_shape: Tile shape for parallelizing the instance segmentation post-processing.
-        #                 This parameter is independent from the tile shape for computing the embeddings.
-        #                 If not given then post-processing will not be parallelized.
-        #             halo: Halo for parallel post-processing. See also `tile_shape`.
-        #             n_threads: Number of threads for parallel post-processing. See also `tile_shape`.
         masks = self._segmenter.generate(
-            tile_shape=self.tile_shape,
-            halo=self.halo,
-            min_size=5,
-            center_distance_threshold = 0.05,
-            boundary_distance_threshold = 0.05,
-            foreground_threshold = 0.005,
-            foreground_smoothing = 1.0,
-            distance_smoothing = 1.0,
+            min_size=self.min_size,
+            center_distance_threshold=self.center_distance_threshold,
+            boundary_distance_threshold=self.boundary_distance_threshold,
+            foreground_threshold=self.foreground_threshold,
+            foreground_smoothing=self.foreground_smoothing,
+            distance_smoothing=self.distance_smoothing,
             output_mode=None,
-            n_threads = 1,
+            n_threads=1,
         )
 
         # 4) Convert to label image if needed
@@ -142,7 +177,12 @@ class MicroSAM(BaseModel):
                 return lab
 
         # Case 3: list of dicts (one per instance)
-        if isinstance(result, (list, tuple)) and result and isinstance(result[0], dict) and "segmentation" in result[0]:
+        if (
+            isinstance(result, (list, tuple))
+            and result
+            and isinstance(result[0], dict)
+            and "segmentation" in result[0]
+        ):
             h, w = result[0]["segmentation"].shape
             lab = np.zeros((h, w), dtype=np.uint16)
             for i, inst in enumerate(result, start=1):
@@ -151,4 +191,3 @@ class MicroSAM(BaseModel):
             return lab
 
         raise RuntimeError(f"Unexpected AIS output format: {type(result)}")
-
