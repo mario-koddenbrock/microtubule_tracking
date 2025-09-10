@@ -156,10 +156,27 @@ if __name__ == "__main__":
 
     # Define which models to run here.
     MODELS_TO_RUN = [
-        {"name": "AnyStar"},
+        # {
+        #     "name": "AnyStar",  # default parameters
+        #     "prob_thresh": 0.5,
+        #     "nms_thresh": 0.3,
+        # },
+        # {
+        #     "name": "AnyStar",
+        #     "params": {
+        #         "prob_thresh": 0.0001,  # Much lower to detect more microtubules
+        #         "nms_thresh": 0.99,  # Higher NMS to allow more instances
+        #         "normalize": True,  # Ensure normalization
+        #         "norm_percentiles": (0.1, 99.9),  # More aggressive normalization
+        #     },  # Still, MTs aren't segmented. Not star-shaped!
+        # },
         {
             "name": "AnyStar",
-            "params": {"model_dir": "models/AnyStar/finetuned_anystar", "model_name": "mtStar"},
+            "params": {
+                "model_dir": "models/AnyStar/finetuned_anystar",
+                "model_name": "mtStar",
+                # Mario's?
+            },
         },
         {
             "name": "CellposeSAM",
