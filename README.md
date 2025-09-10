@@ -6,8 +6,9 @@ This document describes the usage of the `scripts/generate_synthetic_data.py` sc
 - [Microtubule Tracking: Synthetic Data Generation](#microtubule-tracking-synthetic-data-generation)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
+    - [Option 1: Using pip with virtual environment (Recommended)](#option-1-using-pip-with-virtual-environment-recommended)
+    - [Option 2: Using Conda environment (Required for µSAM)](#option-2-using-conda-environment-required-for-µsam)
     - [Apple Silicon Compatibility](#apple-silicon-compatibility)
-    - [Install micro\_sam (required for some features)](#install-micro_sam-required-for-some-features)
   - [Usage](#usage)
     - [Command-Line Arguments](#command-line-arguments)
     - [Examples](#examples)
@@ -19,41 +20,49 @@ This document describes the usage of the `scripts/generate_synthetic_data.py` sc
   - [Testing](#testing)
 
 ## Installation
-To get started, clone the repository and install the required dependencies. It is recommended to use a virtual environment.
+
+Choose one of the following installation methods:
+
+### Option 1: Using pip with virtual environment (Recommended)
+This is the most straightforward installation method:
 
 ```bash
 # Clone the repository
 git clone https://github.com/mario-koddenbrock/microtubule_tracking.git
 cd microtubule_tracking
 
-# Create and activate a virtual environment (optional but recommended)
-python3 -m venv venv
+# Create and activate a virtual environment
+python3.11 -m venv venv
 source venv/bin/activate
 
-# Install package
+# Install package and dependencies
 pip install -e .
-
-# Install other dependencies
 pip install -r requirements.txt
 ```
 
+**Note**: µSAM is not available via pip. If you need µSAM for evaluation, use Option 2 (conda) instead.
+
+### Option 2: Using Conda environment (Required for µSAM)
+Use this if you need µSAM or prefer conda for environment management:
+
+```bash
+# Clone the repository
+git clone https://github.com/mario-koddenbrock/microtubule_tracking.git
+cd microtubule_tracking
+
+# Create conda environment from environment.yml (includes micro_sam)
+conda env create -f environment.yml
+conda activate microtubule_tracking
+
+# Install the package
+pip install -e .
+```
+
 ### Apple Silicon Compatibility
-If you encounter TensorFlow/Keras conflicts on Apple Silicon, run this additional command after installation:
+- **Option 1 (pip)**: If you encounter TensorFlow/Keras conflicts on Apple Silicon, run: `pip uninstall pyarrow`
+- **Option 2 (conda)**: Conda typically handles Apple Silicon compatibility automatically
 
-```bash
-pip uninstall pyarrow
-```
-
-This fixes compatibility issues between tf-keras and Apple Silicon optimizations, resolving mutex.cc locking warnings and TensorFlow conflicts.
-
-### Install micro_sam (required for some features)
-`micro_sam` is only available via conda-forge. After installing the Python dependencies above, run:
-
-```bash
-conda install -c conda-forge micro_sam
-```
-
-Alternatively, you can use the provided `environment.yml` to set up everything with conda (see below).
+These fixes resolve compatibility issues between tf-keras and Apple Silicon optimizations, resolving mutex.cc locking warnings and TensorFlow conflicts.
 
 ## Usage
 
