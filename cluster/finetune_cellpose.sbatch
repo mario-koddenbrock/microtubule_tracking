@@ -43,7 +43,7 @@ which python
 # Run the CellposeSAM finetuning script
 export NCCL_DEBUG=INFO
 export PYTHONFAULTHANDLER=1
-torchrun --nproc_per_node=2 --nnodes=1 scripts/finetuning/finetune_cellposesam.py --dataset_dir scratch/koddenbrock/mt/SynMT/synthetic/full
+torchrun --nproc_per_node=2 --nnodes=1 scripts/finetuning/finetune_cellposesam.py --dataset_dir /scratch/koddenbrock/mt/SynMT/synthetic/full
 
 # Log completion time
 echo "Job finished at $(date)"
