@@ -35,7 +35,8 @@ class StarDist(BaseModel):
     prob_thresh : Optional[float]
         Probability threshold for predict_instances (None -> use model default).
     nms_thresh : Optional[float]
-        NMS threshold for predict_instances (None -> use model default).
+        Non-max suppression threshold for predict_instances (None -> use model default).
+        Lower value suppresses more.
     normalize : bool
         If True, percentile-normalize before prediction.
     norm_percentiles : Tuple[float, float]
@@ -182,8 +183,11 @@ class StarDist(BaseModel):
             img = img[..., np.newaxis]  # (H, W) -> (H, W, 1)
 
         # Normalize if requested
-        img_in = normalize(img, *self.norm_percentiles, axis=tuple(range(img.ndim))) if self.normalize else img
-
+        img_in = (
+            normalize(img, *self.norm_percentiles, axis=tuple(range(img.ndim)))
+            if self.normalize
+            else img
+        )
 
         labels, _details = self._model.predict_instances(
             img_in,
@@ -200,6 +204,6 @@ class StarDist(BaseModel):
 
         # Squeeze out the z-axis if it was added for a 3D model on a 2D input
         if is_2d_input_for_3d_model:
-            labels = labels.squeeze(axis=0) # (H, W, 1) -> (H, W)
+            labels = labels.squeeze(axis=0)  # (H, W, 1) -> (H, W)
 
         return labels
