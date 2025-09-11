@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=64
-#SBATCH --mem=160G
+#SBATCH --gres=gpu:0
+#SBATCH --cpus-per-task=32
+#SBATCH --mem=40G
 #SBATCH --qos=high
 #SBATCH --time=10-00:00:00
 #SBATCH --output=%j_%x_out.log
