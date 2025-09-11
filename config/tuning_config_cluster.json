@@ -12,7 +12,7 @@
   "output_config_num_frames": 10,
   "direction": "maximize",
   "similarity_metric": "cosine",
-  "num_trials": 10000,
+  "num_trials": 1000,
   "pca_components": 0,
   "load_if_exists": true,
   "img_size": [
