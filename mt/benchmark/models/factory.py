@@ -16,6 +16,7 @@ from .sifne import SIFNE
 from .soax import SOAX
 
 from .stardist import StarDist
+from .tardis import TARDIS
 
 
 class ModelFactory:
@@ -72,6 +73,7 @@ def setup_model_factory() -> ModelFactory:
         MicroSAM,
         CellposeSAM,
         StarDist,
+        TARDIS,
     ]
     for model_class in model_classes:
         factory.register_model(model_class)

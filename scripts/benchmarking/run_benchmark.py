@@ -230,9 +230,8 @@ if __name__ == "__main__":
         #         "min_mask_region_area": 0,  # default 0
         #     },
         # },
-        # {"name": "Cellpose-SAM"},
         # {
-        #     "name": "MicroSAM",
+        #     "name": "Cellpose_SAM",
         #     "params": {
         #         "model_type": "vit_l_lm",
         #         # Default μSAM parameters -> Won't lead to any segmentations on SynMT
@@ -254,6 +253,7 @@ if __name__ == "__main__":
         # {"name": "FIESTA"}, # Only MATLAB version available: https://github.com/fiesta-tud/FIESTA/wiki
         # {"name": "SIFNE"}, # Only MATLAB version available
         # {"name": "SOAX"}, # Only C++ and no pretrained model available
+        {"name": "TARDIS"},
     ]
 
     run_benchmark(dataset_path=DATASET_PATH, results_dir=RESULTS_DIR, models_to_run=MODELS_TO_RUN)
