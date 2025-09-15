@@ -1,10 +1,10 @@
-# src/benchmark/models/sifine.py
+# src/benchmark/models/sifne.py
 import numpy as np
 from .base import BaseModel
 
-class SIFINE(BaseModel):
+class SIFNE(BaseModel):
     def __init__(self):
-        super().__init__("SIFINE")
+        super().__init__("SIFNE")
 
     def predict(self, image: np.ndarray) -> np.ndarray:
         # Placeholder: returns an empty array of masks

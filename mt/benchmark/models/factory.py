@@ -12,7 +12,7 @@ from .drift import DRIFT
 from .fiesta import FIESTA
 
 from .micro_sam import MicroSAM
-from .sifine import SIFINE
+from .sifne import SIFNE
 from .soax import SOAX
 
 from .stardist import StarDist
@@ -63,7 +63,7 @@ def setup_model_factory() -> ModelFactory:
     model_classes = [
         FIESTA,
         SOAX,
-        SIFINE,
+        SIFNE,
         DRIFT,
         SAM,
         SAM2,

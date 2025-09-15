@@ -170,67 +170,67 @@ if __name__ == "__main__":
         #         "norm_percentiles": (0.1, 99.9),  # More aggressive normalization
         #     },  # Still, MTs aren't segmented. Not star-shaped!
         # },
-        {
-            "name": "AnyStar",
-            "params": {
-                "model_dir": "models/AnyStar/finetuned_anystar",
-                "model_name": "mtStar",
-                # Mario's?
-            },
-        },
-        {
-            "name": "CellposeSAM",
-            "params": {
-                "model_dir": "models/CellposeSAM/finetuned_cellposesam",
-                "model_name": "mtCellposeSAM",
-            },
-        },
-        {
-            "name": "StarDist",
-            "params": {
-                "pretrained": "2D_versatile_fluo",
-                "model_name": "StarDist_2D_fluo",
-                "prob_thresh": 0.061613,
-                "nms_thresh": 0.8974,
-            },
-        },
-        {
-            "name": "StarDist",
-            "params": {
-                "pretrained": "2D_versatile_he",
-                "model_name": "StarDist_2D_he",
-                "prob_thresh": 0.020277,
-                "nms_thresh": 0.63537,
-            },
-        },
-        {
-            "name": "StarDist",
-            "params": {
-                "pretrained": "2D_paper_dsb2018",
-                "model_name": "StarDist_dsb2018",
-                "prob_thresh": 0.097102,
-                "nms_thresh": 0.85354,
-            },
-        },
-        {
-            "name": "SAM",
-            "params": {
-                "points_per_batch": 64,  # only affects speed
-                "pred_iou_thresh": 0.88,  # default 0.88
-                "stability_score_thresh": 0.95,  # default 0.95
-                "min_mask_region_area": 0,  # default 0
-            },
-        },
-        {
-            "name": "SAM2",
-            "params": {
-                "points_per_batch": 64,  # only affects speed
-                "pred_iou_thresh": 0.8,  # default 0.8
-                "stability_score_thresh": 0.95,  # default 0.95
-                "min_mask_region_area": 0,  # default 0
-            },
-        },
-        {"name": "Cellpose-SAM"},
+        # {
+        #     "name": "AnyStar",
+        #     "params": {
+        #         "model_dir": "models/AnyStar/finetuned_anystar",
+        #         "model_name": "mtStar",
+        #         # Mario's?
+        #     },
+        # },
+        # {
+        #     "name": "CellposeSAM",
+        #     "params": {
+        #         "model_dir": "models/CellposeSAM/finetuned_cellposesam",
+        #         "model_name": "mtCellposeSAM",
+        #     },
+        # },
+        # {
+        #     "name": "StarDist",
+        #     "params": {
+        #         "pretrained": "2D_versatile_fluo",
+        #         "model_name": "StarDist_2D_fluo",
+        #         "prob_thresh": 0.061613,
+        #         "nms_thresh": 0.8974,
+        #     },
+        # },
+        # {
+        #     "name": "StarDist",
+        #     "params": {
+        #         "pretrained": "2D_versatile_he",
+        #         "model_name": "StarDist_2D_he",
+        #         "prob_thresh": 0.020277,
+        #         "nms_thresh": 0.63537,
+        #     },
+        # },
+        # {
+        #     "name": "StarDist",
+        #     "params": {
+        #         "pretrained": "2D_paper_dsb2018",
+        #         "model_name": "StarDist_dsb2018",
+        #         "prob_thresh": 0.097102,
+        #         "nms_thresh": 0.85354,
+        #     },
+        # },
+        # {
+        #     "name": "SAM",
+        #     "params": {
+        #         "points_per_batch": 64,  # only affects speed
+        #         "pred_iou_thresh": 0.88,  # default 0.88
+        #         "stability_score_thresh": 0.95,  # default 0.95
+        #         "min_mask_region_area": 0,  # default 0
+        #     },
+        # },
+        # {
+        #     "name": "SAM2",
+        #     "params": {
+        #         "points_per_batch": 64,  # only affects speed
+        #         "pred_iou_thresh": 0.8,  # default 0.8
+        #         "stability_score_thresh": 0.95,  # default 0.95
+        #         "min_mask_region_area": 0,  # default 0
+        #     },
+        # },
+        # {"name": "Cellpose-SAM"},
         # {
         #     "name": "MicroSAM",
         #     "params": {
@@ -238,21 +238,21 @@ if __name__ == "__main__":
         #         # Default μSAM parameters -> Won't lead to any segmentations on SynMT
         #     },
         # },
-        {
-            "name": "MicroSAM",
-            "params": {
-                "model_type": "vit_l_lm",
-                "center_distance_threshold": 0.9,
-                "boundary_distance_threshold": 0.9,
-                "foreground_threshold": 0.1,
-                # "foreground_sm oothing": 0.1,
-                # "distance_smoothing": 0.5,
-            },
-        },
+        # {
+        #     "name": "MicroSAM",
+        #     "params": {
+        #         "model_type": "vit_l_lm",
+        #         "center_distance_threshold": 0.9,
+        #         "boundary_distance_threshold": 0.9,
+        #         "foreground_threshold": 0.1,
+        #         # "foreground_sm oothing": 0.1,
+        #         # "distance_smoothing": 0.5,
+        #     },
+        # },
         # {"name": "CellSAM"}, # Needs token from deepcell - did not get it until now
         # {"name": "DRIFT"}, # No pretrained model available
         # {"name": "FIESTA"}, # Only MATLAB version available: https://github.com/fiesta-tud/FIESTA/wiki
-        # {"name": "SIFINE"}, # Only MATLAB version available
+        # {"name": "SIFNE"}, # Only MATLAB version available
         # {"name": "SOAX"}, # Only C++ and no pretrained model available
     ]
 
