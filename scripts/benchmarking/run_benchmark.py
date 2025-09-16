@@ -95,6 +95,18 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
                 f1=f1,
             )
 
+            # Save image + prediction overlay only (no title/metrics, no subplots)
+            simple_pred_path = os.path.join(save_to_path, f"{image_name}_predonly.png")
+            plot_gt_pred_overlays(
+                image,
+                None,  # No GT overlay
+                pred_mask,
+                boundary=True,
+                thickness=2,
+                alpha=0.6,
+                save_path=simple_pred_path,
+            )
+
         if all_seg_metrics:
             avg_seg_metrics = pd.DataFrame(all_seg_metrics).mean().to_dict()
             avg_downstream_metrics = pd.DataFrame(all_downstream_metrics).mean().to_dict()
@@ -238,17 +250,17 @@ if __name__ == "__main__":
         #         # Default μSAM parameters -> Won't lead to any segmentations on SynMT
         #     },
         # },
-        # {
-        #     "name": "MicroSAM",
-        #     "params": {
-        #         "model_type": "vit_l_lm",
-        #         "center_distance_threshold": 0.9,
-        #         "boundary_distance_threshold": 0.9,
-        #         "foreground_threshold": 0.1,
-        #         # "foreground_sm oothing": 0.1,
-        #         # "distance_smoothing": 0.5,
-        #     },
-        # },
+        {
+            "name": "MicroSAM",
+            "params": {
+                "model_type": "vit_l_lm",
+                "center_distance_threshold": 0.9,
+                "boundary_distance_threshold": 0.9,
+                "foreground_threshold": 0.1,
+                # "foreground_sm oothing": 0.1,
+                # "distance_smoothing": 0.5,
+            },
+        },
         # {"name": "CellSAM"}, # Needs token from deepcell - did not get it until now
         # {"name": "DRIFT"}, # No pretrained model available
         # {"name": "FIESTA"}, # Only MATLAB version available: https://github.com/fiesta-tud/FIESTA/wiki

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from skimage.segmentation import find_boundaries
 from scipy.ndimage import binary_dilation
 import matplotlib as mpl
+from PIL import Image
 
 from mt.benchmark.metrics import _as_instance_stack
 
@@ -12,9 +13,9 @@ def plot_gt_pred_overlays(
     gt_masks: np.ndarray,
     pred_masks: np.ndarray,
     *,
-    boundary: bool = True,        # draw only boundaries (True) or fill regions (False)
-    thickness: int = 2,           # boundary thickness in pixels (if boundary=True)
-    alpha: float = 0.6,           # overlay opacity
+    boundary: bool = True,  # draw only boundaries (True) or fill regions (False)
+    thickness: int = 2,  # boundary thickness in pixels (if boundary=True)
+    alpha: float = 0.6,  # overlay opacity
     gt_color: str = "lime",
     pred_color: str = "magenta",
     figsize: tuple = (12, 6),
@@ -29,6 +30,7 @@ def plot_gt_pred_overlays(
     Args:
         img: (H,W) grayscale or (H,W,3|4) image. Any dtype; auto-normalized to [0,1].
         gt_masks, pred_masks: labeled mask (H,W) with background=0 or stack (N,H,W) bool.
+            if not given, simply save image+pred overlay singled out.
         boundary: if True, draw boundaries; else fill the union of masks.
         thickness: boundary dilation (pixels) if boundary=True.
         alpha: overlay opacity.
@@ -40,6 +42,7 @@ def plot_gt_pred_overlays(
     Returns:
         (fig, axes) for further tweaking/saving.
     """
+
     def _to_rgb01(arr: np.ndarray) -> np.ndarray:
         arr = np.asarray(arr)
         if arr.ndim == 2:
@@ -73,11 +76,19 @@ def plot_gt_pred_overlays(
         return out
 
     base = _to_rgb01(img)
-    left = _overlay(base, gt_masks, gt_color)
-    right = _overlay(base, pred_masks, pred_color)
+    if gt_masks is None:
+        # Simply save image+pred
+        im = Image.fromarray(_overlay(base, pred_masks, pred_color).astype(np.uint8))
+        im.save(save_path)
+        return
+    else:
+        left = _overlay(base, gt_masks, gt_color)
+        right = _overlay(base, pred_masks, pred_color)
 
     fig, axes = plt.subplots(1, 2, figsize=figsize)
-    axes[0].imshow(left);  axes[0].set_title(titles[0]);  axes[0].axis("off")
+    axes[0].imshow(left)
+    axes[0].set_title(titles[0])
+    axes[0].axis("off")
     # Compose right title with metrics if provided
     if iou is not None or f1 is not None:
         metric_str = []
@@ -88,7 +99,9 @@ def plot_gt_pred_overlays(
         right_title = f"{titles[1]}\n" + ", ".join(metric_str)
     else:
         right_title = titles[1]
-    axes[1].imshow(right); axes[1].set_title(right_title); axes[1].axis("off")
+    axes[1].imshow(right)
+    axes[1].set_title(right_title)
+    axes[1].axis("off")
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
