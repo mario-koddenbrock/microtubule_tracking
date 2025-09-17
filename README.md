@@ -40,6 +40,8 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
+NOTE: maybe need to add opencv-python install here? Can't have it in the requirements.txt file because of option 2...
+
 **Note**: µSAM is not available via pip. If you need µSAM for evaluation, use Option 2 (conda) instead.
 
 ### Option 2: Using Conda environment (Required for µSAM)
