@@ -4,8 +4,7 @@ channels:
 dependencies:
   - python=3.11
   - micro_sam
+  - opencv
   - pip
   - pip:
       - -r requirements.txt
-
-  - tardis-em
