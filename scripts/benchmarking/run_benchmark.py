@@ -21,7 +21,7 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
     os.makedirs(results_dir, exist_ok=True)
 
     logger.info(f"Loading dataset from: {dataset_path}")
-    dataset = BenchmarkDataset(dataset_path, num_samples=10)
+    dataset = BenchmarkDataset(dataset_path, num_samples=5)
 
     factory = setup_model_factory()
     available_models = factory.get_available_models()
@@ -253,7 +253,30 @@ if __name__ == "__main__":
         # {"name": "FIESTA"}, # Only MATLAB version available: https://github.com/fiesta-tud/FIESTA/wiki
         # {"name": "SIFNE"}, # Only MATLAB version available
         # {"name": "SOAX"}, # Only C++ and no pretrained model available
-        {"name": "TARDIS"},
+        # {
+        #     "name": "TARDIS",
+        #     "params": {
+        #         "network": "fnet_attn",
+        #         "subtype": "32",
+        #         "dataset": "microtubules_tirf",
+        #     },
+        # }, # Produces errors
+        # {
+        #     "name": "TARDIS",
+        #     "params": {
+        #         "network": "dist",
+        #         "subtype": "triang",
+        #         "dataset": "microtubules",
+        #     },
+        # },  # Simply generates a diagonal line
+        {
+            "name": "TARDIS",
+            "params": {
+                "network": "dist",
+                "subtype": "triang",
+                "dataset": "2d",
+            },
+        },  # Likewise simply generates a diagonal line
     ]
 
     run_benchmark(dataset_path=DATASET_PATH, results_dir=RESULTS_DIR, models_to_run=MODELS_TO_RUN)
