@@ -103,8 +103,9 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
                 pred_mask,
                 boundary=True,
                 thickness=2,
-                alpha=0.6,
+                alpha=0.8,
                 save_path=simple_pred_path,
+                instance_seg=True,
             )
 
         if all_seg_metrics:

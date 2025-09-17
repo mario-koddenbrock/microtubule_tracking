@@ -23,6 +23,7 @@ def plot_gt_pred_overlays(
     save_path: str = None,
     iou: float = None,
     f1: float = None,
+    instance_seg: bool = False,
 ):
     """
     Show image with GT overlay (left) and prediction overlay (right).
@@ -55,30 +56,58 @@ def plot_gt_pred_overlays(
             arr = (arr - amin) / rng
         return arr
 
-    def _overlay(base: np.ndarray, masks: np.ndarray, color: str) -> np.ndarray:
-        stack = _as_instance_stack(masks)  # uses your helper
+    def _overlay(
+        base: np.ndarray, masks: np.ndarray, color: str, instance_seg: bool = False
+    ) -> np.ndarray:
+        stack = _as_instance_stack(masks)
         if stack.size == 0:
             return base.copy()
 
-        if boundary:
-            acc = np.zeros(base.shape[:2], dtype=bool)
-            for m in stack:
-                b = find_boundaries(m, mode="inner")
-                if thickness > 1:
-                    b = binary_dilation(b, iterations=thickness - 1)
-                acc |= b
-        else:
-            acc = np.any(stack, axis=0)
-
         out = base.copy()
-        col = np.array(mpl.colors.to_rgb(color), dtype=np.float32)
-        out[acc] = (1.0 - alpha) * out[acc] + alpha * col
+        if instance_seg:
+            # Convert stack to label image if needed
+            if masks.ndim == 3:
+                label_img = np.zeros(masks.shape[1:], dtype=np.int32)
+                for i, m in enumerate(masks, start=1):
+                    label_img[m.astype(bool)] = i
+                masks = label_img
+            cmap = plt.get_cmap("gist_ncar")  # More vibrant colormap
+            labels = np.unique(masks)
+            for i, label in enumerate(labels):
+                if label == 0:
+                    continue
+                mask = masks == label
+                # Boundary or fill logic per instance
+                if boundary:
+                    b = find_boundaries(mask, mode="inner")
+                    if thickness > 1:
+                        b = binary_dilation(b, iterations=thickness - 1)
+                    mask = b
+                col = np.array(cmap(i / max(len(labels), 1))[:3])  # Spread colors
+                out[mask] = (1.0 - alpha) * out[mask] + alpha * col
+        else:
+            # Single color overlay (original logic)
+            if boundary:
+                acc = np.zeros(base.shape[:2], dtype=bool)
+                for m in stack:
+                    b = find_boundaries(m, mode="inner")
+                    if thickness > 1:
+                        b = binary_dilation(b, iterations=thickness - 1)
+                    acc |= b
+            else:
+                acc = np.any(stack, axis=0)
+            col = np.array(mpl.colors.to_rgb(color), dtype=np.float32)
+            out[acc] = (1.0 - alpha) * out[acc] + alpha * col
         return out
 
     base = _to_rgb01(img)
     if gt_masks is None:
-        # Simply save image+pred
-        im = Image.fromarray(_overlay(base, pred_masks, pred_color).astype(np.uint8))
+        # Save image + pred overlay, with instance coloring if requested
+        im = Image.fromarray(
+            (_overlay(base, pred_masks, pred_color, instance_seg=instance_seg) * 255).astype(
+                np.uint8
+            )
+        )
         im.save(save_path)
         return
     else:
