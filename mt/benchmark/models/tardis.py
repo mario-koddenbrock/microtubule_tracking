@@ -129,20 +129,18 @@ class TARDIS(BaseModel):
                 pass
             raise RuntimeError(f"Checkpoint file is invalid or corrupted: {checkpoint_path}")
 
-        self._predictor = (
-            Predictor(  # TODO: Maybe we should use GeneralPredcitor to have more hyperparameters?
-                device=self.device,
-                network=self.network,
-                checkpoint=checkpoint_path,
-                subtype=self.subtype,
-                model_version=version,
-                img_size=self.img_size,
-                model_type=self.dataset,
-                sigma=self.sigma,
-                sigmoid=self.sigmoid,
-                _2d=True,
-                logo=False,
-            )
+        self._predictor = Predictor(  # TODO: Maybe we should use GeneralPredcitor to have more hyperparameters?
+            device=self.device,
+            network=self.network,
+            checkpoint=checkpoint_path,
+            subtype=self.subtype,
+            model_version=version,
+            # img_size=self.img_size,
+            model_type=self.dataset,
+            sigma=self.sigma,
+            sigmoid=self.sigmoid,
+            _2d=True,
+            logo=False,
         )
 
     def predict(self, image: np.ndarray) -> np.ndarray:
