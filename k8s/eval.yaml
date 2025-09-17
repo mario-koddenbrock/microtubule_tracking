@@ -1,0 +1,92 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: synthscam-llava-7b-original
+  labels:
+    app: scam-llava
+spec:
+  template:
+    metadata:
+      labels:
+        app: scam-llava
+    spec:
+      priorityClassName: normal
+      containers:
+        - name: scam-llava
+          image: registry.datexis.com/jwesterhoff/scam-llava:latest
+          command: ["python3.11", "/app/main_lvlm_llava.py"]
+          args:
+            - "--dir"
+            - "/data"
+            - "--eval_dataset"
+            - "SynthSCAM"
+            - "--model_name"
+            - "llava-7b-original"
+            - "--model_path"
+            - "liuhaotian/llava-v1.5-7b"
+          env:
+          - name: LANG
+            value: 'C.UTF-8'
+          - name: PYTHONUNBUFFERED
+            value: '1'
+          - name: PYTHONPATH
+            value: '/app:/src:/llava:/LLaVA'
+          volumeMounts:
+            - name: clip-attack-pvc
+              mountPath: /data
+            - name: llava-checkpoints-pvc
+              mountPath: /llava-checkpoints
+            - name: dshm
+              mountPath: /dev/shm
+          resources:
+            requests:
+              cpu: "1"
+            limits:
+              nvidia.com/gpu: "1"
+              memory: "64Gi"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: gpu
+                    operator: In
+                    values:
+                      - a100
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - cl-worker27
+                      - cl-worker28
+
+      volumes:
+        - name: clip-attack-pvc
+          persistentVolumeClaim:
+            claimName: clip-attack-pvc
+        - name: llava-checkpoints-pvc
+          persistentVolumeClaim:
+            claimName: llava-checkpoints-pvc
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+      imagePullSecrets:
+        - name: private-registry-auth
+      restartPolicy: Never
+  backoffLimit: 1
+
+
+# NOTE: "Everything that needs to be persistent** should be written onto a PVC!"
+# For resource selection, check https://docs.cluster.ris.bht-berlin.de/user/selection/
+# To get insights about it directly in the terminal:
+#   `kubectl top pod <pod_name>`
+# Just like for the tool pod, you can now do
+#  `kubectl apply -f imprinting.yaml`
+#  `kubectl exec -it imprinting -- bash` (once a pod for this job has spawned
+#     (maybe have to look for the precise pod name then!))
+# and check things in k9s
+# NOTE that you can delete jobs using `kubectl delete job imprinting-job`
+#  OR simply kubectl delete jobs --all
+
+# NOTE: To find out how many CPUs the node actually got, run
+# kubectl describe nodes | grep cpu: --before-context 2
