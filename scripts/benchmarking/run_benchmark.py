@@ -9,6 +9,7 @@ from mt.benchmark.dataset import BenchmarkDataset
 from mt.benchmark import metrics
 from mt.benchmark.models.factory import setup_model_factory
 from mt.plotting.debugging import plot_gt_pred_overlays
+from mt.utils.rle import mask2rle
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
     os.makedirs(results_dir, exist_ok=True)
 
     logger.info(f"Loading dataset from: {dataset_path}")
-    dataset = BenchmarkDataset(dataset_path, num_samples=10)
+    dataset = BenchmarkDataset(dataset_path, num_samples=2)
 
     factory = setup_model_factory()
     available_models = factory.get_available_models()
@@ -47,6 +48,8 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
     logger.info(f"Models to run: {[m.model_name for m in models]}")
 
     results = []
+    # For saving instance masks as RLE per image and instance
+    instance_rows = []  # Each row: model, image_name, instance_id, rle_mask
 
     for model in models:
         logger.info(f"--- Benchmarking model: {model.model_name} ---")
@@ -107,6 +110,21 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
                 save_path=simple_pred_path,
                 instance_seg=True,
             )
+            # Save instance masks as RLE in a table
+            # pred_mask: np.ndarray, labeled mask (instances: 1,2,...,N)
+            instance_ids = np.unique(pred_mask)
+            instance_ids = instance_ids[instance_ids != 0]
+            for inst_id in instance_ids:
+                inst_mask = (pred_mask == inst_id).astype(np.uint8)
+                rle = mask2rle(inst_mask)
+                instance_rows.append(
+                    {
+                        "Model": model.model_name,
+                        "image_name": image_name,
+                        "instance_id": int(inst_id),
+                        "rle_mask": rle,
+                    }
+                )
 
         if all_seg_metrics:
             avg_seg_metrics = pd.DataFrame(all_seg_metrics).mean().to_dict()
@@ -154,13 +172,21 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
 
     results_df = pd.DataFrame(results)
     if not results_df.empty:
-        output_path = os.path.join(results_dir, "benchmark_results.csv")
+        output_path = os.path.join(results_dir, "benchmark_metrics_results.csv")
         results_df.to_csv(output_path, index=False, float_format="%.2f")
         logger.info(f"Benchmark complete. Results saved to {output_path}")
         print("\nBenchmark Results:")
         print(results_df.to_string(index=False))
     else:
         logger.info("Benchmark finished, but no results were generated.")
+    # Save instance mask table (Model | image_name | instance_id | rle_mask)
+    if instance_rows:
+        instance_df = pd.DataFrame(instance_rows)
+        instance_path = os.path.join(results_dir, "benchmark_instance_masks_rle_results.csv")
+        instance_df.to_csv(instance_path, index=False)
+        logger.info(f"Instance mask RLE table saved to {instance_path}")
+    else:
+        logger.info("Benchmark finished, but no instance masks were generated.")
 
 
 if __name__ == "__main__":
