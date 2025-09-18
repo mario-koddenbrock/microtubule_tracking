@@ -46,16 +46,17 @@ def _compute_iou_matrix(gt_masks: np.ndarray, pred_masks: np.ndarray) -> np.ndar
     # intersections: (M, N)
     inter = (gm[:, None, :, :] & pm[None, :, :, :]).sum(axis=(2, 3), dtype=np.int64)
 
-    gt_areas = gm.sum(axis=(1, 2), dtype=np.int64)[:, None]   # (M, 1)
-    pr_areas = pm.sum(axis=(1, 2), dtype=np.int64)[None, :]   # (1, N)
+    gt_areas = gm.sum(axis=(1, 2), dtype=np.int64)[:, None]  # (M, 1)
+    pr_areas = pm.sum(axis=(1, 2), dtype=np.int64)[None, :]  # (1, N)
     union = gt_areas + pr_areas - inter
 
     # Safe division to float
     return inter / np.maximum(union, 1)
 
 
-
-def _get_matches(iou_matrix: np.ndarray, iou_threshold: float) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
+def _get_matches(
+    iou_matrix: np.ndarray, iou_threshold: float
+) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
     """
     Hungarian assignment on IoU to get GT<->Pred matches above threshold.
     Returns:
@@ -79,12 +80,13 @@ def _get_matches(iou_matrix: np.ndarray, iou_threshold: float) -> Tuple[List[Tup
 
 
 def _extract_boundary(mask: np.ndarray) -> np.ndarray:
-    return find_boundaries(mask.astype(bool), mode='outer')
+    return find_boundaries(mask.astype(bool), mode="outer")
 
 
 def _surface_distances(mask_a: np.ndarray, mask_b: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Directed boundary distances A→B and B→A via EDT."""
     from scipy.ndimage import distance_transform_edt
+
     Ba = _extract_boundary(mask_a)
     Bb = _extract_boundary(mask_b)
     if Ba.sum() == 0 or Bb.sum() == 0:
@@ -119,8 +121,9 @@ def _dice(mask_a: np.ndarray, mask_b: np.ndarray) -> float:
 def _boundary_f1(pred_mask: np.ndarray, gt_mask: np.ndarray, bound_th: int = 2) -> float:
     """Boundary F1 between two masks using pixel tolerance bound_th."""
     from scipy.ndimage import distance_transform_edt
-    gt_boundary = find_boundaries(gt_mask, mode='inner')
-    pr_boundary = find_boundaries(pred_mask, mode='inner')
+
+    gt_boundary = find_boundaries(gt_mask, mode="inner")
+    pr_boundary = find_boundaries(pred_mask, mode="inner")
 
     if not np.any(gt_boundary) or not np.any(pr_boundary):
         return 0.0 if (np.any(gt_boundary) or np.any(pr_boundary)) else 1.0
@@ -130,7 +133,9 @@ def _boundary_f1(pred_mask: np.ndarray, gt_mask: np.ndarray, bound_th: int = 2) 
 
     precision = (dist_gt_to_pr[gt_boundary] <= bound_th).mean()
     recall = (dist_pr_to_gt[pr_boundary] <= bound_th).mean()
-    return 0.0 if (precision + recall) == 0 else float(2 * precision * recall / (precision + recall))
+    return (
+        0.0 if (precision + recall) == 0 else float(2 * precision * recall / (precision + recall))
+    )
 
 
 def _panoptic_quality(
@@ -206,10 +211,10 @@ def _get_curvature_distribution(masks: np.ndarray) -> np.ndarray:
 
         # Curvature formula: k = |x'y'' - y'x''| / (x'^2 + y'^2)^(3/2)
         numerator = np.abs(dx * d2y - dy * d2x)
-        denominator = (dx**2 + dy**2)**1.5
+        denominator = (dx**2 + dy**2) ** 1.5
 
         # Avoid division by zero for straight segments
-        instance_curvatures = np.divide(numerator, denominator, where=denominator!=0)
+        instance_curvatures = np.divide(numerator, denominator, where=denominator != 0)
 
         mean_curvature = np.nanmean(instance_curvatures)
         curvatures.append(mean_curvature)
@@ -277,7 +282,9 @@ def calculate_segmentation_metrics(
         metrics[f"Hausdorff@{thresh:.2f}"] = float(hd) if not np.isnan(hd) else np.nan
         metrics[f"ASSD@{thresh:.2f}"] = float(assd) if not np.isnan(assd) else np.nan
 
-        pq, sq, dq = _panoptic_quality(gt_masks, pred_masks, iou_matrix, iou_threshold=float(thresh))
+        pq, sq, dq = _panoptic_quality(
+            gt_masks, pred_masks, iou_matrix, iou_threshold=float(thresh)
+        )
         metrics[f"PQ@{thresh:.2f}"] = float(pq)
         metrics[f"SQ@{thresh:.2f}"] = float(sq)
         metrics[f"DQ@{thresh:.2f}"] = float(dq)
@@ -313,8 +320,12 @@ def calculate_downstream_metrics(pred_masks: np.ndarray, gt_masks: np.ndarray) -
     gt_masks = _as_instance_stack(gt_masks)
 
     out: Dict[str, float] = {
-        "Length_KS": np.nan, "Length_KL": np.nan, "Length_EMD": np.nan,
-        "Curvature_KS": np.nan, "Curvature_KL": np.nan, "Curvature_EMD": np.nan,
+        "Length_KS": np.nan,
+        "Length_KL": np.nan,
+        "Length_EMD": np.nan,
+        "Curvature_KS": np.nan,
+        "Curvature_KL": np.nan,
+        "Curvature_EMD": np.nan,
     }
 
     # Length distribution
