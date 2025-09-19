@@ -12,7 +12,7 @@ from skimage.segmentation import find_boundaries
 def _as_instance_stack(mask_or_stack: np.ndarray) -> np.ndarray:
     """
     Accept either a labeled mask (H, W) with background=0, or a stack (N, H, W).
-    Return a boolean stack (N, H, W).
+    Return a boolean stack (N, H, W) of instance masks.
     """
     arr = np.asarray(mask_or_stack)
     if arr.ndim == 3:
@@ -26,22 +26,24 @@ def _as_instance_stack(mask_or_stack: np.ndarray) -> np.ndarray:
     return np.stack([arr == i for i in ids], axis=0).astype(bool)
 
 
-def _compute_iou_matrix(gt_masks: np.ndarray, pred_masks: np.ndarray) -> np.ndarray:
+def _compute_iou_matrix(
+    gt_instance_masks: np.ndarray, pred_instance_masks: np.ndarray
+) -> np.ndarray:
     """
     Compute IoU matrix between GT and predicted instance masks.
     Args:
-        gt_masks  : (M, H, W) bool
-        pred_masks: (N, H, W) bool
+        gt_instance_masks  : (M, H, W) bool
+        pred_instance_masks: (N, H, W) bool
     Returns:
         (M, N) float IoU matrix
     """
-    M, N = len(gt_masks), len(pred_masks)
+    M, N = len(gt_instance_masks), len(pred_instance_masks)
     if M == 0 or N == 0:
         return np.zeros((M, N), dtype=float)
 
     # Ensure boolean, then use int64 accumulation to avoid overflow
-    gm = gt_masks.astype(bool)
-    pm = pred_masks.astype(bool)
+    gm = gt_instance_masks.astype(bool)
+    pm = pred_instance_masks.astype(bool)
 
     # intersections: (M, N)
     inter = (gm[:, None, :, :] & pm[None, :, :, :]).sum(axis=(2, 3), dtype=np.int64)
@@ -139,7 +141,7 @@ def _boundary_f1(pred_mask: np.ndarray, gt_mask: np.ndarray, bound_th: int = 2) 
 
 
 def _panoptic_quality(
-    gt_masks: np.ndarray, pred_masks: np.ndarray, iou_matrix: np.ndarray, iou_threshold: float = 0.5
+    iou_matrix: np.ndarray, iou_threshold: float = 0.5
 ) -> Tuple[float, float, float]:
     """Compute PQ, SQ, DQ given stacks and IoU matrix."""
     matches, unmatched_preds, unmatched_gts = _get_matches(iou_matrix, iou_threshold)
@@ -156,9 +158,11 @@ def _panoptic_quality(
     return pq, sq, dq
 
 
-def _count_error(gt_masks: np.ndarray, pred_masks: np.ndarray) -> Tuple[int, float]:
-    gt_count = int(gt_masks.shape[0])
-    pred_count = int(pred_masks.shape[0])
+def _count_error(
+    gt_instance_masks: np.ndarray, pred_instance_masks: np.ndarray
+) -> Tuple[int, float]:
+    gt_count = int(gt_instance_masks.shape[0])
+    pred_count = int(pred_instance_masks.shape[0])
     abs_err = abs(pred_count - gt_count)
     rel_err = abs_err / (gt_count + 1e-6)
     return abs_err, float(rel_err)
@@ -237,10 +241,10 @@ def calculate_segmentation_metrics(
       - 'AP50-95' here is NOT true Average Precision (no score ranking). It is the
         mean of precision = TP/(TP+FP) measured at IoU thresholds 0.50:0.05:0.95.
     """
-    pred_masks = _as_instance_stack(pred_masks)
-    gt_masks = _as_instance_stack(gt_masks)
+    pred_instance_masks = _as_instance_stack(pred_masks)
+    gt_instance_masks = _as_instance_stack(gt_masks)
 
-    iou_matrix = _compute_iou_matrix(gt_masks, pred_masks)
+    iou_matrix = _compute_iou_matrix(gt_instance_masks, pred_instance_masks)
     metrics: Dict[str, float] = {}
 
     # “AP50–95” (mean precision across IoU thresholds)
@@ -267,10 +271,21 @@ def calculate_segmentation_metrics(
 
         # Pairwise metrics only over matched pairs
         if tp > 0:
-            bf1 = np.mean([_boundary_f1(pred_masks[p], gt_masks[g]) for g, p in matches])
-            dice = np.mean([_dice(pred_masks[p], gt_masks[g]) for g, p in matches])
-            hd = np.nanmean([_hausdorff_distance(pred_masks[p], gt_masks[g]) for g, p in matches])
-            assd = np.nanmean([_assd(pred_masks[p], gt_masks[g]) for g, p in matches])
+            bf1 = np.mean(
+                [_boundary_f1(pred_instance_masks[p], gt_instance_masks[g]) for g, p in matches]
+            )
+            dice = np.mean(
+                [_dice(pred_instance_masks[p], gt_instance_masks[g]) for g, p in matches]
+            )
+            hd = np.nanmean(
+                [
+                    _hausdorff_distance(pred_instance_masks[p], gt_instance_masks[g])
+                    for g, p in matches
+                ]
+            )
+            assd = np.nanmean(
+                [_assd(pred_instance_masks[p], gt_instance_masks[g]) for g, p in matches]
+            )
         else:
             bf1 = 0.0
             dice = 0.0
@@ -282,20 +297,18 @@ def calculate_segmentation_metrics(
         metrics[f"Hausdorff@{thresh:.2f}"] = float(hd) if not np.isnan(hd) else np.nan
         metrics[f"ASSD@{thresh:.2f}"] = float(assd) if not np.isnan(assd) else np.nan
 
-        pq, sq, dq = _panoptic_quality(
-            gt_masks, pred_masks, iou_matrix, iou_threshold=float(thresh)
-        )
+        pq, sq, dq = _panoptic_quality(iou_matrix, iou_threshold=float(thresh))
         metrics[f"PQ@{thresh:.2f}"] = float(pq)
         metrics[f"SQ@{thresh:.2f}"] = float(sq)
         metrics[f"DQ@{thresh:.2f}"] = float(dq)
 
     # Counting
-    abs_err, rel_err = _count_error(gt_masks, pred_masks)
+    abs_err, rel_err = _count_error(gt_instance_masks, pred_instance_masks)
     metrics["CountAbsErr"] = float(abs_err)
     metrics["CountRelErr"] = float(rel_err)
 
     # IoU
-    if gt_masks.shape[0] > 0 and pred_masks.shape[0] > 0:
+    if gt_instance_masks.shape[0] > 0 and pred_instance_masks.shape[0] > 0:
         ious = iou_matrix.max(axis=1)  # best IoU for each GT
         metrics["IoU_mean"] = float(np.mean(ious))
         metrics["IoU_median"] = float(np.median(ious))
@@ -316,8 +329,8 @@ def calculate_downstream_metrics(pred_masks: np.ndarray, gt_masks: np.ndarray) -
           'Count_pred', 'Count_gt'
         }
     """
-    pred_masks = _as_instance_stack(pred_masks)
-    gt_masks = _as_instance_stack(gt_masks)
+    pred_instance_masks = _as_instance_stack(pred_masks)
+    gt_instance_masks = _as_instance_stack(gt_masks)
 
     out: Dict[str, float] = {
         "Length_KS": np.nan,
@@ -329,8 +342,8 @@ def calculate_downstream_metrics(pred_masks: np.ndarray, gt_masks: np.ndarray) -
     }
 
     # Length distribution
-    pred_lengths = _get_length_distribution(pred_masks)
-    gt_lengths = _get_length_distribution(gt_masks)
+    pred_lengths = _get_length_distribution(pred_instance_masks)
+    gt_lengths = _get_length_distribution(gt_instance_masks)
 
     if pred_lengths.size > 0 and gt_lengths.size > 0:
         ks_stat, _ = ks_2samp(pred_lengths, gt_lengths)
@@ -353,8 +366,8 @@ def calculate_downstream_metrics(pred_masks: np.ndarray, gt_masks: np.ndarray) -
         out["Length_EMD"] = float(wasserstein_distance(pred_lengths, gt_lengths))
 
     # Curvature distribution
-    pred_curvatures = _get_curvature_distribution(pred_masks)
-    gt_curvatures = _get_curvature_distribution(gt_masks)
+    pred_curvatures = _get_curvature_distribution(pred_instance_masks)
+    gt_curvatures = _get_curvature_distribution(gt_instance_masks)
 
     pred_curvatures = pred_curvatures[~np.isnan(pred_curvatures)]
     gt_curvatures = gt_curvatures[~np.isnan(gt_curvatures)]
@@ -380,7 +393,7 @@ def calculate_downstream_metrics(pred_masks: np.ndarray, gt_masks: np.ndarray) -
         out["Curvature_EMD"] = float(wasserstein_distance(pred_curvatures, gt_curvatures))
 
     # Simple counts
-    out["Count_pred"] = float(pred_masks.shape[0])
-    out["Count_gt"] = float(gt_masks.shape[0])
+    out["Count_pred"] = float(pred_instance_masks.shape[0])
+    out["Count_gt"] = float(gt_instance_masks.shape[0])
 
     return out
