@@ -4,6 +4,9 @@ from tqdm import tqdm
 import logging
 import numpy as np
 import time
+import glob
+import cv2
+import imageio
 
 from mt.benchmark.dataset import BenchmarkDataset
 from mt.benchmark import metrics
@@ -15,14 +18,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
+def run_benchmark(
+    dataset_path: str,
+    real_images_path: str,
+    results_dir: str,
+    models_to_run: list,
+    n_samples: int = -1,
+):
     """
     Runs the full benchmark on all models and saves the results.
     """
     os.makedirs(results_dir, exist_ok=True)
 
     logger.info(f"Loading dataset from: {dataset_path}")
-    dataset = BenchmarkDataset(dataset_path, num_samples=2)
+    dataset = BenchmarkDataset(dataset_path, num_samples=n_samples)
 
     factory = setup_model_factory()
     available_models = factory.get_available_models()
@@ -51,6 +60,7 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
     # For saving instance masks as RLE per image and instance
     instance_rows = []  # Each row: model, image_name, instance_id, rle_mask
 
+    # Benchmark on synthetic dataset (with labels)
     for model in models:
         logger.info(f"--- Benchmarking model: {model.model_name} ---")
         all_seg_metrics = []
@@ -188,10 +198,64 @@ def run_benchmark(dataset_path: str, results_dir: str, models_to_run: list):
     else:
         logger.info("Benchmark finished, but no instance masks were generated.")
 
+    # --- Benchmark on real validation images (no labels (yet)) ---
+    # Saveing real images in plots/benchmark/<model_name>/real_images/
+    real_image_paths = sorted(glob.glob(os.path.join(real_images_path, "*.png")))
+    real_image_paths = real_image_paths[:n_samples]
+    for model in models:
+        logger.info(f"--- Segmenting real validation images with model: {model.model_name} ---")
+        model_real_save_dir = os.path.join("plots", "benchmark", model.model_name, "real_images")
+        os.makedirs(model_real_save_dir, exist_ok=True)
+        real_instance_rows = []  # Each row: model, image_name, instance_id, rle_mask
+        for image_path in tqdm(
+            real_image_paths, desc=f"Segmenting real images ({model.model_name})"
+        ):
+            image_name = os.path.basename(image_path)
+            image = imageio.imread(image_path)
+            pred_mask = model.predict(image)
+            # Save predonly overlay
+            save_path = os.path.join(model_real_save_dir, f"{image_name}_predonly.png")
+            plot_gt_pred_overlays(
+                image,
+                None,  # No GT overlay
+                pred_mask,
+                boundary=True,
+                thickness=2,
+                alpha=0.8,
+                save_path=save_path,
+                instance_seg=True,
+            )
+            # Save instance masks as RLE in a table
+            instance_ids = np.unique(pred_mask)
+            instance_ids = instance_ids[instance_ids != 0]
+            for inst_id in instance_ids:
+                inst_mask = (pred_mask == inst_id).astype(np.uint8)
+                rle = mask2rle(inst_mask)
+                real_instance_rows.append(
+                    {
+                        "Model": model.model_name,
+                        "image_name": image_name,
+                        "instance_id": int(inst_id),
+                        "rle_mask": rle,
+                    }
+                )
+    # Save real instance mask table
+    if real_instance_rows:
+        real_instance_df = pd.DataFrame(real_instance_rows)
+        real_instance_path = os.path.join(
+            results_dir, f"real_images_instance_masks_rle_results.csv"
+        )
+        real_instance_df.to_csv(real_instance_path, index=False)
+        logger.info(f"Real instance mask RLE table saved to {real_instance_path}")
+    else:
+        logger.info(f"No real instance masks were generated.")
+
 
 if __name__ == "__main__":
     DATASET_PATH = "data/SynMT/synthetic/full"
+    REAL_IMAGES_PATH = "data/SynMT/real/full/single_frame"
     RESULTS_DIR = "results"
+    N_SAMPLES = 2  # Set to -1 for all images, or an int for a subset
 
     # Define which models to run here.
     MODELS_TO_RUN = [
@@ -295,4 +359,10 @@ if __name__ == "__main__":
         # {"name": "SOAX"}, # Only C++ and no pretrained model available
     ]
 
-    run_benchmark(dataset_path=DATASET_PATH, results_dir=RESULTS_DIR, models_to_run=MODELS_TO_RUN)
+    run_benchmark(
+        dataset_path=DATASET_PATH,
+        real_images_path=REAL_IMAGES_PATH,
+        results_dir=RESULTS_DIR,
+        models_to_run=MODELS_TO_RUN,
+        n_samples=N_SAMPLES,
+    )
